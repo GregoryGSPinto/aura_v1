@@ -1,0 +1,27 @@
+[
+  {
+    "log_id": "log_45ee1c3744",
+    "timestamp": "2026-03-10T03:28:15.047254+00:00",
+    "command": "list_projects",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "projects": [
+        {
+          "id": null,
+          "name": "aura_v1",
+          "path": "/Users/user_pc/Projetos/aura_v1",
+          "description": "Workspace principal da Aura.",
+          "commands": {
+            "dev": "pnpm dev",
+            "build": "pnpm build"
+          },
+          "source": null
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,6 @@
+#!/bin/zsh
+set -euo pipefail
+echo "Abra dois terminais:"
+echo "1. scripts/run-backend"
+echo "2. scripts/run-frontend"
+
