@@ -1,6 +1,6 @@
 # Aura v1
 
-Aura é uma assistente operacional pessoal com arquitetura local-first, frontend em Next.js, backend em FastAPI, LLM local via Ollama e uma camada de dados preparada para Supabase sem quebrar o fluxo local.
+Aura evoluiu de uma assistente operacional local-first para a base de um **Personal AI Operating System**. O projeto preserva o runtime atual em FastAPI + Next.js + Ollama, mas agora possui uma nova espinha dorsal modular para agent loop, memória, tools registry, integrações multi-modelo e pipeline de voz.
 
 ## Arquitetura
 
@@ -18,6 +18,14 @@ Core Layer
   └─ SupabaseService
 System Layer
   └─ macOS, VS Code, terminal, Ollama
+AI OS Layer
+  └─ aura/backend/app/aura_os
+     ├─ core
+     ├─ memory
+     ├─ voice
+     ├─ tools
+     ├─ integrations
+     └─ config
 ```
 
 ## Modos de operação
@@ -33,6 +41,7 @@ aura/
   backend/
   frontend/
   docs/
+  backend/app/aura_os/
 docs/
 infra/
   supabase/
@@ -131,6 +140,8 @@ pnpm dev --host 0.0.0.0 --port 3000
 - `POST /api/v1/command`
 - `GET /api/v1/projects`
 - `POST /api/v1/projects/open`
+- `GET /api/v1/os/overview`
+- `POST /api/v1/os/agent/execute`
 
 ## Scripts úteis
 
@@ -193,3 +204,17 @@ Guia detalhado: `docs/vercel.md`
 - Documentação para publicação e operação
 - Estratégia de teste operacional no Mac em `docs/usability-testing.md`
 - Jobs autônomos com fila local, retomada após reinício e logs persistidos
+- Nova camada `aura_os` com architecture-ready modules:
+  - agent loop
+  - memory manager
+  - tools registry
+  - voice pipeline preparada
+  - providers para Ollama/OpenAI/Anthropic
+
+## Documentos de arquitetura
+
+- `ARCHITECTURE.md`
+- `AGENTS.md`
+- `TOOLS.md`
+- `CHANGELOG.md`
+- `MEMORY.md`

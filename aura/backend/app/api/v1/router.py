@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, auth, chat, command, jobs, projects, status, system, tools
+from app.api.v1.endpoints import agent, auth, chat, command, jobs, os_runtime, projects, status, system, tools
 
 
 api_router = APIRouter()
@@ -13,3 +13,4 @@ api_router.include_router(system.router, tags=["system"])
 api_router.include_router(tools.router, tags=["tools"])
 api_router.include_router(jobs.router, tags=["jobs"])
 api_router.include_router(agent.router, tags=["agent"])
+api_router.include_router(os_runtime.router)

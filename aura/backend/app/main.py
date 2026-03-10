@@ -1,3 +1,18 @@
+from app.aura_os.agents.router import AgentRouter
+from app.aura_os.automation.scheduler import WorkflowScheduler
+from app.aura_os.config.settings import AuraOSSettings
+from app.aura_os.core.agent import AuraOperatingSystem
+from app.aura_os.core.planner import PlannerAdapter
+from app.aura_os.core.reasoner import Reasoner
+from app.aura_os.core.router import IntentRouter
+from app.aura_os.core.tool_executor import ToolExecutor
+from app.aura_os.integrations.anthropic import AnthropicProvider
+from app.aura_os.integrations.model_router import ModelRouter
+from app.aura_os.integrations.ollama import OllamaProvider
+from app.aura_os.integrations.openai import OpenAIProvider
+from app.aura_os.memory.manager import MemoryManager
+from app.aura_os.tools.registry import ToolRegistry
+from app.aura_os.voice.pipeline import VoicePipeline
 from app.agents.job_manager import AgentJobManager
 from app.agents.planner import AgentPlanner
 from app.agents.step_executor import AgentStepExecutor
@@ -61,6 +76,39 @@ class Container:
         self.job_service = JobService(self.settings, self.memory_service, self.agent_step_executor, self.logger)
         self.agent_planner = AgentPlanner()
         self.agent_job_manager = AgentJobManager(self.agent_planner, self.job_service, self.project_service)
+        self.aura_os_settings = AuraOSSettings(self.settings)
+        self.memory_manager = MemoryManager(self.memory_service)
+        self.tool_registry = ToolRegistry()
+        self.tool_registry.register_defaults()
+        self.voice_pipeline = VoicePipeline()
+        self.reasoner = Reasoner()
+        self.intent_router = IntentRouter(self.tool_router)
+        self.planner_adapter = PlannerAdapter(self.agent_planner)
+        self.tool_executor = ToolExecutor(self.command_service)
+        self.agent_router = AgentRouter()
+        self.model_router = ModelRouter(self.settings.model_name)
+        self.scheduler = WorkflowScheduler()
+        self.ollama_provider = OllamaProvider(self.ollama_service, self.settings.model_name)
+        self.openai_provider = OpenAIProvider()
+        self.anthropic_provider = AnthropicProvider()
+        self.aura_os = AuraOperatingSystem(
+            settings=self.aura_os_settings,
+            planner=self.planner_adapter,
+            reasoner=self.reasoner,
+            intent_router=self.intent_router,
+            tool_executor=self.tool_executor,
+            memory_manager=self.memory_manager,
+            tool_registry=self.tool_registry,
+            voice_pipeline=self.voice_pipeline,
+            job_manager=self.agent_job_manager,
+            agent_router=self.agent_router,
+            model_router=self.model_router,
+            scheduler=self.scheduler,
+            ollama_provider=self.ollama_provider,
+            openai_provider=self.openai_provider,
+            anthropic_provider=self.anthropic_provider,
+            list_projects_callable=self.project_service.list_projects,
+        )
 
 
 container = Container()
@@ -93,6 +141,7 @@ def create_app() -> FastAPI:
     app.state.job_service = container.job_service
     app.state.agent_planner = container.agent_planner
     app.state.agent_job_manager = container.agent_job_manager
+    app.state.aura_os = container.aura_os
 
     app.add_middleware(
         CORSMiddleware,

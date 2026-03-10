@@ -88,5 +88,23 @@
     "model": "qwen3.5:9b",
     "intent": "consulta",
     "metadata": {}
+  },
+  {
+    "session_id": "aura-27a5cc26-5a9f-4e00-888d-1a3f1dd367b6",
+    "role": "user",
+    "content": "oi",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 1
+    }
+  },
+  {
+    "session_id": "aura-27a5cc26-5a9f-4e00-888d-1a3f1dd367b6",
+    "role": "assistant",
+    "content": "Olá! Sou a Aura, sua assistente operacional pessoal. Como posso ajudar você hoje?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
   }
 ]

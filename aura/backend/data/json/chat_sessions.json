@@ -6,5 +6,13 @@
     "metadata": {
       "source": "api.chat"
     }
+  },
+  {
+    "session_id": "aura-27a5cc26-5a9f-4e00-888d-1a3f1dd367b6",
+    "user_id": "local-operator",
+    "project_id": null,
+    "metadata": {
+      "source": "api.chat"
+    }
   }
 ]
