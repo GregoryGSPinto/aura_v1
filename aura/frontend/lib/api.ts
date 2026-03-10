@@ -1,59 +1,166 @@
-import { ApiEnvelope, ChatPayload, ProjectsPayload, StatusPayload } from "@/lib/types";
-import { clientEnv } from "@/lib/env";
+import { clientEnv } from './env';
+import type { 
+  StatusPayload, 
+  Project, 
+  ChatResponse, 
+  CommandResult,
+  Agent,
+  AgentTask,
+  SystemMetrics,
+  Activity,
+  ProcessInfo 
+} from './types';
 
-async function request<T>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> {
-  if (!clientEnv.apiUrl) {
-    throw new Error("A URL da API da Aura não foi configurada. Defina NEXT_PUBLIC_API_URL.");
+const API_URL = clientEnv.apiUrl || 'http://localhost:8000';
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error: { code: string; message: string } | null;
+  timestamp: string;
+}
+
+async function fetchApi<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<ApiResponse<T>> {
+  const url = `${API_URL}${endpoint}`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+
+  if (clientEnv.auraToken) {
+    headers['Authorization'] = `Bearer ${clientEnv.auraToken}`;
   }
 
-  const headers = new Headers(init?.headers ?? {});
-  headers.set("Content-Type", "application/json");
-  if (clientEnv.auraToken && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${clientEnv.auraToken}`);
-  }
-
-  const response = await fetch(`${clientEnv.apiUrl}${path}`, {
-    ...init,
+  const response = await fetch(url, {
+    ...options,
     headers,
-    cache: "no-store",
   });
 
-  const data = (await response.json()) as ApiEnvelope<T>;
-  if (!response.ok || !data.success) {
-    throw new Error(data.error?.message ?? "Falha ao acessar a API da Aura.");
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      error: { message: 'Unknown error' },
+    }));
+    throw new Error(error.error?.message || `HTTP ${response.status}`);
   }
-  return data;
+
+  return response.json();
 }
 
-export async function fetchStatus() {
-  return request<StatusPayload>("/status");
+// Status
+export async function fetchStatus(): Promise<ApiResponse<StatusPayload>> {
+  return fetchApi('/api/v1/status');
 }
 
-export async function fetchProjects() {
-  return request<ProjectsPayload>("/projects");
+// Projects
+export async function fetchProjects(): Promise<ApiResponse<{ projects: Project[]; total: number }>> {
+  return fetchApi('/api/v1/projects');
 }
 
-export async function sendChat(message: string, history: Array<{ role: "user" | "assistant"; content: string }>) {
-  return request<ChatPayload>("/chat", {
-    method: "POST",
+export async function openProject(name: string): Promise<ApiResponse<{ message: string; opened_in: string }>> {
+  return fetchApi('/api/v1/projects/open', {
+    method: 'POST',
+    body: JSON.stringify({ project_name: name }),
+  });
+}
+
+// Chat
+export async function sendChat(
+  message: string,
+  history: { role: string; content: string }[] = []
+): Promise<ApiResponse<ChatResponse>> {
+  return fetchApi('/api/v1/chat', {
+    method: 'POST',
     body: JSON.stringify({
       message,
-      context: {
-        session_id: "local-web-session",
-        history,
-      },
-      options: {
-        stream: false,
-        temperature: 0.2,
-        think: false,
-      },
+      context: { history },
+      options: { stream: false, temperature: 0.7 },
     }),
   });
 }
 
-export async function openProject(name: string) {
-  return request<{ name: string; path: string; opened_in: string; message: string }>("/projects/open", {
-    method: "POST",
-    body: JSON.stringify({ name }),
+// Commands
+export async function executeCommand(
+  command: string,
+  params?: Record<string, unknown>
+): Promise<ApiResponse<CommandResult>> {
+  return fetchApi('/api/v1/command', {
+    method: 'POST',
+    body: JSON.stringify({
+      command,
+      params: params || {},
+      options: { confirm: false, async: false },
+    }),
   });
+}
+
+// Agents (Swarm)
+export async function fetchAgents(): Promise<ApiResponse<Agent[]>> {
+  return fetchApi('/api/v1/agents');
+}
+
+export async function fetchAgentTasks(agentId?: string): Promise<ApiResponse<AgentTask[]>> {
+  const query = agentId ? `?agent_id=${agentId}` : '';
+  return fetchApi(`/api/v1/agents/tasks${query}`);
+}
+
+export async function startAgent(agentId: string): Promise<ApiResponse<Agent>> {
+  return fetchApi(`/api/v1/agents/${agentId}/start`, { method: 'POST' });
+}
+
+export async function stopAgent(agentId: string): Promise<ApiResponse<Agent>> {
+  return fetchApi(`/api/v1/agents/${agentId}/stop`, { method: 'POST' });
+}
+
+export async function createTask(
+  agentId: string,
+  task: { type: string; description: string; params?: Record<string, unknown> }
+): Promise<ApiResponse<AgentTask>> {
+  return fetchApi(`/api/v1/agents/${agentId}/tasks`, {
+    method: 'POST',
+    body: JSON.stringify(task),
+  });
+}
+
+// System
+export async function fetchSystemMetrics(): Promise<ApiResponse<SystemMetrics>> {
+  return fetchApi('/api/v1/system/metrics');
+}
+
+export async function fetchProcesses(): Promise<ApiResponse<ProcessInfo[]>> {
+  return fetchApi('/api/v1/system/processes');
+}
+
+// Activities
+export async function fetchActivities(limit = 10): Promise<ApiResponse<Activity[]>> {
+  return fetchApi(`/api/v1/activities?limit=${limit}`);
+}
+
+// Remote Control
+export async function executeTerminalCommand(command: string): Promise<ApiResponse<{ output: string; exit_code: number }>> {
+  return fetchApi('/api/v1/remote/terminal', {
+    method: 'POST',
+    body: JSON.stringify({ command }),
+  });
+}
+
+export async function listApplications(): Promise<ApiResponse<{ name: string; status: 'running' | 'stopped' }[]>> {
+  return fetchApi('/api/v1/remote/apps');
+}
+
+export async function controlApplication(
+  name: string,
+  action: 'open' | 'close' | 'focus'
+): Promise<ApiResponse<{ success: boolean; message: string }>> {
+  return fetchApi('/api/v1/remote/apps/control', {
+    method: 'POST',
+    body: JSON.stringify({ name, action }),
+  });
+}
+
+export async function listFiles(path?: string): Promise<ApiResponse<{ name: string; type: 'file' | 'directory'; size?: number }[]>> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : '';
+  return fetchApi(`/api/v1/remote/files${query}`);
 }

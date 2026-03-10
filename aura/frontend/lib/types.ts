@@ -1,59 +1,120 @@
-export type ApiEnvelope<T> = {
-  success: boolean;
-  data: T;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  } | null;
-  timestamp: string;
-};
-
-export type StatusPayload = {
+export interface StatusPayload {
   status: string;
-  name: string;
   version: string;
-  model: string;
-  auth_mode: string;
-  persistence: {
-    mode: "local" | "supabase" | "fallback-local";
-    supabase_enabled: boolean;
-    supabase_configured: boolean;
-    auth_mode: string;
-    warnings: string[];
-  };
   uptime_seconds: number;
   timestamp: string;
   services: {
     api: string;
     llm: string;
     filesystem: string;
-    supabase: string;
   };
-};
+  model: string;
+  persistence: {
+    mode: string;
+  };
+  auth_mode: string;
+}
 
-export type Project = {
+export interface Project {
+  id: string;
   name: string;
   path: string;
-  description?: string | null;
-  commands: Record<string, string>;
-};
+  type: string;
+  framework: string | null;
+  status: 'active' | 'archived';
+  last_modified: string;
+  description?: string;
+  git?: {
+    has_repo: boolean;
+    branch: string | null;
+    uncommitted_changes: number;
+  };
+}
 
-export type ProjectsPayload = {
-  projects: Project[];
-  total: number;
-};
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  meta?: string;
+  timestamp?: string;
+}
 
-export type ChatPayload = {
+export interface ChatResponse {
   response: string;
-  intent: "conversa" | "consulta" | "acao";
-  session_id: string;
-  processing_time_ms: number;
-  model: string;
-  persistence_mode?: string | null;
-  action_taken?: unknown;
-  suggested_action?: {
+  intent: string;
+  action_taken?: {
     command: string;
-    reason: string;
+    params: Record<string, unknown>;
+    status: string;
+    result: Record<string, unknown>;
   } | null;
-};
+  session_id: string;
+  tokens_used: number;
+  processing_time_ms: number;
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  type: 'builder' | 'reviewer' | 'deployer' | 'gitops' | 'custom';
+  status: 'idle' | 'running' | 'error' | 'completed';
+  description: string;
+  tasks_completed: number;
+  tasks_failed: number;
+  last_activity: string;
+  config: Record<string, unknown>;
+}
+
+export interface AgentTask {
+  id: string;
+  agent_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  type: string;
+  description: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  result?: unknown;
+  error?: string;
+}
+
+export interface SystemMetrics {
+  cpu: number;
+  memory: number;
+  disk: number;
+  network: {
+    upload: number;
+    download: number;
+  };
+  processes: ProcessInfo[];
+  timestamp: string;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu: number;
+  memory: number;
+}
+
+export interface CommandResult {
+  command: string;
+  status: 'success' | 'error' | 'pending';
+  result: Record<string, unknown>;
+  execution_time_ms: number;
+  log_id: string;
+}
+
+export interface Activity {
+  id: string;
+  type: 'chat' | 'command' | 'agent' | 'project';
+  description: string;
+  timestamp: string;
+  status: 'success' | 'error' | 'info';
+}
+
+export interface ProcessInfo {
+  pid: number;
+  name: string;
+  cpu: number;
+  memory: number;
+}
