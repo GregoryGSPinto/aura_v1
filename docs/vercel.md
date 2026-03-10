@@ -4,6 +4,8 @@
 
 `aura/frontend`
 
+Esse valor precisa estar configurado no projeto da Vercel. O `vercel.json` do repositório nao define `rootDirectory`; para deploy manual, use sempre o diretório `aura/frontend` ou o script `scripts/deploy-vercel-frontend.sh`.
+
 ## Variáveis de ambiente
 
 - `NEXT_PUBLIC_API_URL`
@@ -32,6 +34,12 @@ vercel env add NEXT_PUBLIC_AURA_TOKEN production
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
 vercel --prod --yes
+```
+
+Ou, a partir da raiz do repositório:
+
+```bash
+./scripts/deploy-vercel-frontend.sh
 ```
 
 ## Comandos
