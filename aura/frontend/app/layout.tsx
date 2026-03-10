@@ -4,7 +4,9 @@ import { Toaster } from 'sonner';
 import './globals.css';
 import { ParticleBackground } from '@/components/layout/particle-background';
 import { Sidebar } from '@/components/layout/sidebar';
+import { MobileNav } from '@/components/layout/mobile-nav';
 import { CommandPalette } from '@/components/layout/command-palette';
+import { AppProvider } from '@/components/providers/app-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -50,32 +52,34 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <ParticleBackground />
-        <Sidebar />
-        <CommandPalette />
-        
-        {/* Main Content */}
-        <main className="lg:pl-72 min-h-screen transition-all duration-300">
-          <div className="p-4 lg:p-8 max-w-[1600px] mx-auto">
-            {children}
-          </div>
-        </main>
+        <AppProvider>
+          <ParticleBackground />
+          <Sidebar />
+          <MobileNav />
+          <CommandPalette />
+          
+          <main className="min-h-screen transition-all duration-300 lg:pl-72">
+            <div className="mx-auto max-w-[1600px] px-4 pb-28 pt-4 sm:px-5 md:px-6 lg:p-8 lg:pb-8">
+              {children}
+            </div>
+          </main>
 
-        {/* Toast Notifications */}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: 'rgba(13, 17, 23, 0.95)',
-              border: '1px solid rgba(212, 175, 55, 0.15)',
-              backdropFilter: 'blur(20px)',
-            },
-          }}
-        />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: 'color-mix(in srgb, var(--bg-secondary) 88%, transparent)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-primary)',
+                backdropFilter: 'blur(20px)',
+              },
+            }}
+          />
+        </AppProvider>
       </body>
     </html>
   );

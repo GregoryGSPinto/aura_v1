@@ -8,7 +8,7 @@ export function Card({ className, glow = 'none', children, ...props }: CardProps
   return (
     <div
       className={cn(
-        'rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-6 transition-all duration-300',
+        'rounded-2xl border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_84%,transparent)] p-6 backdrop-blur-xl transition-all duration-300',
         glow === 'gold' && 'hover:border-[var(--gold)]/20 hover:shadow-[0_0_30px_rgba(212,175,55,0.08)]',
         glow === 'cyan' && 'hover:border-[var(--cyan)]/20 hover:shadow-[0_0_30px_rgba(0,212,255,0.08)]',
         className

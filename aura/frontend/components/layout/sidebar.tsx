@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,9 +12,6 @@ import {
   Activity,
   Settings,
   Sparkles,
-  Menu,
-  X,
-  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,43 +27,17 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; bad
 
 export function Sidebar() {
   const pathname = usePathname() ?? '/';
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = false;
 
   return (
-    <>
-      {/* Mobile Toggle */}
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 p-2.5 rounded-xl glass lg:hidden hover:bg-white/10 transition-colors"
-      >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-
-      {/* Desktop Collapse Toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="fixed bottom-6 left-72 z-50 p-2 rounded-full glass hidden lg:flex items-center justify-center hover:bg-white/10 transition-all -translate-x-1/2"
-        style={{ left: collapsed ? '80px' : '288px' }}
-      >
-        <ChevronRight 
-          className={cn(
-            'w-4 h-4 transition-transform duration-300',
-            collapsed && 'rotate-180'
-          )} 
-        />
-      </button>
-
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ x: -100, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 glass-strong border-r border-[var(--border-subtle)] transform transition-all duration-300 lg:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-20' : 'lg:w-72'
-        )}
-      >
+    <motion.aside
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      className={cn(
+        'fixed inset-y-0 left-0 z-40 hidden border-r border-[var(--border-subtle)] glass-strong transition-all duration-300 lg:flex lg:translate-x-0',
+        collapsed ? 'lg:w-20' : 'lg:w-72'
+      )}
+    >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <Link 
@@ -109,7 +79,6 @@ export function Sidebar() {
                   key={item.href}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   href={item.href as any}
-                  onClick={() => setMobileOpen(false)}
                   className={cn(
                     'relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group',
                     isActive
@@ -186,19 +155,5 @@ export function Sidebar() {
           </div>
         </div>
       </motion.aside>
-
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-    </>
   );
 }

@@ -4,6 +4,7 @@ import type {
   Project, 
   ChatResponse, 
   CommandResult,
+  AuthStatusPayload,
   Agent,
   AgentJobDetail,
   AgentJobSummary,
@@ -39,6 +40,7 @@ async function fetchApi<T>(
   const response = await fetch(url, {
     ...options,
     headers,
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -71,13 +73,14 @@ export async function openProject(name: string): Promise<ApiResponse<{ message: 
 // Chat
 export async function sendChat(
   message: string,
-  history: { role: string; content: string }[] = []
+  history: { role: string; content: string }[] = [],
+  sessionId = 'default-session'
 ): Promise<ApiResponse<ChatResponse>> {
   return fetchApi('/api/v1/chat', {
     method: 'POST',
     body: JSON.stringify({
       message,
-      context: { history },
+      context: { history, session_id: sessionId },
       options: { stream: false, temperature: 0.7 },
     }),
   });
@@ -161,6 +164,10 @@ export async function fetchProcesses(): Promise<ApiResponse<ProcessInfo[]>> {
 // Activities
 export async function fetchActivities(limit = 10): Promise<ApiResponse<Activity[]>> {
   return fetchApi(`/api/v1/activities?limit=${limit}`);
+}
+
+export async function fetchAuthStatus(): Promise<ApiResponse<AuthStatusPayload>> {
+  return fetchApi('/api/v1/auth/status');
 }
 
 // Remote Control

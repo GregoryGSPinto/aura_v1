@@ -1,291 +1,350 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Monitor,
-  Terminal,
   AppWindow,
-  FolderOpen,
-  Play,
-  Square,
-  RefreshCw,
-  Send,
   ChevronRight,
   FileText,
   Folder,
-  Image as ImageIcon,
-  Music,
-  Video,
-  Code,
+  FolderOpen,
+  Monitor,
+  Play,
+  RefreshCw,
+  Send,
+  Terminal,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { executeCommand, fetchProjects, fetchStatus } from '@/lib/api';
+import { notifyError, notifyInfo, notifySuccess } from '@/lib/notifications';
+import type { Project, StatusPayload } from '@/lib/types';
 
-type Tab = 'terminal' | 'apps' | 'files';
+type Tab = 'terminal' | 'actions' | 'files';
 
-const mockApps = [
-  { name: 'Visual Studio Code', status: 'running' as const, icon: '💻' },
-  { name: 'Chrome', status: 'running' as const, icon: '🌐' },
-  { name: 'Spotify', status: 'stopped' as const, icon: '🎵' },
-  { name: 'Docker Desktop', status: 'running' as const, icon: '🐳' },
-  { name: 'Slack', status: 'stopped' as const, icon: '💬' },
-  { name: 'Figma', status: 'running' as const, icon: '🎨' },
+type RemoteAction = {
+  id: string;
+  label: string;
+  command: 'open_vscode' | 'list_projects' | 'show_logs' | 'git_status' | 'run_project_dev' | 'open_project';
+  projectRequired?: boolean;
+  description: string;
+};
+
+const tabs = [
+  { id: 'terminal' as Tab, label: 'Terminal controlado', icon: Terminal },
+  { id: 'actions' as Tab, label: 'Acoes seguras', icon: AppWindow },
+  { id: 'files' as Tab, label: 'Workspaces', icon: FolderOpen },
 ];
 
-const mockFiles = [
-  { name: 'projects', type: 'directory' as const, size: '-' },
-  { name: 'documents', type: 'directory' as const, size: '-' },
-  { name: 'downloads', type: 'directory' as const, size: '-' },
-  { name: 'aura-v1', type: 'directory' as const, size: '2.4 MB' },
-  { name: 'README.md', type: 'file' as const, size: '4.2 KB' },
-  { name: 'package.json', type: 'file' as const, size: '1.8 KB' },
-  { name: 'screenshot.png', type: 'file' as const, size: '2.1 MB' },
+const actions: RemoteAction[] = [
+  { id: 'vscode', label: 'Abrir VS Code', command: 'open_vscode', description: 'Abre o editor no seu Mac.' },
+  { id: 'projects', label: 'Listar projetos', command: 'list_projects', description: 'Busca a lista real do backend.' },
+  { id: 'git', label: 'Git status', command: 'git_status', description: 'Executa git status com whitelist.' },
+  { id: 'logs', label: 'Mostrar logs', command: 'show_logs', description: 'Carrega os logs recentes da Aura.' },
+  { id: 'open-project', label: 'Abrir projeto', command: 'open_project', description: 'Abre o projeto selecionado no Mac.', projectRequired: true },
+  { id: 'run-dev', label: 'Rodar dev', command: 'run_project_dev', description: 'Executa o comando dev cadastrado.', projectRequired: true },
 ];
+
+function formatTerminalOutput(response: { message?: string; stdout?: string | null; stderr?: string | null }) {
+  return [response.message, response.stdout, response.stderr].filter(Boolean).join('\n');
+}
 
 export default function RemotePage() {
   const [activeTab, setActiveTab] = useState<Tab>('terminal');
+  const [status, setStatus] = useState<StatusPayload | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>('');
   const [terminalInput, setTerminalInput] = useState('');
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
-    'Aura Remote Terminal v1.0.0',
-    'Conectado a: MacBook Pro (localhost)',
-    'Digite "help" para ver os comandos disponíveis.',
+    'Aura Remote v1.0.0',
+    'Canal seguro conectado ao backend real da Aura.',
+    'Digite "help" para ver os comandos permitidos.',
     '',
-    'aura@macbook:~$ ',
   ]);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  const handleTerminalSubmit = () => {
-    if (!terminalInput.trim()) return;
-    
-    const newOutput = [...terminalOutput, `aura@macbook:~$ ${terminalInput}`];
-    
-    // Simulate command response
-    if (terminalInput === 'help') {
-      newOutput.push(
-        'Comandos disponíveis:',
-        '  ls          - Lista arquivos',
-        '  pwd         - Mostra diretório atual',
-        '  clear       - Limpa terminal',
-        '  status      - Status do sistema',
-        ''
-      );
-    } else if (terminalInput === 'clear') {
-      newOutput.length = 0;
-      newOutput.push('aura@macbook:~$ ');
-    } else if (terminalInput === 'ls') {
-      newOutput.push('projects  documents  downloads  aura-v1');
-      newOutput.push('');
-    } else if (terminalInput === 'pwd') {
-      newOutput.push('/Users/aura');
-      newOutput.push('');
-    } else if (terminalInput === 'status') {
-      newOutput.push('Sistema: Online', 'CPU: 23%', 'Memória: 4.2GB / 16GB', '');
-    } else {
-      newOutput.push(`Comando não encontrado: ${terminalInput}`);
-      newOutput.push('');
-    }
-    
-    setTerminalOutput(newOutput);
-    setTerminalInput('');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [statusRes, projectRes] = await Promise.all([fetchStatus(), fetchProjects()]);
+        setStatus(statusRes.data);
+        setProjects(projectRes.data.projects);
+        setSelectedProject((current) => current || projectRes.data.projects[0]?.name || '');
+      } catch (error) {
+        notifyError('Remote indisponivel', error instanceof Error ? error.message : 'Nao foi possivel sincronizar.');
+      }
+    };
+
+    void load();
+  }, []);
+
+  const selectedProjectLabel = useMemo(
+    () => projects.find((project) => project.name === selectedProject)?.name || selectedProject,
+    [projects, selectedProject]
+  );
+
+  const runBackendCommand = async (command: RemoteAction['command'], projectName?: string) => {
+    const params = projectName ? { name: projectName } : undefined;
+    const response = await executeCommand(command, params);
+    return response.data;
   };
 
-  const getFileIcon = (name: string, type: string) => {
-    if (type === 'directory') return <Folder className="w-5 h-5 text-[var(--gold)]" />;
-    if (name.endsWith('.md')) return <FileText className="w-5 h-5 text-blue-400" />;
-    if (name.endsWith('.json')) return <Code className="w-5 h-5 text-yellow-400" />;
-    if (name.endsWith('.png') || name.endsWith('.jpg')) return <ImageIcon className="w-5 h-5 text-purple-400" />;
-    return <FileText className="w-5 h-5 text-[var(--text-muted)]" />;
+  const handlePresetAction = async (action: RemoteAction) => {
+    setBusyAction(action.id);
+    try {
+      const response = await runBackendCommand(action.command, action.projectRequired ? selectedProjectLabel : undefined);
+      const output = formatTerminalOutput(response);
+      setTerminalOutput((current) => [
+        ...current,
+        `> ${action.label}`,
+        output || 'Sem retorno textual do backend.',
+        '',
+      ]);
+      notifySuccess(action.label, response.message || 'Acao executada.');
+    } catch (error) {
+      notifyError(action.label, error instanceof Error ? error.message : 'Falha ao executar a acao.');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleTerminalSubmit = async () => {
+    const value = terminalInput.trim();
+    if (!value) return;
+
+    const nextOutput = [...terminalOutput, `aura@macbook:~$ ${value}`];
+    setTerminalInput('');
+
+    if (value === 'clear') {
+      setTerminalOutput(['Aura Remote v1.0.0', 'Terminal limpo.', '']);
+      return;
+    }
+
+    if (value === 'help') {
+      setTerminalOutput([
+        ...nextOutput,
+        'Comandos permitidos:',
+        '  projects          lista os projetos cadastrados',
+        '  status            mostra o estado atual da Aura',
+        '  git [projeto]     executa git status via backend',
+        '  logs              mostra logs recentes',
+        '  open <projeto>    abre o projeto no Mac',
+        '  dev <projeto>     roda o comando dev do projeto',
+        '  vscode            abre o VS Code',
+        '',
+      ]);
+      return;
+    }
+
+    try {
+      let output = '';
+
+      if (value === 'projects') {
+        const response = await runBackendCommand('list_projects');
+        output = response.metadata?.projects
+          ? JSON.stringify(response.metadata.projects, null, 2)
+          : response.stdout || response.message || 'Sem projetos.';
+      } else if (value === 'status') {
+        const response = await fetchStatus();
+        setStatus(response.data);
+        output = JSON.stringify(response.data, null, 2);
+      } else if (value === 'logs') {
+        const response = await runBackendCommand('show_logs');
+        output = response.stdout || response.message || 'Sem logs.';
+      } else if (value === 'vscode') {
+        const response = await runBackendCommand('open_vscode');
+        output = response.message || 'VS Code solicitado.';
+      } else if (value.startsWith('git')) {
+        const projectName = value.replace(/^git/, '').trim() || selectedProjectLabel;
+        const response = await runBackendCommand('git_status', projectName);
+        output = response.stdout || response.message || 'Sem saida do git.';
+      } else if (value.startsWith('open ')) {
+        const projectName = value.replace(/^open\s+/, '').trim();
+        const response = await runBackendCommand('open_project', projectName);
+        output = response.message || 'Projeto aberto.';
+      } else if (value.startsWith('dev ')) {
+        const projectName = value.replace(/^dev\s+/, '').trim();
+        const response = await runBackendCommand('run_project_dev', projectName);
+        output = response.stdout || response.message || 'Comando dev executado.';
+      } else {
+        output = 'Comando nao permitido. Digite "help" para ver a whitelist disponivel.';
+      }
+
+      setTerminalOutput([...nextOutput, output, '']);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao consultar o backend.';
+      setTerminalOutput([...nextOutput, `Erro: ${message}`, '']);
+      notifyError('Terminal controlado', message);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--cyan)] to-blue-500 flex items-center justify-center">
-            <Monitor className="w-6 h-6 text-white" />
+    <div className="space-y-6 overflow-x-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--cyan)] to-blue-500 sm:h-12 sm:w-12">
+            <Monitor className="h-6 w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gradient-cyan">Controle Remoto</h1>
-            <p className="text-sm text-[var(--text-muted)]">Gerencie seu Mac remotamente</p>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gradient-cyan sm:text-2xl">Controle remoto</h1>
+            <p className="text-sm text-[var(--text-muted)]">Somente acoes seguras da whitelist da Aura.</p>
           </div>
         </div>
-        <Badge variant="cyan">Conectado</Badge>
+        <Badge variant={status?.services.api === 'online' ? 'cyan' : 'red'} className="self-start sm:self-auto">
+          {status?.services.api === 'online' ? 'Conectado' : 'Offline'}
+        </Badge>
       </motion.div>
 
-      {/* Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex gap-2"
-      >
-        {[
-          { id: 'terminal' as Tab, label: 'Terminal', icon: Terminal },
-          { id: 'apps' as Tab, label: 'Aplicações', icon: AppWindow },
-          { id: 'files' as Tab, label: 'Arquivos', icon: FolderOpen },
-        ].map((tab) => (
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all',
+            className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 font-medium transition-all ${
               activeTab === tab.id
-                ? 'bg-[var(--cyan)]/10 text-[var(--cyan)] border border-[var(--cyan)]/20'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5'
-            )}
+                ? 'border border-[var(--cyan)]/20 bg-[var(--cyan)]/10 text-[var(--cyan)]'
+                : 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-primary)]'
+            }`}
           >
-            <tab.icon className="w-4 h-4" />
+            <tab.icon className="h-4 w-4" />
             {tab.label}
           </button>
         ))}
-      </motion.div>
+      </div>
 
-      {/* Content */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        {activeTab === 'terminal' && (
-          <Card className="h-[600px] flex flex-col">
-            <CardHeader className="border-b border-[var(--border-subtle)]">
-              <div className="flex items-center justify-between">
+      {activeTab === 'terminal' && (
+        <Card className="flex h-[68vh] min-h-[500px] flex-col sm:h-[600px]">
+          <CardHeader className="border-b border-[var(--border-subtle)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Terminal className="w-5 h-5 text-green-400" />
-                  Terminal Remoto
+                  <Terminal className="h-5 w-5 text-green-400" />
+                  Terminal controlado
                 </CardTitle>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setTerminalOutput(['aura@macbook:~$ '])}>
-                    <RefreshCw className="w-4 h-4" />
+                <CardDescription>Tradutor de comandos permitidos para a API da Aura.</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setTerminalOutput(['Aura Remote v1.0.0', 'Terminal limpo.', ''])}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col p-0">
+            <div className="flex-1 overflow-y-auto bg-black/50 p-3 font-mono text-xs sm:p-4 sm:text-sm">
+              {terminalOutput.map((line, index) => (
+                <div key={`${line}-${index}`} className={`py-0.5 ${line.startsWith('Erro:') ? 'text-red-400' : line.startsWith('aura@') ? 'text-green-400' : 'text-[var(--text-secondary)]'}`}>
+                  {line}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] p-3 sm:flex-row sm:items-center">
+              <span className="font-mono text-xs text-green-400 sm:text-sm">aura@macbook:~$</span>
+              <input
+                type="text"
+                value={terminalInput}
+                onChange={(event) => setTerminalInput(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && void handleTerminalSubmit()}
+                className="flex-1 bg-transparent font-mono text-sm outline-none"
+                placeholder='Digite "help" para ver os comandos seguros'
+              />
+              <Button size="sm" onClick={() => void handleTerminalSubmit()} className="self-end sm:self-auto">
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'actions' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AppWindow className="h-5 w-5 text-[var(--gold)]" />
+              Acoes operacionais
+            </CardTitle>
+            <CardDescription>Executadas via `/command`, sempre dentro da whitelist.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {actions.map((action) => (
+                <div key={action.id} className="rounded-xl border border-[var(--border-subtle)] bg-white/[0.02] p-4">
+                  <p className="font-medium">{action.label}</p>
+                  <p className="mt-2 text-sm text-[var(--text-muted)]">{action.description}</p>
+                  {action.projectRequired && (
+                    <select
+                      value={selectedProject}
+                      onChange={(event) => setSelectedProject(event.target.value)}
+                      className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                    >
+                      {projects.map((project) => (
+                        <option key={project.name} value={project.name}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <Button
+                    variant={action.command === 'open_vscode' ? 'gold' : 'outline'}
+                    className="mt-4 w-full"
+                    loading={busyAction === action.id}
+                    onClick={() => void handlePresetAction(action)}
+                    disabled={action.projectRequired && !selectedProjectLabel}
+                  >
+                    {action.command === 'run_project_dev' ? <Play className="h-4 w-4" /> : null}
+                    Executar
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col p-0">
-              <div className="flex-1 p-4 font-mono text-sm overflow-y-auto bg-black/50">
-                {terminalOutput.map((line, index) => (
-                  <div key={index} className={cn(
-                    'py-0.5',
-                    line.startsWith('aura@') && 'text-green-400',
-                    line.startsWith('Comando não encontrado') && 'text-red-400'
-                  )}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-[var(--border-subtle)] flex gap-2">
-                <span className="text-green-400 font-mono">aura@macbook:~$</span>
-                <input
-                  type="text"
-                  value={terminalInput}
-                  onChange={(e) => setTerminalInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleTerminalSubmit()}
-                  className="flex-1 bg-transparent outline-none font-mono text-sm"
-                  placeholder="Digite um comando..."
-                  autoFocus
-                />
-                <Button size="sm" onClick={handleTerminalSubmit}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {activeTab === 'apps' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AppWindow className="w-5 h-5 text-[var(--gold)]" />
-                Aplicações
-              </CardTitle>
-              <CardDescription>
-                Controle as aplicações em execução no seu Mac
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mockApps.map((app) => (
-                  <div
-                    key={app.name}
-                    className="p-4 rounded-xl bg-white/[0.02] border border-[var(--border-subtle)] hover:border-[var(--border-default)] transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-3xl">{app.icon}</span>
-                      <Badge 
-                        variant={app.status === 'running' ? 'green' : 'default'}
-                        className="text-xs"
-                      >
-                        {app.status === 'running' ? 'Executando' : 'Parado'}
-                      </Badge>
-                    </div>
-                    <p className="font-medium text-sm">{app.name}</p>
-                    <div className="flex gap-2 mt-3">
-                      {app.status === 'running' ? (
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Square className="w-3.5 h-3.5 mr-1.5" />
-                          Parar
-                        </Button>
-                      ) : (
-                        <Button size="sm" className="flex-1">
-                          <Play className="w-3.5 h-3.5 mr-1.5" />
-                          Iniciar
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {activeTab === 'files' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-[var(--gold)]" />
-                Arquivos
-              </CardTitle>
-              <CardDescription>
-                Navegue pelos arquivos do seu sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-4 text-sm text-[var(--text-muted)]">
-                <span>Home</span>
-                <ChevronRight className="w-4 h-4" />
-                <span>Users</span>
-                <ChevronRight className="w-4 h-4" />
-                <span className="text-[var(--text-primary)]">aura</span>
-              </div>
-              <div className="space-y-1">
-                {mockFiles.map((file) => (
-                  <div
-                    key={file.name}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    {getFileIcon(file.name, file.type)}
-                    <span className="flex-1 text-sm">{file.name}</span>
-                    <span className="text-xs text-[var(--text-muted)]">{file.size}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </motion.div>
+      {activeTab === 'files' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5 text-[var(--gold)]" />
+              Workspaces conectados
+            </CardTitle>
+            <CardDescription>Os projetos abaixo sao os workspaces reais cadastrados no backend.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+              <span>Mac</span>
+              <ChevronRight className="h-4 w-4" />
+              <span>Workspace</span>
+              <ChevronRight className="h-4 w-4" />
+              <span className="text-[var(--text-primary)]">{selectedProjectLabel || 'Aura'}</span>
+            </div>
+            <div className="space-y-2">
+              {projects.map((project) => (
+                <button
+                  key={`${project.name}-${project.path}`}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProject(project.name);
+                    notifyInfo('Projeto selecionado', project.name);
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
+                    selectedProject === project.name ? 'bg-white/10' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <Folder className="h-5 w-5 text-[var(--gold)]" />
+                  <span className="min-w-0 flex-1 truncate text-sm">{project.name}</span>
+                  <span className="truncate text-xs text-[var(--text-muted)]">{project.path}</span>
+                </button>
+              ))}
+              {projects.length === 0 && (
+                <div className="flex items-center gap-3 rounded-lg p-3 text-sm text-[var(--text-muted)]">
+                  <FileText className="h-5 w-5" />
+                  Nenhum workspace disponivel no backend.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-}
-
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(' ');
 }

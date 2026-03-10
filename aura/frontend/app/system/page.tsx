@@ -1,332 +1,352 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
-  Cpu,
-  HardDrive,
-  Wifi,
-  Server,
-  Clock,
   AlertTriangle,
   CheckCircle2,
+  Clock,
+  Database,
+  HardDrive,
+  Lock,
+  Server,
+  Sparkles,
+  Workflow,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
   Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
   Cell,
 } from 'recharts';
-import { fetchSystemMetrics, fetchStatus } from '@/lib/api';
-import type { SystemMetrics, StatusPayload } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { clientEnv } from '@/lib/env';
+import { fetchAuthStatus, fetchStatus } from '@/lib/api';
+import { notifyError } from '@/lib/notifications';
+import { getRelativeTime } from '@/lib/utils';
+import type { AuthStatusPayload, StatusPayload } from '@/lib/types';
 
-// Mock data for charts
-const cpuData = Array.from({ length: 20 }, (_, i) => ({
-  time: i,
-  value: 20 + Math.random() * 30,
-}));
+type HistoryPoint = {
+  timestamp: string;
+  readiness: number;
+  queuedJobs: number;
+};
 
-const memoryData = [
-  { name: 'Usado', value: 6.4, color: '#D4AF37' },
-  { name: 'Livre', value: 9.6, color: '#2D3139' },
-];
+function getReadinessScore(status: StatusPayload | null) {
+  if (!status) return 0;
 
-const COLORS = ['#D4AF37', '#00D4FF', '#238636', '#DA3633'];
+  const onlineServices = Object.values(status.services).filter((value) => value === 'online').length;
+  const totalServices = Object.values(status.services).length || 1;
+  return Math.round((onlineServices / totalServices) * 100);
+}
 
 export default function SystemPage() {
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [status, setStatus] = useState<StatusPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [cpuHistory, setCpuHistory] = useState(cpuData);
+  const [authStatus, setAuthStatus] = useState<AuthStatusPayload | null>(null);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
+    let mounted = true;
+
+    const load = async () => {
       try {
-        const [metricsRes, statusRes] = await Promise.all([
-          fetchSystemMetrics().catch(() => null),
-          fetchStatus(),
-        ]);
-        if (metricsRes) setMetrics(metricsRes.data);
+        const [statusRes, authRes] = await Promise.all([fetchStatus(), fetchAuthStatus()]);
+        if (!mounted) return;
+
         setStatus(statusRes.data);
+        setAuthStatus(authRes.data);
+        setLastUpdated(new Date().toISOString());
+        setHistory((current) => [
+          ...current.slice(-11),
+          {
+            timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            readiness: getReadinessScore(statusRes.data),
+            queuedJobs: statusRes.data.jobs?.queued ?? 0,
+          },
+        ]);
       } catch (error) {
-        console.error('Failed to load system data:', error);
-      } finally {
-        setLoading(false);
+        if (mounted) {
+          notifyError('Falha ao carregar telemetria', error instanceof Error ? error.message : 'Backend indisponivel.');
+        }
       }
     };
 
-    loadData();
-    
-    // Simulate real-time updates
-    const interval = setInterval(() => {
-      setCpuHistory(prev => {
-        const newData = [...prev.slice(1), {
-          time: prev[prev.length - 1].time + 1,
-          value: 20 + Math.random() * 40,
-        }];
-        return newData;
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
+    void load();
+    const interval = window.setInterval(() => void load(), 12000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
-  const formatUptime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  };
+  const alerts = useMemo(() => {
+    if (!status) return [];
+
+    const items: { title: string; description: string; severity: 'warning' | 'critical' | 'info' }[] = [];
+
+    if (status.services.llm !== 'online') {
+      items.push({
+        title: 'LLM indisponivel',
+        description: 'O Ollama local nao respondeu. O chat e os agentes ficam degradados.',
+        severity: 'critical',
+      });
+    }
+
+    if (status.services.supabase !== 'online') {
+      items.push({
+        title: 'Supabase nao esta pronto',
+        description: 'A Aura continuara em fallback local-first ate a cloud responder.',
+        severity: 'warning',
+      });
+    }
+
+    if ((status.jobs?.failed ?? 0) > 0) {
+      items.push({
+        title: 'Ha jobs com falha',
+        description: `${status.jobs?.failed ?? 0} job(s) falharam e exigem revisao.`,
+        severity: 'warning',
+      });
+    }
+
+    if (!items.length) {
+      items.push({
+        title: 'Tudo operacional',
+        description: 'API, auth e runtime local estao respondendo corretamente.',
+        severity: 'info',
+      });
+    }
+
+    return items;
+  }, [status]);
+
+  const servicesData = useMemo(() => {
+    if (!status) return [];
+    return Object.entries(status.services).map(([name, value]) => ({
+      name,
+      value: value === 'online' ? 1 : 0,
+      color: value === 'online' ? '#00D4FF' : '#DA3633',
+    }));
+  }, [status]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-            <Activity className="w-6 h-6 text-white" />
+    <div className="space-y-6 overflow-x-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 sm:h-12 sm:w-12">
+            <Activity className="h-6 w-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Monitoramento do Sistema</h1>
-            <p className="text-sm text-[var(--text-muted)]">
-              Métricas em tempo real do seu Mac
-            </p>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold sm:text-2xl">System realtime</h1>
+            <p className="text-sm text-[var(--text-muted)]">Estado real da Aura, do backend e do runtime local.</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-sm font-medium">Online</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={status?.services.api === 'online' ? 'green' : 'red'}>
+            API {status?.services.api ?? 'desconhecida'}
+          </Badge>
+          <Badge variant={status?.services.llm === 'online' ? 'cyan' : 'red'}>
+            LLM {status?.services.llm ?? 'desconhecido'}
+          </Badge>
         </div>
       </motion.div>
 
-      {/* Stats Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        <Card glow="gold">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">CPU Usage</p>
-                <p className="text-3xl font-bold mt-1">{Math.round(cpuHistory[cpuHistory.length - 1].value)}%</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-[var(--gold)]/10 flex items-center justify-center">
-                <Cpu className="w-6 h-6 text-[var(--gold)]" />
-              </div>
-            </div>
-            <div className="mt-4 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[var(--gold)] to-[var(--cyan)] transition-all duration-500"
-                style={{ width: `${cpuHistory[cpuHistory.length - 1].value}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card glow="cyan">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Memória</p>
-                <p className="text-3xl font-bold mt-1">6.4 GB</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-[var(--cyan)]/10 flex items-center justify-center">
-                <Server className="w-6 h-6 text-[var(--cyan)]" />
-              </div>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] mt-4">de 16 GB total</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Disco</p>
-                <p className="text-3xl font-bold mt-1">342 GB</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <HardDrive className="w-6 h-6 text-blue-400" />
-              </div>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] mt-4">de 1 TB total</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Uptime</p>
-                <p className="text-3xl font-bold mt-1">
-                  {status ? formatUptime(status.uptime_seconds) : '--'}
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] mt-4">Desde o último boot</p>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CPU Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="h-[400px]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Cpu className="w-5 h-5 text-[var(--gold)]" />
-                Uso de CPU (Tempo Real)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={cpuHistory}>
-                  <defs>
-                    <linearGradient id="cpuGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" hide />
-                  <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'var(--bg-secondary)', 
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '8px',
-                    }}
-                    labelStyle={{ color: 'var(--text-muted)' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#D4AF37" 
-                    fillOpacity={1} 
-                    fill="url(#cpuGradient)" 
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Memory Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="h-[400px]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Server className="w-5 h-5 text-[var(--cyan)]" />
-                Uso de Memória
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={memoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {memoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'var(--bg-secondary)', 
-                      border: '1px solid var(--border-default)',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title="Readiness"
+          value={`${getReadinessScore(status)}%`}
+          subtitle={lastUpdated ? `Atualizado ${getRelativeTime(lastUpdated)}` : 'Aguardando'}
+          icon={Sparkles}
+          glow="gold"
+        />
+        <MetricCard
+          title="Persistencia"
+          value={status?.persistence.mode ?? '--'}
+          subtitle={`Supabase ${status?.services.supabase ?? 'desconhecido'}`}
+          icon={Database}
+          glow="cyan"
+        />
+        <MetricCard
+          title="Auth"
+          value={authStatus?.auth_mode ?? status?.auth_mode ?? '--'}
+          subtitle={authStatus?.authenticated ? `Usuario ${authStatus.user_id ?? 'autenticado'}` : 'Nao autenticado'}
+          icon={Lock}
+        />
+        <MetricCard
+          title="Jobs"
+          value={String(status?.jobs?.running ?? 0)}
+          subtitle={`${status?.jobs?.queued ?? 0} na fila · ${status?.jobs?.completed ?? 0} concluidos`}
+          icon={Workflow}
+        />
       </div>
 
-      {/* Services Status */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="h-[360px]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Server className="h-5 w-5 text-[var(--gold)]" />
+              Readiness ao longo do tempo
+            </CardTitle>
+            <CardDescription>Serie temporal real derivada dos status polls da Aura.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={history}>
+                <defs>
+                  <linearGradient id="readinessGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00D4FF" stopOpacity={0.38} />
+                    <stop offset="95%" stopColor="#00D4FF" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="timestamp" stroke="var(--text-muted)" fontSize={12} />
+                <YAxis domain={[0, 100]} stroke="var(--text-muted)" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: '12px',
+                  }}
+                />
+                <Area type="monotone" dataKey="readiness" stroke="#00D4FF" fill="url(#readinessGradient)" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="h-[360px]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <HardDrive className="h-5 w-5 text-[var(--cyan)]" />
+              Servicos em linha
+            </CardTitle>
+            <CardDescription>Status real de API, LLM, filesystem e Supabase.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie data={servicesData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95} paddingAngle={5}>
+                  {servicesData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: '12px',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-400" />
-              Status dos Serviços
+              <AlertTriangle className="h-5 w-5 text-[var(--gold)]" />
+              Alertas oportunos
             </CardTitle>
-            <CardDescription>
-              Estado atual dos serviços do sistema
-            </CardDescription>
+            <CardDescription>Avisos derivados do estado real da stack.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {status && Object.entries(status.services).map(([name, serviceStatus]) => (
-                <div
-                  key={name}
-                  className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      'w-3 h-3 rounded-full',
-                      serviceStatus === 'online' ? 'bg-green-500' : 'bg-red-500'
-                    )}>
-                      {serviceStatus === 'online' && (
-                        <div className="w-full h-full rounded-full bg-green-500 animate-ping opacity-50" />
-                      )}
-                    </div>
-                    <span className="font-medium capitalize">{name}</span>
-                  </div>
-                  <Badge variant={serviceStatus === 'online' ? 'green' : 'red'}>
-                    {serviceStatus}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+          <CardContent className="space-y-3">
+            {alerts.map((alert, index) => (
+              <div
+                key={`${alert.title}-${index}`}
+                className={`rounded-2xl border p-4 ${
+                  alert.severity === 'critical'
+                    ? 'border-red-500/25 bg-red-500/10'
+                    : alert.severity === 'warning'
+                      ? 'border-yellow-500/20 bg-yellow-500/10'
+                      : 'border-[var(--cyan)]/20 bg-[var(--cyan)]/10'
+                }`}
+              >
+                <p className="font-medium">{alert.title}</p>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{alert.description}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
-      </motion.div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-400" />
+              Estado operacional
+            </CardTitle>
+            <CardDescription>O que esta realmente ativo agora.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StateRow label="API backend" value={status?.services.api ?? '--'} />
+            <StateRow label="Ollama / Qwen" value={status?.services.llm ?? '--'} />
+            <StateRow label="Filesystem" value={status?.services.filesystem ?? '--'} />
+            <StateRow label="Supabase" value={status?.services.supabase ?? '--'} />
+            <StateRow label="Modo auth" value={authStatus?.provider ? `${authStatus.provider} · ${authStatus.auth_mode}` : status?.auth_mode ?? '--'} />
+            <StateRow label="Cloud readiness" value={clientEnv.supabaseUrl ? 'Configurado' : 'Local-first'} />
+            <StateRow label="Uptime" value={status ? `${Math.floor(status.uptime_seconds / 3600)}h` : '--'} icon={Clock} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
 
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(' ');
+function MetricCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  glow = 'none',
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: typeof Activity;
+  glow?: 'gold' | 'cyan' | 'none';
+}) {
+  return (
+    <Card glow={glow}>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <Icon className="h-4 w-4 text-[var(--gold)]" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-bold capitalize">{value}</p>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{subtitle}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StateRow({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon?: typeof Activity;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        {Icon ? <Icon className="h-4 w-4 text-[var(--cyan)]" /> : null}
+        <span className="text-sm text-[var(--text-muted)]">{label}</span>
+      </div>
+      <span className="text-sm font-medium capitalize">{value}</span>
+    </div>
+  );
 }

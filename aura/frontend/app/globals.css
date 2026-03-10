@@ -45,6 +45,23 @@
   --gradient-radial: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
 }
 
+html.light {
+  --bg-primary: #eef3fb;
+  --bg-secondary: rgba(250, 252, 255, 0.82);
+  --bg-tertiary: rgba(236, 243, 252, 0.92);
+  --bg-elevated: rgba(255, 255, 255, 0.96);
+  --text-primary: #0f1728;
+  --text-secondary: #192537;
+  --text-muted: #5d6a7f;
+  --text-subtle: #7a8698;
+  --border-subtle: rgba(15, 23, 40, 0.08);
+  --border-default: rgba(15, 23, 40, 0.14);
+  --border-focus: rgba(0, 136, 170, 0.35);
+  --border-cyan: rgba(0, 136, 170, 0.16);
+  --gold-glow: rgba(212, 175, 55, 0.16);
+  --cyan-glow: rgba(0, 136, 170, 0.12);
+}
+
 @layer base {
   * {
     border-color: rgba(212, 175, 55, 0.15);
@@ -53,6 +70,7 @@
   
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   
   body {
@@ -62,6 +80,11 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  #__next {
+    min-height: 100vh;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -78,21 +101,25 @@
 @layer components {
   /* Glassmorphism */
   .glass {
-    background: rgba(13, 17, 23, 0.7);
+    background: color-mix(in srgb, var(--bg-secondary) 78%, transparent);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-subtle);
   }
   
   .glass-strong {
-    background: rgba(13, 17, 23, 0.9);
+    background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border: 1px solid var(--border-default);
   }
   
   .glass-card {
-    background: linear-gradient(135deg, rgba(22, 27, 34, 0.8) 0%, rgba(13, 17, 23, 0.9) 100%);
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--bg-tertiary) 78%, transparent) 0%,
+      color-mix(in srgb, var(--bg-secondary) 92%, transparent) 100%
+    );
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-subtle);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -236,6 +263,16 @@
   .card-aura:hover {
     border-color: var(--border-default);
     transform: translateY(-2px);
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    padding-top: 0.5rem;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
   
   /* Status Indicators */

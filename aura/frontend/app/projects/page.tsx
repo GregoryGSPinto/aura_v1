@@ -7,12 +7,8 @@ import {
   Search,
   Plus,
   GitBranch,
-  MoreHorizontal,
   ExternalLink,
-  Github,
-  Code2,
   Clock,
-  Filter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,8 +74,8 @@ export default function ProjectsPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const activeCount = projects.filter(p => p.status === 'active').length;
-  const archivedCount = projects.filter(p => p.status === 'archived').length;
+  const activeCount = projects.filter((project) => project.status !== 'archived').length;
+  const archivedCount = projects.filter((project) => project.status === 'archived').length;
 
   return (
     <div className="space-y-6">
@@ -87,20 +83,20 @@ export default function ProjectsPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 sm:h-12 sm:w-12">
             <FolderOpen className="w-6 h-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Projetos</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold sm:text-2xl">Projetos</h1>
             <p className="text-sm text-[var(--text-muted)]">
               {activeCount} ativos · {archivedCount} arquivados
             </p>
           </div>
         </div>
-        <Button>
+        <Button className="self-start sm:self-auto">
           <Plus className="w-4 h-4 mr-2" />
           Novo Projeto
         </Button>
@@ -111,7 +107,7 @@ export default function ProjectsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-4"
+        className="flex flex-col gap-4"
       >
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
@@ -123,7 +119,7 @@ export default function ProjectsPage() {
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-[var(--cyan)] transition-colors"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['all', 'active', 'archived'] as const).map((f) => (
             <button
               key={f}
@@ -152,18 +148,18 @@ export default function ProjectsPage() {
           <motion.div key={project.id} variants={item}>
             <Card className="h-full hover:border-[var(--border-default)] transition-colors group">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xl">
                       {frameworkIcons[project.framework || ''] || '📁'}
                     </div>
-                    <div>
-                      <CardTitle className="text-base">{project.name}</CardTitle>
-                      <CardDescription className="text-xs">{project.type}</CardDescription>
+                    <div className="min-w-0">
+                      <CardTitle className="truncate text-base">{project.name}</CardTitle>
+                      <CardDescription className="text-xs">{project.type || 'workspace'}</CardDescription>
                     </div>
                   </div>
-                  <Badge variant={project.status === 'active' ? 'green' : 'default'}>
-                    {project.status}
+                  <Badge variant={project.status === 'archived' ? 'default' : 'green'}>
+                    {project.status || 'active'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -184,10 +180,10 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                <div className="flex flex-col gap-3 border-t border-white/5 pt-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
                     <Clock className="w-3.5 h-3.5" />
-                    {new Date(project.last_modified).toLocaleDateString('pt-BR')}
+                    {project.last_modified ? new Date(project.last_modified).toLocaleDateString('pt-BR') : 'Agora'}
                   </div>
                   <div className="flex gap-2">
                     <Button

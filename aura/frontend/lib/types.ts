@@ -29,10 +29,10 @@ export interface Project {
   id: string;
   name: string;
   path: string;
-  type: string;
-  framework: string | null;
-  status: 'active' | 'archived';
-  last_modified: string;
+  type?: string;
+  framework?: string | null;
+  status?: 'active' | 'archived';
+  last_modified?: string;
   description?: string;
   git?: {
     has_repo: boolean;
@@ -58,9 +58,14 @@ export interface ChatResponse {
     result: Record<string, unknown>;
   } | null;
   session_id: string;
-  tokens_used: number;
   processing_time_ms: number;
+  model?: string;
   persistence_mode?: string;
+  suggested_action?: {
+    command: string;
+    reason: string;
+  } | null;
+  tokens_used?: number;
 }
 
 export interface Agent {
@@ -154,9 +159,21 @@ export interface ProcessInfo {
 export interface CommandResult {
   command: string;
   status: 'success' | 'error' | 'pending';
-  result: Record<string, unknown>;
+  message?: string;
+  stdout?: string | null;
+  stderr?: string | null;
+  metadata?: Record<string, unknown>;
+  result?: Record<string, unknown>;
   execution_time_ms: number;
   log_id: string;
+}
+
+export interface AuthStatusPayload {
+  auth_required: boolean;
+  authenticated: boolean;
+  auth_mode: string;
+  provider: string;
+  user_id?: string | null;
 }
 
 export interface Activity {

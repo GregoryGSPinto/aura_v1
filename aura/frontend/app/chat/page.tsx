@@ -1,84 +1,100 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Send,
-  Bot,
-  User,
-  Sparkles,
-  Paperclip,
-  Code2,
-  MoreHorizontal,
-  Trash2,
-  Copy,
-  Check,
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { AlertTriangle, Bot, Paperclip, Send, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { clientEnv } from '@/lib/env';
 import { sendChat } from '@/lib/api';
+import { notifyError, notifyInfo } from '@/lib/notifications';
 import type { ChatMessage } from '@/lib/types';
 
 const quickActions = [
-  { label: 'Listar projetos', prompt: 'Quais projetos estão disponíveis?' },
-  { label: 'Status do sistema', prompt: 'Me dê um resumo do status operacional.' },
-  { label: 'Git status', prompt: 'Qual o status do git do projeto atual?' },
-  { label: 'Criar agente', prompt: 'Quero criar um novo agente para automação.' },
+  { label: 'Listar projetos', prompt: 'Quais projetos estao disponiveis agora?' },
+  { label: 'Saude do sistema', prompt: 'Me de um resumo real do status operacional da Aura.' },
+  { label: 'Git status', prompt: 'Qual e o status do git do projeto principal?' },
+  { label: 'Logs recentes', prompt: 'Mostre os logs mais recentes da Aura.' },
 ];
+
+function createSessionId() {
+  if (typeof window === 'undefined') return 'aura-session';
+  const stored = window.localStorage.getItem('aura-chat-session-id');
+  if (stored) return stored;
+  const next = `aura-${crypto.randomUUID()}`;
+  window.localStorage.setItem('aura-chat-session-id', next);
+  return next;
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: 'Olá! Sou a Aura, sua assistente operacional pessoal. Posso ajudar você a gerenciar projetos, executar comandos, controlar agentes autônomos e muito mais. Como posso ajudar hoje?',
-      meta: 'Pronta para assistência',
+      content:
+        'Sou a Aura. Esta conversa usa o backend real configurado para o seu computador. Posso responder, consultar estado operacional e sugerir acoes controladas.',
+      meta: 'Sessao pronta',
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const sessionIdRef = useRef<string>('aura-session');
 
   useEffect(() => {
-    scrollToBottom();
+    sessionIdRef.current = createSessionId();
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSubmit = async (prompt?: string) => {
     const content = (prompt ?? input).trim();
     if (!content || isLoading) return;
 
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    setLastError(null);
+    const history = messages.map(({ role, content: messageContent }) => ({ role, content: messageContent }));
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content, timestamp: new Date().toISOString() },
+    ]);
     setInput('');
     setIsLoading(true);
 
     try {
-      const history = messages.map(({ role, content: c }) => ({ role, content: c }));
-      const response = await sendChat(content, history);
-      
-      const assistantMessage: ChatMessage = {
-        role: 'assistant',
-        content: response.data.response,
-        meta: `${response.data.intent} · ${response.data.processing_time_ms}ms`,
-        timestamp: new Date().toISOString(),
-      };
+      const response = await sendChat(content, history, sessionIdRef.current);
+      const payload = response.data;
 
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Desculpe, não consegui processar sua solicitação agora. Verifique se o backend está rodando.',
-          meta: 'Erro de conexão',
+          content: payload.response,
+          meta: [
+            payload.intent,
+            payload.model,
+            payload.suggested_action ? `Sugestao: ${payload.suggested_action.command}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · '),
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } catch (error) {
+      const description =
+        error instanceof Error
+          ? error.message
+          : `Falha ao falar com ${clientEnv.apiUrl || 'o backend configurado'}.`;
+
+      setLastError(description);
+      notifyError('Chat indisponivel', description);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Nao consegui completar esta resposta agora. Verifique se a API da Aura e o Ollama local estao acessiveis.',
+          meta: 'Falha operacional',
           timestamp: new Date().toISOString(),
         },
       ]);
@@ -87,139 +103,132 @@ export default function ChatPage() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void handleSubmit();
     }
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4 mb-6"
-      >
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] flex items-center justify-center">
-          <Sparkles className="w-6 h-6 text-black" />
+    <div className="flex min-h-[calc(100vh-8.5rem)] flex-col gap-4 lg:min-h-[calc(100vh-8rem)] lg:gap-6">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4">
+        <div className="flex items-start gap-3 sm:items-center">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] sm:h-12 sm:w-12">
+            <Sparkles className="h-6 w-6 text-black" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gradient-gold sm:text-2xl">Chat com a Aura</h1>
+            <p className="text-sm text-[var(--text-muted)]">
+              Conexao direta com {clientEnv.apiUrl || 'o backend da Aura'}.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gradient-gold">Chat com a Aura</h1>
-          <p className="text-sm text-[var(--text-muted)]">Assistente operacional inteligente</p>
-        </div>
+
+        {(lastError || !clientEnv.apiUrl) && (
+          <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="font-medium text-yellow-200">Atencao operacional</p>
+              <p className="mt-1 break-words text-yellow-100/90">
+                {lastError || 'NEXT_PUBLIC_API_URL nao esta configurada. O chat depende do backend real da Aura.'}
+              </p>
+            </div>
+          </div>
+        )}
       </motion.div>
 
-      {/* Messages */}
-      <Card className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <AnimatePresence initial={false}>
-            {messages.map((message, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={cn(
-                  'flex gap-4',
-                  message.role === 'user' && 'flex-row-reverse'
-                )}
-              >
-                {/* Avatar */}
-                <div className={cn(
-                  'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-                  message.role === 'assistant' 
-                    ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]' 
-                    : 'bg-white/10'
-                )}>
-                  {message.role === 'assistant' ? (
-                    <Bot className="w-5 h-5 text-black" />
-                  ) : (
-                    <User className="w-5 h-5 text-[var(--text-muted)]" />
-                  )}
-                </div>
-
-                {/* Message Content */}
-                <div className={cn(
-                  'flex-1 max-w-[80%]',
-                  message.role === 'user' && 'text-right'
-                )}>
-                  <div className={cn(
-                    'inline-block p-4 rounded-2xl text-left',
-                    message.role === 'assistant'
-                      ? 'bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]'
-                      : 'bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-black'
-                  )}>
-                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                  </div>
-                  {message.meta && (
-                    <p className="text-xs text-[var(--text-muted)] mt-2">{message.meta}</p>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          
-          {isLoading && (
+      <Card className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+          {messages.map((message, index) => (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-4"
+              key={`${message.role}-${index}-${message.timestamp ?? index}`}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex gap-3 sm:gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] flex items-center justify-center">
-                <Bot className="w-5 h-5 text-black" />
+              <div
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${
+                  message.role === 'assistant'
+                    ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]'
+                    : 'bg-white/10'
+                }`}
+              >
+                {message.role === 'assistant' ? (
+                  <Bot className="h-5 w-5 text-black" />
+                ) : (
+                  <User className="h-5 w-5 text-[var(--text-muted)]" />
+                )}
               </div>
-              <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                <span className="w-2 h-2 rounded-full bg-[var(--gold)] animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[var(--gold)] animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[var(--gold)] animate-bounce" style={{ animationDelay: '300ms' }} />
+
+              <div className={`max-w-[88%] flex-1 sm:max-w-[80%] ${message.role === 'user' ? 'text-right' : ''}`}>
+                <div
+                  className={`inline-block rounded-2xl p-4 text-left ${
+                    message.role === 'assistant'
+                      ? 'border border-[var(--border-subtle)] bg-[var(--bg-tertiary)]'
+                      : 'bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-black'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                </div>
+                {message.meta && <p className="mt-2 text-xs text-[var(--text-muted)]">{message.meta}</p>}
               </div>
             </motion.div>
+          ))}
+
+          {isLoading && (
+            <div className="flex gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]">
+                <Bot className="h-5 w-5 text-black" />
+              </div>
+              <div className="flex items-center gap-2 text-[var(--text-muted)]">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '120ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '240ms' }} />
+              </div>
+            </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick Actions */}
-        <div className="px-6 py-3 border-t border-[var(--border-subtle)] flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto border-t border-[var(--border-subtle)] px-4 py-3 sm:px-6">
           {quickActions.map((action) => (
             <button
               key={action.label}
-              onClick={() => handleSubmit(action.prompt)}
-              className="px-3 py-1.5 text-xs rounded-full bg-white/5 hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors whitespace-nowrap"
+              onClick={() => void handleSubmit(action.prompt)}
+              className="whitespace-nowrap rounded-full bg-white/5 px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-[var(--text-primary)]"
             >
               {action.label}
             </button>
           ))}
         </div>
 
-        {/* Input */}
-        <div className="p-4 border-t border-[var(--border-subtle)]">
-          <div className="flex gap-3">
-            <button className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-              <Paperclip className="w-5 h-5 text-[var(--text-muted)]" />
+        <div className="border-t border-[var(--border-subtle)] p-3 sm:p-4">
+          <div className="flex items-end gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => notifyInfo('Anexos ainda nao estao ativos', 'O fluxo de anexos sera integrado quando o backend suportar upload.')}
+              className="rounded-xl bg-white/5 p-3 transition-colors hover:bg-white/10"
+            >
+              <Paperclip className="h-5 w-5 text-[var(--text-muted)]" />
             </button>
-            <div className="flex-1 relative">
+            <div className="relative flex-1">
               <textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite sua mensagem..."
+                placeholder="Descreva a meta ou operacao que a Aura deve resolver..."
                 rows={1}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] resize-none outline-none focus:border-[var(--cyan)] transition-colors"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
+                className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--cyan)]"
+                style={{ minHeight: '52px', maxHeight: '140px' }}
               />
             </div>
-            <Button onClick={() => handleSubmit()} disabled={isLoading || !input.trim()}>
-              <Send className="w-5 h-5" />
+            <Button onClick={() => void handleSubmit()} disabled={isLoading || !input.trim()} className="shrink-0">
+              <Send className="h-5 w-5" />
             </Button>
           </div>
         </div>
       </Card>
     </div>
   );
-}
-
-function cn(...classes: (string | undefined | null | false)[]) {
-  return classes.filter(Boolean).join(' ');
 }

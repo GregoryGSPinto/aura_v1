@@ -1,535 +1,404 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Bot,
-  Play,
-  Square,
-  Plus,
-  Terminal,
   Activity,
+  Bot,
   Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Settings,
-  MoreVertical,
+  PauseCircle,
+  Play,
+  Plus,
   RefreshCw,
-  Zap,
-  Cpu,
-  GitBranch,
-  Rocket,
-  Code2,
-  Trash2,
-  Pause,
+  Sparkles,
+  Terminal,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import type { Agent, AgentTask } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cancelAgentJob, createAgentJob, fetchAgentJob, fetchAgentJobs, startAgentJob } from '@/lib/api';
+import { notifyError, notifySuccess } from '@/lib/notifications';
+import { getRelativeTime } from '@/lib/utils';
+import type { AgentJobDetail, AgentJobSummary } from '@/lib/types';
 
-// Mock data for agents
-const mockAgents: Agent[] = [
-  {
-    id: 'agent-1',
-    name: 'Builder',
-    type: 'builder',
-    status: 'running',
-    description: 'Compila e constrói projetos automaticamente',
-    tasks_completed: 127,
-    tasks_failed: 3,
-    last_activity: new Date().toISOString(),
-    config: {},
-  },
-  {
-    id: 'agent-2',
-    name: 'Code Reviewer',
-    type: 'reviewer',
-    status: 'idle',
-    description: 'Analisa código e sugere melhorias',
-    tasks_completed: 89,
-    tasks_failed: 1,
-    last_activity: new Date(Date.now() - 300000).toISOString(),
-    config: {},
-  },
-  {
-    id: 'agent-3',
-    name: 'GitOps',
-    type: 'gitops',
-    status: 'running',
-    description: 'Gerencia operações Git e releases',
-    tasks_completed: 234,
-    tasks_failed: 5,
-    last_activity: new Date().toISOString(),
-    config: {},
-  },
-  {
-    id: 'agent-4',
-    name: 'Deployer',
-    type: 'deployer',
-    status: 'error',
-    description: 'Realiza deploys em staging e produção',
-    tasks_completed: 56,
-    tasks_failed: 12,
-    last_activity: new Date(Date.now() - 600000).toISOString(),
-    config: {},
-  },
+const orbitPositions = [
+  { top: '16%', left: '50%' },
+  { top: '34%', left: '82%' },
+  { top: '72%', left: '72%' },
+  { top: '78%', left: '28%' },
+  { top: '36%', left: '18%' },
 ];
-
-const mockTasks: AgentTask[] = [
-  { id: 'task-1', agent_id: 'agent-1', status: 'running', type: 'build', description: 'Compilando projeto aura-v1', created_at: new Date().toISOString(), started_at: new Date().toISOString() },
-  { id: 'task-2', agent_id: 'agent-3', status: 'completed', type: 'commit', description: 'Commit automático: update dependencies', created_at: new Date(Date.now() - 60000).toISOString(), started_at: new Date(Date.now() - 60000).toISOString(), completed_at: new Date().toISOString() },
-  { id: 'task-3', agent_id: 'agent-2', status: 'pending', type: 'review', description: 'Review de PR #234', created_at: new Date().toISOString() },
-  { id: 'task-4', agent_id: 'agent-1', status: 'completed', type: 'test', description: 'Testes unitários', created_at: new Date(Date.now() - 120000).toISOString(), started_at: new Date(Date.now() - 120000).toISOString(), completed_at: new Date(Date.now() - 60000).toISOString() },
-  { id: 'task-5', agent_id: 'agent-4', status: 'failed', type: 'deploy', description: 'Deploy para produção', created_at: new Date(Date.now() - 300000).toISOString(), started_at: new Date(Date.now() - 300000).toISOString(), completed_at: new Date(Date.now() - 240000).toISOString(), error: 'Falha na conexão com servidor' },
-];
-
-const agentIcons: Record<Agent['type'], typeof Bot> = {
-  builder: Code2,
-  reviewer: CheckCircle2,
-  deployer: Rocket,
-  gitops: GitBranch,
-  custom: Bot,
-};
-
-const agentColors: Record<Agent['type'], string> = {
-  builder: 'from-blue-500/20 to-cyan-500/20 text-blue-400',
-  reviewer: 'from-purple-500/20 to-pink-500/20 text-purple-400',
-  deployer: 'from-orange-500/20 to-red-500/20 text-orange-400',
-  gitops: 'from-green-500/20 to-emerald-500/20 text-green-400',
-  custom: 'from-[var(--gold)]/20 to-[var(--cyan)]/20 text-[var(--gold)]',
-};
 
 export default function SwarmPage() {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
-  const [tasks, setTasks] = useState<AgentTask[]>(mockTasks);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const [jobs, setJobs] = useState<AgentJobSummary[]>([]);
+  const [selectedJob, setSelectedJob] = useState<AgentJobDetail | null>(null);
+  const [goal, setGoal] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Auto-scroll logs
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+  const loadJobs = async (selectedJobId?: string) => {
+    const response = await fetchAgentJobs();
+    setJobs(response.data.jobs);
 
-  // Simulate incoming logs
+    const activeSelection = selectedJobId ?? response.data.jobs[0]?.id;
+    if (activeSelection) {
+      const detail = await fetchAgentJob(activeSelection);
+      setSelectedJob(detail.data);
+    } else {
+      setSelectedJob(null);
+    }
+  };
+
   useEffect(() => {
-    const logMessages = [
-      '[09:23:45] Agente Builder iniciado',
-      '[09:23:46] Carregando configuração...',
-      '[09:23:47] Conectado ao workspace',
-      '[09:24:12] Iniciando build do projeto aura-v1',
-      '[09:24:15] Instalando dependências...',
-      '[09:24:45] Build em progresso (45%)',
-      '[09:25:12] Build em progresso (78%)',
-      '[09:25:30] Build completado com sucesso',
-      '[09:25:31] Aguardando novas tarefas...',
-    ];
-    
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < logMessages.length) {
-        setLogs(prev => [...prev, logMessages[index]]);
-        index++;
+    let mounted = true;
+
+    const initialLoad = async () => {
+      try {
+        await loadJobs();
+      } catch (error) {
+        if (mounted) {
+          notifyError('Swarm indisponivel', error instanceof Error ? error.message : 'Nao foi possivel carregar os jobs.');
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-    }, 2000);
+    };
 
-    return () => clearInterval(interval);
+    void initialLoad();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  const getStatusColor = (status: Agent['status']) => {
-    switch (status) {
-      case 'running': return 'bg-[var(--cyan)]';
-      case 'idle': return 'bg-blue-500';
-      case 'error': return 'bg-red-500';
-      case 'completed': return 'bg-green-500';
-      default: return 'bg-gray-500';
+  useEffect(() => {
+    const interval = window.setInterval(() => void loadJobs(selectedJob?.id).catch(() => undefined), 4000);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [selectedJob?.id]);
+
+  const stats = useMemo(() => ({
+    total: jobs.length,
+    running: jobs.filter((job) => job.status === 'running').length,
+    queued: jobs.filter((job) => job.status === 'planned' || job.status === 'queued' || job.status === 'pending').length,
+    failed: jobs.filter((job) => job.status === 'failed' || job.status === 'blocked').length,
+  }), [jobs]);
+
+  const handleCreateJob = async () => {
+    const nextGoal = goal.trim();
+    if (!nextGoal) return;
+
+    setBusyId('create');
+    try {
+      const response = await createAgentJob(nextGoal, undefined, false);
+      notifySuccess('Job criado', `${response.data.plan_status} · ${response.data.notes.join(' · ')}`);
+      setGoal('');
+      await loadJobs();
+    } catch (error) {
+      notifyError('Falha ao criar job', error instanceof Error ? error.message : 'Erro desconhecido.');
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const getStatusIcon = (status: AgentTask['status']) => {
-    switch (status) {
-      case 'running': return <RefreshCw className="w-4 h-4 animate-spin text-[var(--cyan)]" />;
-      case 'completed': return <CheckCircle2 className="w-4 h-4 text-green-400" />;
-      case 'failed': return <XCircle className="w-4 h-4 text-red-400" />;
-      case 'pending': return <Clock className="w-4 h-4 text-[var(--text-muted)]" />;
-      default: return <Activity className="w-4 h-4" />;
+  const handleStartJob = async (jobId: string) => {
+    setBusyId(jobId);
+    try {
+      const response = await startAgentJob(jobId);
+      setSelectedJob(response.data);
+      notifySuccess('Job iniciado', response.data.title);
+      await loadJobs(jobId);
+    } catch (error) {
+      notifyError('Falha ao iniciar job', error instanceof Error ? error.message : 'Erro desconhecido.');
+    } finally {
+      setBusyId(null);
     }
   };
 
-  const runningAgents = agents.filter(a => a.status === 'running').length;
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
+  const handleCancelJob = async (jobId: string) => {
+    setBusyId(jobId);
+    try {
+      const response = await cancelAgentJob(jobId);
+      setSelectedJob(response.data);
+      notifySuccess('Job cancelado', response.data.title);
+      await loadJobs(jobId);
+    } catch (error) {
+      notifyError('Falha ao cancelar job', error instanceof Error ? error.message : 'Erro desconhecido.');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
-      >
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] flex items-center justify-center">
-              <Bot className="w-5 h-5 text-black" />
+    <div className="space-y-6 overflow-x-hidden">
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]">
+              <Bot className="h-5 w-5 text-black" />
             </div>
-            <h1 className="text-3xl font-bold text-gradient-aura">Agent Swarm</h1>
+            <h1 className="text-2xl font-bold text-gradient-aura sm:text-3xl">Swarm operacional</h1>
           </div>
           <p className="text-[var(--text-muted)]">
-            Orquestre agentes autônomos para automação inteligente
+            Visualizacao estavel dos jobs reais do Agent Mode, executando no backend local da Aura.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <Button variant="outline" size="sm" onClick={() => void loadJobs(selectedJob?.id)} disabled={loading}>
+            <RefreshCw className="mr-2 h-4 w-4" />
             Sincronizar
           </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Agente
+          <Button size="sm" onClick={handleCreateJob} loading={busyId === 'create'}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar job
           </Button>
         </div>
       </motion.div>
 
-      {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
-      >
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-5 w-5 text-[var(--gold)]" />
+            Nova meta autonoma
+          </CardTitle>
+          <CardDescription>Planejamento heuristico seguro usando apenas a whitelist do backend.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row">
+          <textarea
+            value={goal}
+            onChange={(event) => setGoal(event.target.value)}
+            className="min-h-[96px] flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--cyan)]"
+            placeholder='Ex.: "Abra o projeto aura_v1 e verifique o git status"'
+          />
+          <div className="w-full shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--text-muted)] sm:w-[260px]">
+            <p className="font-medium text-[var(--text-primary)]">Limites atuais</p>
+            <p className="mt-2">O planner cria jobs apenas com comandos permitidos: listar projetos, abrir projeto, git status, show logs, dev e VS Code.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Jobs totais" value={stats.total} />
+        <StatCard title="Executando" value={stats.running} highlight="cyan" />
+        <StatCard title="Na fila" value={stats.queued} highlight="gold" />
+        <StatCard title="Falharam" value={stats.failed} highlight="red" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Agentes Ativos</p>
-                <p className="text-3xl font-bold mt-1">{agents.length}</p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-[var(--cyan)]" />
+              Campo de jobs
+            </CardTitle>
+            <CardDescription>Refeito para evitar o bug de deslocamento e overflow da tela antiga.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative mx-auto aspect-square w-full max-w-[440px] overflow-hidden rounded-[2rem] border border-[var(--border-subtle)] bg-[radial-gradient(circle_at_center,rgba(0,212,255,0.12),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent)]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04),transparent_65%)]" />
+              <div className="absolute left-1/2 top-1/2 z-10 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] shadow-[0_0_60px_rgba(0,212,255,0.2)]">
+                <Bot className="h-9 w-9 text-black" />
               </div>
-              <div className="w-12 h-12 rounded-xl bg-[var(--gold)]/10 flex items-center justify-center">
-                <Bot className="w-6 h-6 text-[var(--gold)]" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Executando</p>
-                <p className="text-3xl font-bold mt-1 text-[var(--cyan)]">{runningAgents}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-[var(--cyan)]/10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-[var(--cyan)]" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Tasks Totais</p>
-                <p className="text-3xl font-bold mt-1">{totalTasks}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Cpu className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-muted)]">Completadas</p>
-                <p className="text-3xl font-bold mt-1 text-green-400">{completedTasks}</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Agent Network Visualization */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-2"
-        >
-          <Card className="h-full min-h-[500px]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[var(--cyan)]" />
-                Network de Agentes
-              </CardTitle>
-              <CardDescription>
-                Visualização em tempo real da comunicação entre agentes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
-              {/* Network Visualization */}
-              <div className="relative h-[400px] rounded-xl bg-gradient-to-br from-[var(--bg-tertiary)] to-[var(--bg-secondary)] border border-[var(--border-subtle)] overflow-hidden">
-                {/* Central Hub */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] flex items-center justify-center animate-pulse">
-                      <Bot className="w-8 h-8 text-black" />
-                    </div>
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] blur-xl opacity-50 animate-pulse" />
-                  </div>
-                </div>
-
-                {/* Agent Nodes */}
-                {agents.map((agent, index) => {
-                  const angle = (index * 2 * Math.PI) / agents.length - Math.PI / 2;
-                  const radius = 140;
-                  const x = 50 + (radius / 400) * 100 * Math.cos(angle);
-                  const y = 50 + (radius / 400) * 100 * Math.sin(angle);
-                  const Icon = agentIcons[agent.type];
-                  const isRunning = agent.status === 'running';
-
-                  return (
-                    <motion.div
-                      key={agent.id}
-                      className="absolute cursor-pointer group"
-                      style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
-                      whileHover={{ scale: 1.1 }}
-                      onClick={() => setSelectedAgent(agent)}
-                    >
-                      {/* Connection Line */}
-                      <svg
-                        className="absolute w-full h-full pointer-events-none"
-                        style={{ 
-                          width: '400px', 
-                          height: '400px',
-                          left: '50%',
-                          top: '50%',
-                          transform: 'translate(-50%, -50%)'
-                        }}
-                      >
-                        <line
-                          x1="200"
-                          y1="200"
-                          x2={200 + radius * Math.cos(angle)}
-                          y2={200 + radius * Math.sin(angle)}
-                          stroke={isRunning ? 'var(--cyan)' : 'var(--border-default)'}
-                          strokeWidth="1"
-                          strokeDasharray={isRunning ? "0" : "5,5"}
-                          opacity={isRunning ? 0.6 : 0.2}
-                        />
-                      </svg>
-
-                      {/* Node */}
-                      <div className={cn(
-                        'relative w-16 h-16 rounded-2xl bg-gradient-to-br flex items-center justify-center transition-all duration-300',
-                        agentColors[agent.type],
-                        isRunning && 'shadow-[0_0_30px_rgba(0,212,255,0.3)]'
-                      )}>
-                        <Icon className="w-7 h-7" />
-                        
-                        {/* Status Indicator */}
-                        <div className={cn(
-                          'absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-[var(--bg-secondary)]',
-                          getStatusColor(agent.status)
-                        )}>
-                          {isRunning && (
-                            <div className="absolute inset-0 rounded-full animate-ping opacity-50" style={{ backgroundColor: 'inherit' }} />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Label */}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 text-center">
-                        <p className="text-xs font-medium text-[var(--text-secondary)] whitespace-nowrap">{agent.name}</p>
-                        <p className="text-[10px] text-[var(--text-muted)] capitalize">{agent.status}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-
-                {/* Data Flow Animation */}
-                {agents.filter(a => a.status === 'running').map((agent, index) => {
-                  const angle = (agents.indexOf(agent) * 2 * Math.PI) / agents.length - Math.PI / 2;
-                  return (
-                    <motion.div
-                      key={`flow-${agent.id}`}
-                      className="absolute w-2 h-2 rounded-full bg-[var(--cyan)]"
-                      style={{ left: '50%', top: '50%' }}
-                      animate={{
-                        x: [0, 140 * Math.cos(angle)],
-                        y: [0, 140 * Math.sin(angle)],
-                        opacity: [1, 0],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: index * 0.5,
-                        ease: 'linear',
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Agent Details & Tasks */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-          className="space-y-6"
-        >
-          {/* Selected Agent Info */}
-          <AnimatePresence mode="wait">
-            {selectedAgent ? (
-              <motion.div
-                key={selectedAgent.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <Card glow="cyan">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          'w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center',
-                          agentColors[selectedAgent.type]
-                        )}>
-                          {(() => {
-                            const Icon = agentIcons[selectedAgent.type];
-                            return <Icon className="w-6 h-6" />;
-                          })()}
-                        </div>
-                        <div>
-                          <CardTitle>{selectedAgent.name}</CardTitle>
-                          <CardDescription className="capitalize">{selectedAgent.type}</CardDescription>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant={selectedAgent.status === 'running' ? 'cyan' : selectedAgent.status === 'error' ? 'red' : 'default'}
-                      >
-                        {selectedAgent.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-[var(--text-muted)]">{selectedAgent.description}</p>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-lg bg-white/5">
-                        <p className="text-xs text-[var(--text-muted)]">Tasks OK</p>
-                        <p className="text-xl font-bold text-green-400">{selectedAgent.tasks_completed}</p>
-                      </div>
-                      <div className="p-3 rounded-lg bg-white/5">
-                        <p className="text-xs text-[var(--text-muted)]">Falhas</p>
-                        <p className="text-xl font-bold text-red-400">{selectedAgent.tasks_failed}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {selectedAgent.status === 'running' ? (
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Pause className="w-4 h-4 mr-2" />
-                          Pausar
-                        </Button>
-                      ) : (
-                        <Button size="sm" className="flex-1">
-                          <Play className="w-4 h-4 mr-2" />
-                          Iniciar
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="sm">
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <Card className="h-[200px] flex items-center justify-center">
-                  <div className="text-center text-[var(--text-muted)]">
-                    <Bot className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Selecione um agente para ver detalhes</p>
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Task Queue */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Clock className="w-4 h-4 text-[var(--gold)]" />
-                  Fila de Tasks
-                </CardTitle>
-                <Badge variant="default">{tasks.length}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/5 transition-colors"
+              {jobs.slice(0, 5).map((job, index) => {
+                const position = orbitPositions[index] ?? orbitPositions[0];
+                const isSelected = selectedJob?.id === job.id;
+                return (
+                  <button
+                    key={job.id}
+                    type="button"
+                    onClick={async () => {
+                      const detail = await fetchAgentJob(job.id);
+                      setSelectedJob(detail.data);
+                    }}
+                    className={cn(
+                      'absolute z-20 w-[132px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border px-3 py-3 text-left backdrop-blur-xl transition-all',
+                      isSelected
+                        ? 'border-[var(--gold)]/30 bg-white/12 shadow-[0_0_30px_rgba(212,175,55,0.18)]'
+                        : 'border-white/10 bg-white/6 hover:border-[var(--cyan)]/30 hover:bg-white/10'
+                    )}
+                    style={position}
                   >
-                    {getStatusIcon(task.status)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{task.description}</p>
-                      <p className="text-xs text-[var(--text-muted)] capitalize">{task.type}</p>
+                    <p className="truncate text-sm font-medium">{job.title}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)] capitalize">{job.status}</p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[var(--gold)] to-[var(--cyan)]" style={{ width: `${Math.max(job.progress, 6)}%` }} />
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Live Logs */}
+            <div className="mt-5 space-y-3">
+              {jobs.map((job) => (
+                <button
+                  key={job.id}
+                  type="button"
+                  onClick={async () => {
+                    const detail = await fetchAgentJob(job.id);
+                    setSelectedJob(detail.data);
+                  }}
+                  className="flex w-full items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{job.title}</p>
+                    <p className="mt-1 truncate text-sm text-[var(--text-muted)]">{job.goal}</p>
+                  </div>
+                  <Badge variant={getBadgeVariant(job.status)}>{job.status}</Badge>
+                </button>
+              ))}
+              {!jobs.length && !loading && <p className="text-sm text-[var(--text-muted)]">Nenhum job criado ainda.</p>}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Terminal className="w-4 h-4 text-green-400" />
-                Logs em Tempo Real
+                <Terminal className="h-4 w-4 text-[var(--gold)]" />
+                Detalhe do job
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[150px] overflow-y-auto font-mono text-xs space-y-1 p-3 rounded-lg bg-black/30">
-                {logs.map((log, index) => (
-                  <div key={index} className="text-[var(--text-muted)]">
-                    <span className="text-[var(--gold)]">{log.split(']')[0]}]</span>
-                    <span className="ml-2">{log.split(']')[1]}</span>
+            <CardContent className="space-y-4">
+              {selectedJob ? (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-semibold">{selectedJob.title}</p>
+                      <p className="mt-1 text-sm text-[var(--text-muted)]">{selectedJob.goal}</p>
+                    </div>
+                    <Badge variant={getBadgeVariant(selectedJob.status)}>{selectedJob.status}</Badge>
                   </div>
-                ))}
-                <div ref={logsEndRef} />
-              </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <MiniMetric label="Progresso" value={`${selectedJob.progress}%`} />
+                    <MiniMetric label="Etapa atual" value={`${selectedJob.current_step + 1}/${Math.max(selectedJob.steps.length, 1)}`} />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      loading={busyId === selectedJob.id}
+                      onClick={() => void handleStartJob(selectedJob.id)}
+                      disabled={selectedJob.status === 'running' || selectedJob.status === 'completed'}
+                    >
+                      <Play className="mr-2 h-4 w-4" />
+                      Iniciar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      loading={busyId === selectedJob.id}
+                      onClick={() => void handleCancelJob(selectedJob.id)}
+                      disabled={selectedJob.status === 'completed' || selectedJob.status === 'cancelled'}
+                    >
+                      <PauseCircle className="mr-2 h-4 w-4" />
+                      Cancelar
+                    </Button>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--text-muted)]">Resultado</p>
+                    <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                      {selectedJob.result_summary || selectedJob.error_summary || 'Ainda sem resumo final.'}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-[var(--text-muted)]">Selecione um job para inspecionar o plano e a execucao.</p>
+              )}
             </CardContent>
           </Card>
-        </motion.div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Clock className="h-4 w-4 text-[var(--cyan)]" />
+                Steps e logs
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {selectedJob?.steps.map((step) => (
+                <div key={`${selectedJob.id}-${step.order}`} className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{step.title}</p>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">{step.description}</p>
+                    </div>
+                    <Badge variant={getBadgeVariant(step.status)}>{step.status}</Badge>
+                  </div>
+                  {(step.output || step.error) && (
+                    <p className="mt-3 break-words text-xs text-[var(--text-secondary)]">{step.output || step.error}</p>
+                  )}
+                </div>
+              ))}
+
+              {!!selectedJob?.logs.length && (
+                <div className="max-h-[220px] overflow-y-auto rounded-xl border border-white/5 bg-black/30 p-3 font-mono text-xs">
+                  {selectedJob.logs.map((log, index) => (
+                    <div key={`${log.timestamp}-${index}`} className="py-1 text-[var(--text-muted)]">
+                      <span className="text-[var(--gold)]">{getRelativeTime(log.timestamp)}</span>
+                      <span className="ml-2">{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
 
-function cn(...classes: (string | undefined | null | false)[]) {
+function StatCard({
+  title,
+  value,
+  highlight = 'default',
+}: {
+  title: string;
+  value: number;
+  highlight?: 'default' | 'cyan' | 'gold' | 'red';
+}) {
+  const tone =
+    highlight === 'cyan'
+      ? 'text-[var(--cyan)]'
+      : highlight === 'gold'
+        ? 'text-[var(--gold)]'
+        : highlight === 'red'
+          ? 'text-red-400'
+          : 'text-[var(--text-primary)]';
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <p className="text-sm text-[var(--text-muted)]">{title}</p>
+        <p className={`mt-2 text-3xl font-bold ${tone}`}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-white/5 p-3">
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function getBadgeVariant(status: string): 'green' | 'red' | 'yellow' | 'cyan' | 'default' {
+  if (status === 'completed') return 'green';
+  if (status === 'running') return 'cyan';
+  if (status === 'failed' || status === 'blocked' || status === 'cancelled') return 'red';
+  if (status === 'planned' || status === 'queued' || status === 'pending') return 'yellow';
+  return 'default';
+}
+
+function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(' ');
 }

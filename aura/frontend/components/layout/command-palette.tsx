@@ -17,8 +17,10 @@ import {
   ArrowRight,
   Terminal,
   GitBranch,
-  Cpu,
+  FileText,
 } from 'lucide-react';
+import { executeCommand, fetchStatus } from '@/lib/api';
+import { notifyError, notifyInfo, notifySuccess } from '@/lib/notifications';
 
 const navigationCommands = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', shortcut: '⌘1' },
@@ -31,9 +33,9 @@ const navigationCommands = [
 ];
 
 const quickActions = [
-  { id: 'terminal', label: 'Abrir Terminal', icon: Terminal, action: () => console.log('Open terminal') },
-  { id: 'git', label: 'Git Status', icon: GitBranch, action: () => console.log('Git status') },
-  { id: 'restart', label: 'Reiniciar Serviços', icon: Cpu, action: () => console.log('Restart services') },
+  { id: 'vscode', label: 'Abrir VS Code', icon: Terminal, command: 'open_vscode' },
+  { id: 'git', label: 'Git Status', icon: GitBranch, command: 'git_status' },
+  { id: 'logs', label: 'Mostrar logs recentes', icon: FileText, command: 'show_logs' },
 ];
 
 export function CommandPalette() {
@@ -43,20 +45,67 @@ export function CommandPalette() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTypingTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable;
+
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
+        return;
+      }
+
+      if (isTypingTarget) return;
+
+      if ((e.metaKey || e.ctrlKey) && /^[1-7]$/.test(e.key)) {
+        e.preventDefault();
+        const match = navigationCommands.find((item) => item.shortcut === `⌘${e.key}`);
+        if (match) {
+          router.push(match.href);
+        }
       }
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
-  }, []);
+  }, [router]);
 
   const handleSelect = (href: string) => {
     setOpen(false);
     setSearch('');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     router.push(href as any);
+  };
+
+  const handleQuickAction = async (command: string, label: string) => {
+    setOpen(false);
+    setSearch('');
+
+    try {
+      if (command === 'show_logs') {
+        const response = await executeCommand(command);
+        notifyInfo(label, response.data.stdout?.slice(0, 220) || response.data.message || 'Logs carregados.');
+        return;
+      }
+
+      if (command === 'git_status') {
+        const response = await executeCommand(command);
+        notifySuccess(label, response.data.stdout || response.data.message || 'Status do git carregado.');
+        return;
+      }
+
+      if (command === 'open_vscode') {
+        await executeCommand(command);
+        notifySuccess(label, 'VS Code solicitado ao backend local.');
+        return;
+      }
+
+      const status = await fetchStatus();
+      notifyInfo(label, `Aura ${status.data.status} · modelo ${status.data.model}`);
+    } catch (error) {
+      notifyError(label, error instanceof Error ? error.message : 'Falha ao executar a ação.');
+    }
   };
 
   return (
@@ -130,10 +179,7 @@ export function CommandPalette() {
                     {quickActions.map((action) => (
                       <Command.Item
                         key={action.id}
-                        onSelect={() => {
-                          action.action();
-                          setOpen(false);
-                        }}
+                        onSelect={() => void handleQuickAction(action.command, action.label)}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-white/5 data-[selected=true]:bg-white/10 group"
                       >
                         <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-[var(--cyan)]/10 transition-colors">
