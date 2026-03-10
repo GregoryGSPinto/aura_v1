@@ -1,5 +1,6 @@
 export interface StatusPayload {
   status: string;
+  name: string;
   version: string;
   uptime_seconds: number;
   timestamp: string;
@@ -7,12 +8,21 @@ export interface StatusPayload {
     api: string;
     llm: string;
     filesystem: string;
+    supabase: string;
   };
   model: string;
   persistence: {
     mode: string;
   };
   auth_mode: string;
+  jobs?: {
+    total: number;
+    queued: number;
+    running: number;
+    completed: number;
+    failed: number;
+    cancelled: number;
+  };
 }
 
 export interface Project {
@@ -50,6 +60,7 @@ export interface ChatResponse {
   session_id: string;
   tokens_used: number;
   processing_time_ms: number;
+  persistence_mode?: string;
 }
 
 export interface Agent {
@@ -75,6 +86,50 @@ export interface AgentTask {
   completed_at?: string;
   result?: unknown;
   error?: string;
+}
+
+export interface AgentJobStep {
+  id?: string;
+  title: string;
+  description: string;
+  command?: string | null;
+  params: Record<string, unknown>;
+  order: number;
+  status: "pending" | "planned" | "running" | "completed" | "failed" | "blocked" | "cancelled";
+  started_at?: string | null;
+  completed_at?: string | null;
+  output?: string | null;
+  error?: string | null;
+}
+
+export interface AgentJobSummary {
+  id: string;
+  title: string;
+  goal: string;
+  description: string;
+  status: "pending" | "planned" | "queued" | "running" | "completed" | "failed" | "blocked" | "cancelled";
+  progress: number;
+  current_step: number;
+  created_at: string;
+  updated_at: string;
+  result_summary?: string | null;
+  error_summary?: string | null;
+}
+
+export interface AgentJobDetail extends AgentJobSummary {
+  started_at?: string | null;
+  completed_at?: string | null;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  logs: {
+    job_id: string;
+    step_index: number;
+    timestamp: string;
+    level: string;
+    message: string;
+    metadata: Record<string, unknown>;
+  }[];
+  steps: AgentJobStep[];
 }
 
 export interface SystemMetrics {

@@ -5,6 +5,8 @@ import type {
   ChatResponse, 
   CommandResult,
   Agent,
+  AgentJobDetail,
+  AgentJobSummary,
   AgentTask,
   SystemMetrics,
   Activity,
@@ -62,7 +64,7 @@ export async function fetchProjects(): Promise<ApiResponse<{ projects: Project[]
 export async function openProject(name: string): Promise<ApiResponse<{ message: string; opened_in: string }>> {
   return fetchApi('/api/v1/projects/open', {
     method: 'POST',
-    body: JSON.stringify({ project_name: name }),
+    body: JSON.stringify({ name }),
   });
 }
 
@@ -97,6 +99,29 @@ export async function executeCommand(
 }
 
 // Agents (Swarm)
+export async function createAgentJob(goal: string, title?: string, autoStart = false) {
+  return fetchApi<{ job_id: string; plan_status: "planned" | "blocked"; started: boolean; notes: string[] }>('/api/v1/agent/jobs', {
+    method: 'POST',
+    body: JSON.stringify({ goal, title, auto_start: autoStart }),
+  });
+}
+
+export async function fetchAgentJobs() {
+  return fetchApi<{ jobs: AgentJobSummary[]; total: number }>('/api/v1/agent/jobs');
+}
+
+export async function fetchAgentJob(jobId: string) {
+  return fetchApi<AgentJobDetail>(`/api/v1/agent/jobs/${jobId}`);
+}
+
+export async function startAgentJob(jobId: string) {
+  return fetchApi<AgentJobDetail>(`/api/v1/agent/jobs/${jobId}/start`, { method: 'POST' });
+}
+
+export async function cancelAgentJob(jobId: string) {
+  return fetchApi<AgentJobDetail>(`/api/v1/agent/jobs/${jobId}/cancel`, { method: 'POST' });
+}
+
 export async function fetchAgents(): Promise<ApiResponse<Agent[]>> {
   return fetchApi('/api/v1/agents');
 }

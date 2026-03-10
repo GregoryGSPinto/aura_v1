@@ -1,3 +1,6 @@
+from app.agents.job_manager import AgentJobManager
+from app.agents.planner import AgentPlanner
+from app.agents.step_executor import AgentStepExecutor
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
@@ -43,7 +46,10 @@ class Container:
             self.persistence_service,
             self.logger,
         )
-        self.job_service = JobService(self.settings, self.memory_service, self.command_service, self.logger)
+        self.agent_step_executor = AgentStepExecutor(self.command_service)
+        self.job_service = JobService(self.settings, self.memory_service, self.agent_step_executor, self.logger)
+        self.agent_planner = AgentPlanner()
+        self.agent_job_manager = AgentJobManager(self.agent_planner, self.job_service, self.project_service)
 
 
 container = Container()
@@ -66,6 +72,8 @@ def create_app() -> FastAPI:
     app.state.ollama_service = container.ollama_service
     app.state.command_service = container.command_service
     app.state.job_service = container.job_service
+    app.state.agent_planner = container.agent_planner
+    app.state.agent_job_manager = container.agent_job_manager
 
     app.add_middleware(
         CORSMiddleware,

@@ -4,8 +4,8 @@ import { ArrowUpRight, Bot, Command, FolderOpen, LoaderCircle, Sparkles, Termina
 import { useEffect, useState, useTransition } from "react";
 
 import { clientEnv, getClientEnvWarnings, isSupabaseClientConfigured } from "@/lib/env";
-import { fetchProjects, fetchStatus, openProject, sendChat } from "@/lib/api";
-import type { Project, StatusPayload } from "@/lib/types";
+import { cancelAgentJob, createAgentJob, fetchAgentJob, fetchAgentJobs, fetchProjects, fetchStatus, openProject, sendChat, startAgentJob } from "@/lib/api";
+import type { AgentJobDetail, AgentJobSummary, Project, StatusPayload } from "@/lib/types";
 
 type Message = {
   role: "user" | "assistant";
@@ -34,21 +34,41 @@ export function AuraShell() {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [openingProject, setOpeningProject] = useState<string | null>(null);
+  const [jobGoal, setJobGoal] = useState("");
+  const [jobs, setJobs] = useState<AgentJobSummary[]>([]);
+  const [selectedJob, setSelectedJob] = useState<AgentJobDetail | null>(null);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
   const envWarnings = getClientEnvWarnings();
   const supabaseClientReady = isSupabaseClientConfigured();
 
   useEffect(() => {
     startTransition(() => {
-      Promise.all([fetchStatus(), fetchProjects()])
-        .then(([statusResponse, projectResponse]) => {
+      Promise.all([fetchStatus(), fetchProjects(), fetchAgentJobs()])
+        .then(([statusResponse, projectResponse, jobsResponse]) => {
           setStatus(statusResponse.data);
           setProjects(projectResponse.data.projects);
+          setJobs(jobsResponse.data.jobs);
         })
         .catch((loadError: Error) => {
           setError(loadError.message);
         });
     });
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      fetchAgentJobs()
+        .then((response) => setJobs(response.data.jobs))
+        .catch(() => undefined);
+      if (selectedJob?.id) {
+        fetchAgentJob(selectedJob.id)
+          .then((response) => setSelectedJob(response.data))
+          .catch(() => undefined);
+      }
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  }, [selectedJob?.id]);
 
   async function handleSubmit(prompt?: string) {
     const content = (prompt ?? input).trim();
@@ -103,6 +123,50 @@ export function AuraShell() {
       setError(openError instanceof Error ? openError.message : "Falha ao abrir o projeto.");
     } finally {
       setOpeningProject(null);
+    }
+  }
+
+  async function handleCreateJob() {
+    const goal = jobGoal.trim();
+    if (!goal) return;
+
+    setIsCreatingJob(true);
+    setError(null);
+    try {
+      const response = await createAgentJob(goal, undefined, false);
+      const detail = await fetchAgentJob(response.data.job_id);
+      setSelectedJob(detail.data);
+      setJobGoal("");
+      const jobsResponse = await fetchAgentJobs();
+      setJobs(jobsResponse.data.jobs);
+    } catch (jobError) {
+      setError(jobError instanceof Error ? jobError.message : "Falha ao criar job.");
+    } finally {
+      setIsCreatingJob(false);
+    }
+  }
+
+  async function handleStartJob(jobId: string) {
+    setError(null);
+    try {
+      const response = await startAgentJob(jobId);
+      setSelectedJob(response.data);
+      const jobsResponse = await fetchAgentJobs();
+      setJobs(jobsResponse.data.jobs);
+    } catch (jobError) {
+      setError(jobError instanceof Error ? jobError.message : "Falha ao iniciar job.");
+    }
+  }
+
+  async function handleCancelJob(jobId: string) {
+    setError(null);
+    try {
+      const response = await cancelAgentJob(jobId);
+      setSelectedJob(response.data);
+      const jobsResponse = await fetchAgentJobs();
+      setJobs(jobsResponse.data.jobs);
+    } catch (jobError) {
+      setError(jobError instanceof Error ? jobError.message : "Falha ao cancelar job.");
     }
   }
 
@@ -191,6 +255,46 @@ export function AuraShell() {
               ))}
             </div>
           </div>
+
+          <div className="rounded-[28px] border border-aura-line bg-white/5 p-5 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Agent Mode</p>
+              <span className="text-xs text-aura-muted">{status?.jobs?.running ?? 0} rodando</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              <textarea
+                value={jobGoal}
+                onChange={(event) => setJobGoal(event.target.value)}
+                rows={4}
+                placeholder="Ex: Abra o projeto aura_v1 e verifique o git status."
+                className="w-full resize-none rounded-2xl border border-white/8 bg-aura-panel px-4 py-3 text-sm text-aura-text outline-none transition placeholder:text-aura-muted focus:border-aura-accent/70"
+              />
+              <button
+                onClick={() => void handleCreateJob()}
+                disabled={isCreatingJob}
+                className="w-full rounded-2xl border border-aura-accent/40 bg-aura-accent/10 px-4 py-3 text-sm font-medium text-aura-text transition hover:border-aura-accent/80 hover:bg-aura-accent/15 disabled:opacity-60"
+              >
+                {isCreatingJob ? "Planejando..." : "Criar Job"}
+              </button>
+              <div className="space-y-2">
+                {jobs.slice(0, 4).map((job) => (
+                  <button
+                    key={job.id}
+                    onClick={() => void fetchAgentJob(job.id).then((response) => setSelectedJob(response.data)).catch(() => undefined)}
+                    className="w-full rounded-2xl border border-white/8 bg-aura-panelSoft p-3 text-left transition hover:border-aura-accent/60"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{job.title}</p>
+                        <p className="mt-1 text-xs text-aura-muted">{job.status} · {job.progress}%</p>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 text-aura-muted" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </aside>
 
         <section className="flex min-h-[70vh] flex-1 flex-col rounded-[32px] border border-aura-line bg-white/5 shadow-aura backdrop-blur-2xl">
@@ -211,6 +315,48 @@ export function AuraShell() {
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+            {selectedJob ? (
+              <section className="max-w-3xl rounded-[28px] border border-white/8 bg-aura-panelSoft p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-aura-muted">Agent Mode</p>
+                    <h2 className="mt-2 font-display text-2xl">{selectedJob.title}</h2>
+                    <p className="mt-2 text-sm text-aura-muted">{selectedJob.goal}</p>
+                    <p className="mt-2 text-sm text-aura-muted">
+                      Status: {selectedJob.status} · Progresso: {selectedJob.progress}% · Steps: {selectedJob.steps.length}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => void handleStartJob(selectedJob.id)}
+                      className="rounded-2xl border border-aura-accent/40 bg-aura-accent/10 px-3 py-2 text-sm"
+                    >
+                      Iniciar
+                    </button>
+                    <button
+                      onClick={() => void handleCancelJob(selectedJob.id)}
+                      className="rounded-2xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {selectedJob.steps.map((step) => (
+                    <div key={`${selectedJob.id}-${step.order}`} className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold">{step.order + 1}. {step.title}</p>
+                        <span className="text-xs text-aura-muted">{step.status}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-aura-muted">{step.description}</p>
+                      {step.command ? <p className="mt-2 text-xs text-aura-muted">Comando: {step.command}</p> : null}
+                      {step.error ? <p className="mt-2 text-xs text-red-200">{step.error}</p> : null}
+                      {step.output ? <p className="mt-2 whitespace-pre-wrap text-xs text-aura-muted">{step.output}</p> : null}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             {messages.map((message, index) => (
               <article
                 key={`${message.role}-${index}`}

@@ -30,7 +30,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; bad
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
