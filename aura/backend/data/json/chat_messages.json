@@ -1,2 +1,92 @@
-[]
-
+[
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Aura, liste meus projetos",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sou sua assistente operacional pessoal, Aura. No momento, não tenho acesso aos seus dados pessoais ou à lista de projetos armazenados em seu dispositivo ou nuvem, pois sou uma inteligência artificial sem memória persistente entre conversas e sem conexão direta com seus arquivos locais.\n\nPara que eu possa ajudar você a organizar ou listar seus projetos, sugiro as seguintes ações estruturadas:\n\n1.  **Copie e cole** a lista de seus projetos aqui no chat.\n2.  **Descreva** brevemente o status atual de cada um (ex: em andamento, concluído, pendente).\n3.  **Defina** quais são as próximas etapas prioritárias que deseja visualizar.\n\nEstou pronta para processar essas informações e gerar uma visão clara e organizada do seu portfólio assim que você fornecer os detalhes. Como posso proceder?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Aura, liste meus projetos",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sou sua assistente operacional pessoal, **Aura**.\n\nNo momento, não tenho acesso aos seus dados pessoais ou à lista de projetos armazenados em seu dispositivo ou nuvem, pois sou uma inteligência artificial sem memória persistente entre sessões a menos que você me forneça as informações diretamente nesta conversa.\n\nPara que eu possa listar seus projetos agora mesmo, por favor:\n1. **Cole aqui** a lista dos seus projetos atuais.\n2. Ou **descreva-me** brevemente quais são suas iniciativas prioritárias hoje.\n\nAssim que você fornecer esses detalhes, organizarei as informações de forma clara e estruturada para auxiliá-lo na gestão delas. Como posso ajudar com isso?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Aura, liste meus projetos",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sou sua assistente operacional pessoal, Aura.\n\nNo momento, não tenho acesso aos seus arquivos locais ou à lista de projetos armazenada em seu dispositivo, pois sou uma inteligência artificial que opera dentro desta interface de chat e não possuo memória persistente entre sessões a menos que você me forneça os dados diretamente aqui.\n\nPara listar seus projetos agora mesmo, sugiro as seguintes ações estruturadas:\n\n1.  **Copiar e Colar:** Se você tem uma lista em um documento ou bloco de notas, copie o conteúdo e cole na nossa conversa.\n2.  **Exportar Dados:** Se utiliza ferramentas como Notion, Trello ou Excel, exporte a lista para texto (CSV ou TXT) e compartilhe o conteúdo.\n3.  **Definir Contexto:** Descreva brevemente quais projetos você considera prioritários hoje (ex: \"Projetos de desenvolvimento\", \"Planejamento pessoal\" ou \"Tarefas urgentes\").\n\nAssim que você fornecer essas informações, organizarei a lista de forma clara e objetiva para sua revisão. Como deseja prosseguir?\n\nResultado operacional:\n1 projeto(s) encontrado(s).",
+    "model": "qwen3.5:9b",
+    "intent": "consulta",
+    "metadata": {}
+  },
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Aura, liste meus projetos",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sou a Aura, sua assistente operacional pessoal. No momento, não tenho acesso aos seus projetos pessoais ou corporativos armazenados em sistemas externos, pois opero estritamente com base nas informações fornecidas nesta conversa.\n\nPara que eu possa listar seus projetos de forma útil e segura, por favor:\n1. **Forneça a lista** dos nomes ou descrições dos seus projetos aqui no chat.\n2. Ou **instrua-me** sobre quais critérios devo usar para filtrar ou organizar essa informação (ex: \"liste apenas os projetos em andamento\" ou \"organize por data de entrega\").\n\nEstou pronta para estruturar essas informações conforme sua necessidade. Como deseja proceder?\n\nResultado operacional:\n1 projeto(s) encontrado(s).",
+    "model": "qwen3.5:9b",
+    "intent": "consulta",
+    "metadata": {}
+  },
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Aura, liste meus projetos",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sou sua assistente operacional pessoal, **Aura**.\n\nNo momento, não tenho acesso aos seus arquivos pessoais ou à lista de projetos armazenada em seu dispositivo, pois opero como uma inteligência artificial sem memória persistente entre conversas.\n\nPara que eu possa listar seus projetos com precisão, você pode:\n1. **Copiar e colar** a lista aqui;\n2. **Descrever** os projetos principais que deseja organizar;\n3. Ou me indicar em qual **fonte de dados** (como um documento específico ou planilha) devo buscar essas informações.\n\nComo prefere prosseguir?\n\nResultado operacional:\n1 projeto(s) encontrado(s).",
+    "model": "qwen3.5:9b",
+    "intent": "consulta",
+    "metadata": {}
+  }
+]

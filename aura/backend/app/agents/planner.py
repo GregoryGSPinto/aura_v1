@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from app.agents.models import AgentPlan, AgentPlanStep
 from app.models.project_models import Project
@@ -99,16 +99,75 @@ class AgentPlanner:
                 )
             )
 
-        if any(term in normalized for term in ["lint", "build", "teste", "corrigir", "fix", "review", "revisar"]):
+        if "lint" in normalized:
             steps.append(
                 AgentPlanStep(
-                    title="Ação fora da whitelist atual",
-                    description="A meta pede lint, build, testes ou correções automáticas.",
-                    status="blocked",
-                    reason="A whitelist atual da Aura não inclui lint, build, testes ou correção automática de código.",
+                    title="Rodar lint",
+                    description="Executar lint seguro no projeto alvo.",
+                    command="run_project_lint",
+                    params={"name": project_name} if project_name else {},
+                    status="planned" if project_name else "blocked",
+                    reason=None if project_name else "Informe o projeto para rodar lint.",
                 )
             )
-            notes.append("A meta foi parcialmente bloqueada porque exige ações ainda não aprovadas na whitelist.")
+
+        if "build" in normalized:
+            steps.append(
+                AgentPlanStep(
+                    title="Rodar build",
+                    description="Executar build seguro no projeto alvo.",
+                    command="run_project_build",
+                    params={"name": project_name} if project_name else {},
+                    status="planned" if project_name else "blocked",
+                    reason=None if project_name else "Informe o projeto para rodar build.",
+                )
+            )
+
+        if any(term in normalized for term in ["teste", "test"]):
+            steps.append(
+                AgentPlanStep(
+                    title="Rodar testes",
+                    description="Executar testes seguros no projeto alvo.",
+                    command="run_project_test",
+                    params={"name": project_name} if project_name else {},
+                    status="planned" if project_name else "blocked",
+                    reason=None if project_name else "Informe o projeto para rodar testes.",
+                )
+            )
+
+        if any(term in normalized for term in ["cpu", "memória", "memoria", "ram", "disco", "health do sistema", "saúde do sistema"]):
+            if any(term in normalized for term in ["cpu", "processador"]):
+                steps.append(
+                    AgentPlanStep(
+                        title="Verificar CPU",
+                        description="Consultar uso atual de CPU no computador local.",
+                        command="cpu_status",
+                    )
+                )
+            if any(term in normalized for term in ["memória", "memoria", "ram"]):
+                steps.append(
+                    AgentPlanStep(
+                        title="Verificar memória",
+                        description="Consultar uso atual de memória.",
+                        command="memory_status",
+                    )
+                )
+            if "disco" in normalized:
+                steps.append(
+                    AgentPlanStep(
+                        title="Verificar disco",
+                        description="Consultar uso de disco.",
+                        command="disk_status",
+                    )
+                )
+            if any(term in normalized for term in ["health do sistema", "saúde do sistema"]):
+                steps.append(
+                    AgentPlanStep(
+                        title="Resumo do sistema",
+                        description="Consultar resumo operacional do sistema local.",
+                        command="system_info",
+                    )
+                )
 
         if not steps:
             steps.append(
@@ -144,4 +203,3 @@ class AgentPlanner:
     def _make_title(self, goal: str) -> str:
         trimmed = goal.strip()
         return trimmed[:80] if len(trimmed) > 80 else trimmed
-

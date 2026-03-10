@@ -20,6 +20,7 @@ from app.services.ollama_service import OllamaService
 from app.services.persistence_service import PersistenceService
 from app.services.project_service import ProjectService
 from app.services.supabase_service import SupabaseService
+from app.tools import BrowserTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
 
 
 class Container:
@@ -40,10 +41,20 @@ class Container:
         self.project_service = ProjectService(self.persistence_service)
         self.auth_service = AuthService(self.settings, self.supabase_service)
         self.ollama_service = OllamaService(self.settings)
+        self.terminal_tool = TerminalTool(self.settings)
+        self.filesystem_tool = FilesystemTool(self.settings)
+        self.vscode_tool = VSCodeTool()
+        self.browser_tool = BrowserTool()
+        self.system_tool = SystemTool(self.settings)
+        self.llm_tool = LLMTool(self.ollama_service)
+        self.project_tool = ProjectTool(self.project_service, self.terminal_tool, self.vscode_tool)
+        self.tool_router = ToolRouter()
         self.command_service = CommandService(
-            self.settings,
-            self.project_service,
             self.persistence_service,
+            self.project_tool,
+            self.terminal_tool,
+            self.vscode_tool,
+            self.system_tool,
             self.logger,
         )
         self.agent_step_executor = AgentStepExecutor(self.command_service)
@@ -70,6 +81,14 @@ def create_app() -> FastAPI:
     app.state.project_service = container.project_service
     app.state.auth_service = container.auth_service
     app.state.ollama_service = container.ollama_service
+    app.state.terminal_tool = container.terminal_tool
+    app.state.filesystem_tool = container.filesystem_tool
+    app.state.vscode_tool = container.vscode_tool
+    app.state.browser_tool = container.browser_tool
+    app.state.system_tool = container.system_tool
+    app.state.llm_tool = container.llm_tool
+    app.state.project_tool = container.project_tool
+    app.state.tool_router = container.tool_router
     app.state.command_service = container.command_service
     app.state.job_service = container.job_service
     app.state.agent_planner = container.agent_planner

@@ -29,10 +29,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { clientEnv } from '@/lib/env';
-import { fetchAuthStatus, fetchStatus } from '@/lib/api';
+import { fetchAuthStatus, fetchStatus, fetchSystemMetrics } from '@/lib/api';
 import { notifyError } from '@/lib/notifications';
 import { getRelativeTime } from '@/lib/utils';
-import type { AuthStatusPayload, StatusPayload } from '@/lib/types';
+import type { AuthStatusPayload, StatusPayload, SystemMetrics } from '@/lib/types';
 
 type HistoryPoint = {
   timestamp: string;
@@ -51,6 +51,7 @@ function getReadinessScore(status: StatusPayload | null) {
 export default function SystemPage() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatusPayload | null>(null);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
@@ -59,11 +60,12 @@ export default function SystemPage() {
 
     const load = async () => {
       try {
-        const [statusRes, authRes] = await Promise.all([fetchStatus(), fetchAuthStatus()]);
+        const [statusRes, authRes, metricsRes] = await Promise.all([fetchStatus(), fetchAuthStatus(), fetchSystemMetrics()]);
         if (!mounted) return;
 
         setStatus(statusRes.data);
         setAuthStatus(authRes.data);
+        setMetrics(metricsRes.data);
         setLastUpdated(new Date().toISOString());
         setHistory((current) => [
           ...current.slice(-11),
@@ -117,6 +119,30 @@ export default function SystemPage() {
       });
     }
 
+    if ((metrics?.cpu ?? 0) > 85) {
+      items.push({
+        title: 'CPU elevada',
+        description: `Uso atual em ${Math.round(metrics?.cpu ?? 0)}%.`,
+        severity: 'warning',
+      });
+    }
+
+    if ((metrics?.memory ?? 0) > 85) {
+      items.push({
+        title: 'Memoria elevada',
+        description: `Uso atual em ${Math.round(metrics?.memory ?? 0)}%.`,
+        severity: 'warning',
+      });
+    }
+
+    if ((metrics?.disk ?? 0) > 90) {
+      items.push({
+        title: 'Disco quase cheio',
+        description: `Uso de disco em ${Math.round(metrics?.disk ?? 0)}%.`,
+        severity: 'critical',
+      });
+    }
+
     if (!items.length) {
       items.push({
         title: 'Tudo operacional',
@@ -126,7 +152,7 @@ export default function SystemPage() {
     }
 
     return items;
-  }, [status]);
+  }, [metrics, status]);
 
   const servicesData = useMemo(() => {
     if (!status) return [];
@@ -168,23 +194,23 @@ export default function SystemPage() {
           glow="gold"
         />
         <MetricCard
-          title="Persistencia"
-          value={status?.persistence.mode ?? '--'}
-          subtitle={`Supabase ${status?.services.supabase ?? 'desconhecido'}`}
-          icon={Database}
+          title="CPU"
+          value={`${Math.round(metrics?.cpu ?? 0)}%`}
+          subtitle={(metrics?.cpu ?? 0) > 85 ? 'Acima do limiar de alerta' : 'Dentro do esperado'}
+          icon={Activity}
           glow="cyan"
         />
         <MetricCard
-          title="Auth"
-          value={authStatus?.auth_mode ?? status?.auth_mode ?? '--'}
-          subtitle={authStatus?.authenticated ? `Usuario ${authStatus.user_id ?? 'autenticado'}` : 'Nao autenticado'}
-          icon={Lock}
+          title="Memoria"
+          value={`${Math.round(metrics?.memory ?? 0)}%`}
+          subtitle={(metrics?.memory ?? 0) > 85 ? 'Memoria sob pressao' : 'Disponibilidade normal'}
+          icon={Server}
         />
         <MetricCard
-          title="Jobs"
-          value={String(status?.jobs?.running ?? 0)}
-          subtitle={`${status?.jobs?.queued ?? 0} na fila · ${status?.jobs?.completed ?? 0} concluidos`}
-          icon={Workflow}
+          title="Disco"
+          value={`${Math.round(metrics?.disk ?? 0)}%`}
+          subtitle={`Auth ${authStatus?.auth_mode ?? status?.auth_mode ?? '--'}`}
+          icon={HardDrive}
         />
       </div>
 
@@ -295,6 +321,9 @@ export default function SystemPage() {
             <StateRow label="Modo auth" value={authStatus?.provider ? `${authStatus.provider} · ${authStatus.auth_mode}` : status?.auth_mode ?? '--'} />
             <StateRow label="Cloud readiness" value={clientEnv.supabaseUrl ? 'Configurado' : 'Local-first'} />
             <StateRow label="Uptime" value={status ? `${Math.floor(status.uptime_seconds / 3600)}h` : '--'} icon={Clock} />
+            <StateRow label="Jobs ativos" value={String(status?.jobs?.running ?? 0)} icon={Workflow} />
+            <StateRow label="Persistencia" value={status?.persistence.mode ?? '--'} icon={Database} />
+            <StateRow label="Usuario auth" value={authStatus?.user_id ?? 'anon'} icon={Lock} />
           </CardContent>
         </Card>
       </div>

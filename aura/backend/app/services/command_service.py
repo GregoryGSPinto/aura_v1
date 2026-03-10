@@ -1,38 +1,48 @@
-import subprocess
 import time
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from app.core.config import Settings
 from app.core.exceptions import AuraError, CommandBlockedError
-from app.models.persistence_models import AuditLogEntry
-from app.core.security import BLOCKED_PATTERNS, ensure_not_blocked
 from app.models.command_models import CommandExecutionResult
 from app.services.persistence_service import PersistenceService
-from app.services.project_service import ProjectService
+from app.tools.project_tool import ProjectTool
+from app.tools.system_tool import SystemTool
+from app.tools.terminal_tool import TerminalTool
+from app.tools.vscode_tool import VSCodeTool
 from app.utils.helpers import generate_log_id, iso_now
+from app.models.persistence_models import AuditLogEntry
 
 
 class CommandService:
     def __init__(
         self,
-        settings: Settings,
-        project_service: ProjectService,
         persistence_service: PersistenceService,
+        project_tool: ProjectTool,
+        terminal_tool: TerminalTool,
+        vscode_tool: VSCodeTool,
+        system_tool: SystemTool,
         logger,
     ):
-        self.settings = settings
-        self.project_service = project_service
         self.persistence_service = persistence_service
+        self.project_tool = project_tool
+        self.terminal_tool = terminal_tool
+        self.vscode_tool = vscode_tool
+        self.system_tool = system_tool
         self.logger = logger
         self.allowed_commands = {
             "open_vscode": self._open_vscode,
             "open_project": self._open_project,
             "list_projects": self._list_projects,
             "run_project_dev": self._run_project_dev,
+            "run_project_lint": self._run_project_lint,
+            "run_project_build": self._run_project_build,
+            "run_project_test": self._run_project_test,
             "git_status": self._git_status,
             "vercel_deploy": self._vercel_deploy,
             "show_logs": self._show_logs,
+            "system_info": self._system_info,
+            "cpu_status": self._cpu_status,
+            "memory_status": self._memory_status,
+            "disk_status": self._disk_status,
         }
 
     def execute(
@@ -72,63 +82,82 @@ class CommandService:
             log_id=log_id,
         )
 
-    def _run(self, args: list[str], cwd: Optional[str] = None) -> Tuple[str, str]:
-        ensure_not_blocked(" ".join(args))
-        completed = subprocess.run(
-            args,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=self.settings.command_timeout,
-        )
-        return completed.stdout.strip(), completed.stderr.strip()
-
     def _open_vscode(self, params: dict):
-        stdout, stderr = self._run(["open", "-a", "Visual Studio Code"])
-        return "VS Code aberto.", stdout, stderr, {}
+        result = self.vscode_tool.open_app()
+        return result["message"], "", "", result
 
     def _open_project(self, params: dict):
         name = params.get("project_name") or params.get("name")
         if not name:
             raise AuraError("validation_error", "Informe o nome do projeto.", status_code=400)
-        result = self.project_service.open_project(name)
-        return result.message, "", "", result.model_dump()
+        result = self.project_tool.open_project(name)
+        return result["message"], "", "", result
 
     def _list_projects(self, params: dict):
-        projects = [project.model_dump() for project in self.project_service.list_projects()]
+        projects = self.project_tool.list_projects()
         return f"{len(projects)} projeto(s) encontrado(s).", "", "", {"projects": projects}
 
     def _run_project_dev(self, params: dict):
-        name = params.get("project_name") or params.get("name")
-        if not name:
-            raise AuraError("validation_error", "Informe o projeto para rodar.", status_code=400)
-        project = self.project_service.get_project_by_name(name)
-        dev_command = project.commands.get("dev")
-        if not dev_command:
-            raise AuraError("project_command_missing", "O projeto não possui comando 'dev' cadastrado.", status_code=400)
-        parts = dev_command.split()
-        if any(pattern in dev_command.lower() for pattern in BLOCKED_PATTERNS):
-            raise CommandBlockedError()
-        stdout, stderr = self._run(parts, cwd=str(Path(project.path)))
-        return f"Comando dev executado para {project.name}.", stdout, stderr, {"project": project.name}
+        return self._run_project_script(params, "dev", "Comando dev executado para {project}.")
+
+    def _run_project_lint(self, params: dict):
+        return self._run_project_script(params, "lint", "Lint executado para {project}.")
+
+    def _run_project_build(self, params: dict):
+        return self._run_project_script(params, "build", "Build executado para {project}.")
+
+    def _run_project_test(self, params: dict):
+        return self._run_project_script(params, "test", "Testes executados para {project}.")
 
     def _git_status(self, params: dict):
-        name = params.get("project_name") or params.get("name")
-        project = self.project_service.get_project_by_name(name) if name else self.project_service.get_project_by_name("aura_v1")
-        stdout, stderr = self._run(["git", "status", "--short", "--branch"], cwd=project.path)
-        return f"Status Git coletado para {project.name}.", stdout, stderr, {"project": project.name}
+        name = params.get("project_name") or params.get("name") or "aura_v1"
+        project = self.project_tool.get_project(name)
+        result = self.terminal_tool.git_status(project.path)
+        return f"Status Git coletado para {project.name}.", result.stdout, result.stderr, {"project": project.name}
 
     def _vercel_deploy(self, params: dict):
-        target = params.get("path") or str(Path.cwd())
-        stdout, stderr = self._run(["vercel", "--prod"], cwd=target)
-        return "Deploy Vercel iniciado.", stdout, stderr, {"path": target}
+        target = params.get("path") or None
+        result = self.terminal_tool.run_script_command("vercel --prod", cwd=target or ".")
+        return "Deploy Vercel iniciado.", result.stdout, result.stderr, {"path": target or "."}
 
     def _show_logs(self, params: dict):
         logs = self.persistence_service.get_recent_audit_logs(limit=40)
         if not logs:
-            return "Ainda não há logs.", "", "", {"path": self.settings.audit_log_file}
+            return "Ainda não há logs.", "", "", {"path": "audit_logs"}
         content = "\n".join(str(item) for item in logs)
         return "Últimas entradas de auditoria carregadas.", content, "", {"count": len(logs)}
+
+    def _system_info(self, params: dict):
+        summary = self.system_tool.summary(
+            backend_status="online",
+            llm_status=params.get("llm_status", "unknown"),
+            persistence_mode=params.get("persistence_mode", "local"),
+            auth_mode=params.get("auth_mode", "local"),
+        )
+        return "Resumo do sistema coletado.", "", "", summary
+
+    def _cpu_status(self, params: dict):
+        payload = self.system_tool.cpu()
+        return "Uso de CPU coletado.", "", "", payload
+
+    def _memory_status(self, params: dict):
+        payload = self.system_tool.memory()
+        return "Uso de memória coletado.", "", "", payload
+
+    def _disk_status(self, params: dict):
+        payload = self.system_tool.disk()
+        return "Uso de disco coletado.", "", "", payload
+
+    def _run_project_script(self, params: dict, script_name: str, message_template: str):
+        name = params.get("project_name") or params.get("name") or "aura_v1"
+        project = self.project_tool.get_project(name)
+        result = self.project_tool.run_named_script(project.name, script_name)
+        return (
+            message_template.format(project=project.name),
+            result.get("stdout", ""),
+            result.get("stderr", ""),
+            {"project": project.name, "script": script_name, "returncode": result.get("returncode", 0)},
+        )
 
     def _audit(
         self,

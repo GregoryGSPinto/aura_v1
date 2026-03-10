@@ -1,1 +1,96 @@
-[]
+[
+  {
+    "log_id": "log_cd8c8ba3e8",
+    "timestamp": "2026-03-10T05:54:42.455574+00:00",
+    "command": "cpu_status",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "usage_percent": 6.4,
+      "core_count": 16,
+      "load_average": [
+        2.69482421875,
+        3.24609375,
+        3.404296875
+      ]
+    }
+  },
+  {
+    "log_id": "log_5f80d2f725",
+    "timestamp": "2026-03-10T05:58:46.092743+00:00",
+    "command": "list_projects",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "projects": [
+        {
+          "name": "aura_v1",
+          "path": "/Users/user_pc/Projetos/aura_v1",
+          "description": "Workspace principal da Aura.",
+          "commands": {
+            "dev": "pnpm dev",
+            "build": "pnpm build"
+          },
+          "scripts": {},
+          "has_package_json": false
+        }
+      ]
+    }
+  },
+  {
+    "log_id": "log_091b9eafe7",
+    "timestamp": "2026-03-10T06:12:08.420665+00:00",
+    "command": "list_projects",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "projects": [
+        {
+          "name": "aura_v1",
+          "path": "/Users/user_pc/Projetos/aura_v1",
+          "description": "Workspace principal da Aura.",
+          "commands": {
+            "dev": "pnpm dev",
+            "build": "pnpm build"
+          },
+          "scripts": {},
+          "has_package_json": false
+        }
+      ]
+    }
+  },
+  {
+    "log_id": "log_15c304416a",
+    "timestamp": "2026-03-10T10:28:37.374634+00:00",
+    "command": "list_projects",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "projects": [
+        {
+          "name": "aura_v1",
+          "path": "/Users/user_pc/Projetos/aura_v1",
+          "description": "Workspace principal da Aura.",
+          "commands": {
+            "dev": "pnpm dev",
+            "build": "pnpm build"
+          },
+          "scripts": {},
+          "has_package_json": false
+        }
+      ]
+    }
+  }
+]

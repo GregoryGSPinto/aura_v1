@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "id": "job_1773122100294",
+    "title": "Liste meus projetos e mostre o status do sistema",
+    "goal": "Liste meus projetos e mostre o status do sistema",
+    "description": "Liste meus projetos e mostre o status do sistema",
+    "status": "planned",
+    "created_at": "2026-03-10T05:55:00.294092+00:00",
+    "updated_at": "2026-03-10T05:55:00.294092+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "progress": 0,
+    "current_step": 0,
+    "steps": [
+      {
+        "id": "step_1",
+        "title": "Listar projetos",
+        "description": "Consultar os projetos cadastrados na Aura.",
+        "command": "list_projects",
+        "params": {},
+        "order": 0,
+        "status": "planned",
+        "started_at": null,
+        "completed_at": null,
+        "output": null,
+        "error": null
+      },
+      {
+        "id": "step_2",
+        "title": "Coletar status do Git",
+        "description": "Executar git status no projeto principal ou informado.",
+        "command": "git_status",
+        "params": {},
+        "order": 1,
+        "status": "planned",
+        "started_at": null,
+        "completed_at": null,
+        "output": null,
+        "error": null
+      }
+    ],
+    "result": {
+      "planner_notes": []
+    },
+    "error": null,
+    "result_summary": null,
+    "error_summary": null,
+    "logs": []
+  }
+]

@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     default_projects_root: str = Field(
         str(Path.home() / "Projects"), alias="AURA_DEFAULT_PROJECTS_ROOT"
     )
+    allowed_roots_raw: str = Field("", alias="AURA_ALLOWED_ROOTS")
+    max_file_read_size: int = Field(65536, alias="AURA_MAX_FILE_READ_SIZE")
     supabase_enabled: bool = Field(False, alias="AURA_SUPABASE_ENABLED")
     supabase_url: str = Field("", alias="SUPABASE_URL")
     supabase_anon_key: str = Field("", alias="SUPABASE_ANON_KEY")
@@ -53,6 +55,12 @@ class Settings(BaseSettings):
     @property
     def supabase_configured(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_role_key)
+
+    @property
+    def allowed_roots(self) -> List[str]:
+        configured = [item.strip() for item in self.allowed_roots_raw.split(",") if item.strip()]
+        defaults = [str(Path.cwd().resolve()), str(Path(self.default_projects_root).expanduser().resolve())]
+        return list(dict.fromkeys(configured + defaults))
 
 
 @lru_cache

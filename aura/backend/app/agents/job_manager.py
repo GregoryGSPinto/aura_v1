@@ -40,3 +40,9 @@ class AgentJobManager:
 
     def get_steps(self, job_id: str):
         return self.job_service.get_job(job_id).steps
+
+    def get_logs(self, job_id: str):
+        return self.job_service.get_job(job_id).logs
+
+    def create_plan(self, request: AgentGoalRequest):
+        return self.planner.create_plan(request.goal, self.project_service.list_projects(), request.title)

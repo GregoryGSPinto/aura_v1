@@ -16,6 +16,17 @@ import type {
 
 const API_URL = clientEnv.apiUrl || 'http://localhost:8000';
 
+function normalizeUrl(endpoint: string) {
+  const base = API_URL.replace(/\/+$/, '');
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  if (base.endsWith('/api/v1') && path.startsWith('/api/v1')) {
+    return `${base}${path.slice('/api/v1'.length)}`;
+  }
+
+  return `${base}${path}`;
+}
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -27,7 +38,7 @@ async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
-  const url = `${API_URL}${endpoint}`;
+  const url = normalizeUrl(endpoint);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options?.headers as Record<string, string>) || {}),

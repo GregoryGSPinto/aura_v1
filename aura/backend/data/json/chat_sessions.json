@@ -1,2 +1,10 @@
-[]
-
+[
+  {
+    "session_id": "default-session",
+    "user_id": "local-operator",
+    "project_id": null,
+    "metadata": {
+      "source": "api.chat"
+    }
+  }
+]
