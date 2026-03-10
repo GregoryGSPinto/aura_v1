@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
+from app.models.job_models import JobLogEntry, JobRecord
 from app.models.persistence_models import AuditLogEntry, ChatMessageRecord, ChatSessionRecord
 from app.utils.helpers import iso_now
 
@@ -14,12 +15,16 @@ class MemoryService:
         audit_json_file: str,
         chat_sessions_file: str,
         chat_messages_file: str,
+        jobs_file: str,
+        job_logs_file: str,
     ):
         self.settings_path = Path(settings_file)
         self.projects_path = Path(projects_file)
         self.audit_json_path = Path(audit_json_file)
         self.chat_sessions_path = Path(chat_sessions_file)
         self.chat_messages_path = Path(chat_messages_file)
+        self.jobs_path = Path(jobs_file)
+        self.job_logs_path = Path(job_logs_file)
 
     def _read_json(self, path: Path, fallback: Any):
         if not path.exists():
@@ -79,3 +84,31 @@ class MemoryService:
         self._write_json(self.chat_messages_path, existing)
         return messages
 
+    def list_jobs(self) -> List[Dict[str, Any]]:
+        return self._read_json(self.jobs_path, [])
+
+    def save_jobs(self, jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        self._write_json(self.jobs_path, jobs)
+        return jobs
+
+    def upsert_job(self, job: JobRecord) -> JobRecord:
+        jobs = self._read_json(self.jobs_path, [])
+        payload = job.model_dump()
+        for index, item in enumerate(jobs):
+            if item.get("id") == job.id:
+                jobs[index] = payload
+                self._write_json(self.jobs_path, jobs)
+                return job
+        jobs.append(payload)
+        self._write_json(self.jobs_path, jobs)
+        return job
+
+    def append_job_log(self, entry: JobLogEntry) -> JobLogEntry:
+        logs = self._read_json(self.job_logs_path, [])
+        logs.append(entry.model_dump())
+        self._write_json(self.job_logs_path, logs)
+        return entry
+
+    def list_job_logs(self, job_id: str) -> List[Dict[str, Any]]:
+        logs = self._read_json(self.job_logs_path, [])
+        return [log for log in logs if log.get("job_id") == job_id]

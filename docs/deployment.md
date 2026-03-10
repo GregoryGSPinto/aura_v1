@@ -22,4 +22,4 @@
 - Local-first continua suportado sem Supabase.
 - Com Supabase habilitado, a Aura sincroniza projetos, settings, sessões e auditoria sem remover o fallback local.
 - O backend não foi empurrado para dentro do Supabase; apenas consome seus serviços gerenciados.
-
+- Jobs autônomos continuam locais por design, para manter a execução real no seu Mac.

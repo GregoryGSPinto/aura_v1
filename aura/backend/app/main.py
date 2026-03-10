@@ -11,6 +11,7 @@ from app.core.logger import setup_logger
 from app.models.common_models import ApiResponse, ErrorDetail
 from app.services.auth_service import AuthService
 from app.services.command_service import CommandService
+from app.services.job_service import JobService
 from app.services.memory_service import MemoryService
 from app.services.ollama_service import OllamaService
 from app.services.persistence_service import PersistenceService
@@ -28,6 +29,8 @@ class Container:
             audit_json_file=self.settings.audit_json_file,
             chat_sessions_file=self.settings.chat_sessions_file,
             chat_messages_file=self.settings.chat_messages_file,
+            jobs_file=self.settings.jobs_file,
+            job_logs_file=self.settings.job_logs_file,
         )
         self.supabase_service = SupabaseService(self.settings)
         self.persistence_service = PersistenceService(self.memory_service, self.supabase_service, self.logger)
@@ -40,6 +43,7 @@ class Container:
             self.persistence_service,
             self.logger,
         )
+        self.job_service = JobService(self.settings, self.memory_service, self.command_service, self.logger)
 
 
 container = Container()
@@ -61,6 +65,7 @@ def create_app() -> FastAPI:
     app.state.auth_service = container.auth_service
     app.state.ollama_service = container.ollama_service
     app.state.command_service = container.command_service
+    app.state.job_service = container.job_service
 
     app.add_middleware(
         CORSMiddleware,
@@ -71,6 +76,14 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router, prefix=container.settings.api_prefix)
+
+    @app.on_event("startup")
+    async def startup_event():
+        container.job_service.start()
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        container.job_service.stop()
 
     @app.exception_handler(AuraError)
     async def aura_exception_handler(_: Request, exc: AuraError):

@@ -31,9 +31,12 @@ class Settings(BaseSettings):
     audit_json_file: str = Field("./data/json/audit_logs.json", alias="AURA_AUDIT_JSON_FILE")
     chat_sessions_file: str = Field("./data/json/chat_sessions.json", alias="AURA_CHAT_SESSIONS_FILE")
     chat_messages_file: str = Field("./data/json/chat_messages.json", alias="AURA_CHAT_MESSAGES_FILE")
+    jobs_file: str = Field("./data/json/jobs.json", alias="AURA_JOBS_FILE")
+    job_logs_file: str = Field("./data/json/job_logs.json", alias="AURA_JOB_LOGS_FILE")
     command_timeout: int = Field(30, alias="AURA_COMMAND_TIMEOUT")
     llm_timeout: int = Field(120, alias="AURA_LLM_TIMEOUT")
     http_timeout: int = Field(20, alias="AURA_HTTP_TIMEOUT")
+    job_poll_interval: int = Field(2, alias="AURA_JOB_POLL_INTERVAL")
     default_projects_root: str = Field(
         str(Path.home() / "Projects"), alias="AURA_DEFAULT_PROJECTS_ROOT"
     )

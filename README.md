@@ -192,3 +192,4 @@ Guia detalhado: `docs/vercel.md`
 - Infra SQL inicial para Supabase
 - Documentação para publicação e operação
 - Estratégia de teste operacional no Mac em `docs/usability-testing.md`
+- Jobs autônomos com fila local, retomada após reinício e logs persistidos

@@ -50,6 +50,32 @@ cd /Users/user_pc/Projetos/aura_v1
 scripts/run-backend-private
 ```
 
+## Manter a Aura trabalhando quando você estiver offline
+
+Para tarefas longas, use `launchd` no macOS para manter o backend ativo mesmo após fechar o terminal.
+
+Arquivo pronto:
+
+- `infra/macos/com.aura.backend.plist`
+
+Instalação:
+
+```bash
+mkdir -p ~/Library/LaunchAgents
+cp /Users/user_pc/Projetos/aura_v1/infra/macos/com.aura.backend.plist ~/Library/LaunchAgents/com.aura.backend.plist
+launchctl unload ~/Library/LaunchAgents/com.aura.backend.plist 2>/dev/null || true
+launchctl load ~/Library/LaunchAgents/com.aura.backend.plist
+launchctl start com.aura.backend
+```
+
+Verificação:
+
+```bash
+launchctl list | grep com.aura.backend
+tail -f /Users/user_pc/Projetos/aura_v1/aura/backend/data/logs/launchd.stdout.log
+tail -f /Users/user_pc/Projetos/aura_v1/aura/backend/data/logs/launchd.stderr.log
+```
+
 ## Publicar o backend dentro da tailnet
 
 Depois de autenticar o Tailscale no Mac:
@@ -113,6 +139,42 @@ vercel --prod --yes
 - executar `list_projects`
 - executar `git_status`
 
+## Tarefas autônomas
+
+A Aura agora suporta jobs persistentes em background. Eles ficam em fila, continuam executando no backend local e são retomados após reinício do serviço.
+
+Endpoints:
+
+- `GET /api/v1/jobs`
+- `POST /api/v1/jobs`
+- `GET /api/v1/jobs/stats`
+- `GET /api/v1/jobs/{job_id}`
+- `POST /api/v1/jobs/{job_id}/cancel`
+
+Exemplo de criação de job:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/jobs \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change-me" \
+  -d '{
+    "description": "Revisar workspace e coletar sinais operacionais",
+    "steps": [
+      { "command": "list_projects", "params": {} },
+      { "command": "git_status", "params": { "name": "aura_v1" } },
+      { "command": "show_logs", "params": {} }
+    ]
+  }'
+```
+
+Consultar andamento:
+
+```bash
+curl -H "Authorization: Bearer change-me" http://127.0.0.1:8000/api/v1/jobs
+curl -H "Authorization: Bearer change-me" http://127.0.0.1:8000/api/v1/jobs/stats
+curl -H "Authorization: Bearer change-me" http://127.0.0.1:8000/api/v1/jobs/<job_id>
+```
+
 ## Sequência recomendada de teste
 
 ### 1. Status
@@ -151,6 +213,7 @@ Quero o status do git do projeto principal.
 - o frontend publicado depende de você estar na tailnet para alcançar a API privada
 - autenticação ainda depende do modo configurado no backend (`local`, `dual` ou `supabase`)
 - o executor de comandos continua restrito à whitelist da v1
+- o modo autônomo atual executa apenas lotes de comandos whitelisted, não shell arbitrário
 
 ## Checklist rápido
 
@@ -160,4 +223,3 @@ Quero o status do git do projeto principal.
 - Tailscale ativo no iPhone
 - Vercel apontando para a URL `ts.net`
 - `AURA_ALLOWED_ORIGINS` inclui a URL final da Vercel
-
