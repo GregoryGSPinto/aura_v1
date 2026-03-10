@@ -1,0 +1,5 @@
+default_model: openai
+coding_model: anthropic
+conversation_model: openai
+local_model: ollama
+research_model: ollama

@@ -54,6 +54,12 @@ class ToolRegistry:
                 description="Usa o modelo local via Ollama para raciocínio, resumo e análise.",
                 capabilities=["chat", "summarize", "analyze_repo", "generate_plan"],
             ),
+            ToolDescriptor(
+                name="research_tool",
+                category="internet",
+                description="Busca na web, processa páginas e retorna um resumo estruturado.",
+                capabilities=["search", "scrape", "summarize", "research"],
+            ),
         ]
         for descriptor in defaults:
             self.register(descriptor)

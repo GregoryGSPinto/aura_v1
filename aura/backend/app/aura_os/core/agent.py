@@ -37,6 +37,7 @@ class AuraOperatingSystem:
         ollama_provider: OllamaProvider,
         openai_provider: OpenAIProvider,
         anthropic_provider: AnthropicProvider,
+        research_tool,
         list_projects_callable,
     ):
         self.settings = settings
@@ -54,6 +55,7 @@ class AuraOperatingSystem:
         self.ollama_provider = ollama_provider
         self.openai_provider = openai_provider
         self.anthropic_provider = anthropic_provider
+        self.research_tool = research_tool
         self.list_projects_callable = list_projects_callable
 
     async def overview(self) -> AuraOSOverview:
@@ -77,9 +79,9 @@ class AuraOperatingSystem:
 
     def execute(self, request: AuraOSExecutionRequest) -> AuraOSExecutionResponse:
         projects: List[Project] = self.list_projects_callable()
-        perception = {"goal": request.goal}
         reasoning = self.reasoner.analyze(request.goal)
         selected_agent = self.agent_router.select(request.goal)
+        model_route = self.model_router.route(reasoning["intent"])
         route = self.intent_router.route(request.goal, projects)
         plan = self.planner.create_plan(request.goal, projects)
         notes: List[str] = list(plan.notes)
@@ -102,6 +104,7 @@ class AuraOperatingSystem:
                 "plan_status": plan.status,
                 "route": route,
                 "agent": selected_agent["name"],
+                "model_route": model_route,
             },
         )
         self.memory_manager.remember_task(request.goal, plan.status)
@@ -116,5 +119,5 @@ class AuraOperatingSystem:
             started=started,
             route=route,
             memory_snapshot=memory_snapshot,
-            notes=[f"agent={selected_agent['name']}"] + notes,
+            notes=[f"agent={selected_agent['name']}", f"model={model_route['provider']}"] + notes,
         )

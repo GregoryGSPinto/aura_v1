@@ -8,9 +8,14 @@ from app.aura_os.core.router import IntentRouter
 from app.aura_os.core.tool_executor import ToolExecutor
 from app.aura_os.integrations.anthropic import AnthropicProvider
 from app.aura_os.integrations.model_router import ModelRouter
+from app.aura_os.integrations.ollama import OllamaProvider
 from app.aura_os.integrations.openai import OpenAIProvider
 from app.aura_os.memory.manager import MemoryManager
+from app.aura_os.tools.research.research_tool import ResearchTool
 from app.aura_os.tools.registry import ToolRegistry
+from app.aura_os.tools.research.scraper import WebScraper
+from app.aura_os.tools.research.search_engine import SearchEngine
+from app.aura_os.tools.research.summarizer import ResearchSummarizer
 from app.aura_os.voice.pipeline import VoicePipeline
 from app.agents.job_manager import AgentJobManager
 from app.agents.models import AgentExecutionResult
@@ -41,10 +46,20 @@ class DummyJobManager:
         return AgentExecutionResult(job_id="job_test", plan_status="planned", started=request.auto_start, notes=[])
 
 
+class DummyOllamaService:
+    async def check_health(self):
+        return "online"
+
+    async def generate_response(self, message, history, temperature=0.2, think=False):
+        return "resumo sintetizado", 12
+
+
 def test_aura_os_executes_goal_with_plan():
     settings = Settings()
     registry = ToolRegistry()
     registry.register_defaults()
+    routing = AuraOSSettings(settings).model_routing()
+    ollama_provider = OllamaProvider(DummyOllamaService(), settings.model_name)
     aura_os = AuraOperatingSystem(
         settings=AuraOSSettings(settings),
         planner=PlannerAdapter(AgentPlanner()),
@@ -56,14 +71,16 @@ def test_aura_os_executes_goal_with_plan():
         voice_pipeline=VoicePipeline(),
         job_manager=DummyJobManager(),
         agent_router=AgentRouter(),
-        model_router=ModelRouter(settings.model_name),
+        model_router=ModelRouter(settings.model_name, routing),
         scheduler=WorkflowScheduler(),
-        ollama_provider=type("Provider", (), {"status": lambda self: None})(),
+        ollama_provider=ollama_provider,
         openai_provider=OpenAIProvider(),
         anthropic_provider=AnthropicProvider(),
+        research_tool=ResearchTool(SearchEngine(), WebScraper(), ResearchSummarizer(ollama_provider)),
         list_projects_callable=lambda: [Project(name="aura_v1", path="/tmp/aura_v1", description=None, commands={})],
     )
 
     result = aura_os.execute(type("Request", (), {"goal": "Abra o projeto aura_v1 e rode lint", "auto_start": False, "actor_id": "tester"})())
     assert result.plan_status == "planned"
     assert result.planned_steps >= 2
+    assert any(note.startswith("model=") for note in result.notes)

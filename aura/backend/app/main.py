@@ -12,6 +12,10 @@ from app.aura_os.integrations.ollama import OllamaProvider
 from app.aura_os.integrations.openai import OpenAIProvider
 from app.aura_os.memory.manager import MemoryManager
 from app.aura_os.tools.registry import ToolRegistry
+from app.aura_os.tools.research.research_tool import ResearchTool
+from app.aura_os.tools.research.scraper import WebScraper
+from app.aura_os.tools.research.search_engine import SearchEngine
+from app.aura_os.tools.research.summarizer import ResearchSummarizer
 from app.aura_os.voice.pipeline import VoicePipeline
 from app.agents.job_manager import AgentJobManager
 from app.agents.planner import AgentPlanner
@@ -86,11 +90,15 @@ class Container:
         self.planner_adapter = PlannerAdapter(self.agent_planner)
         self.tool_executor = ToolExecutor(self.command_service)
         self.agent_router = AgentRouter()
-        self.model_router = ModelRouter(self.settings.model_name)
+        self.model_router = ModelRouter(self.settings.model_name, self.aura_os_settings.model_routing())
         self.scheduler = WorkflowScheduler()
         self.ollama_provider = OllamaProvider(self.ollama_service, self.settings.model_name)
-        self.openai_provider = OpenAIProvider()
-        self.anthropic_provider = AnthropicProvider()
+        self.openai_provider = OpenAIProvider(model_name="gpt-4o-mini")
+        self.anthropic_provider = AnthropicProvider(model_name="claude-3-5-sonnet")
+        self.research_search_engine = SearchEngine()
+        self.research_scraper = WebScraper()
+        self.research_summarizer = ResearchSummarizer(self.ollama_provider)
+        self.research_tool = ResearchTool(self.research_search_engine, self.research_scraper, self.research_summarizer)
         self.aura_os = AuraOperatingSystem(
             settings=self.aura_os_settings,
             planner=self.planner_adapter,
@@ -107,8 +115,10 @@ class Container:
             ollama_provider=self.ollama_provider,
             openai_provider=self.openai_provider,
             anthropic_provider=self.anthropic_provider,
+            research_tool=self.research_tool,
             list_projects_callable=self.project_service.list_projects,
         )
+        self.voice_pipeline.attach_runtime(self.aura_os)
 
 
 container = Container()
@@ -142,6 +152,8 @@ def create_app() -> FastAPI:
     app.state.agent_planner = container.agent_planner
     app.state.agent_job_manager = container.agent_job_manager
     app.state.aura_os = container.aura_os
+    app.state.voice_pipeline = container.voice_pipeline
+    app.state.research_tool = container.research_tool
 
     app.add_middleware(
         CORSMiddleware,

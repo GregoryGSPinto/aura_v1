@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends, Request
 
-from app.aura_os.config.models import AuraOSExecutionRequest, AuraOSExecutionResponse, AuraOSOverview
+from app.aura_os.config.models import (
+    AuraOSExecutionRequest,
+    AuraOSExecutionResponse,
+    AuraOSOverview,
+    ResearchRequest,
+    VoiceExecutionRequest,
+)
 from app.core.security import require_bearer_token
 from app.models.common_models import ApiResponse
 
@@ -23,3 +29,28 @@ async def execute_os_goal(request_body: AuraOSExecutionRequest, request: Request
 @router.get("/agents", response_model=ApiResponse[list[dict]], dependencies=[Depends(require_bearer_token)])
 async def list_os_agents(request: Request):
     return ApiResponse(data=request.app.state.aura_os.agent_router.list_agents())
+
+
+@router.get("/models", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def get_model_router(request: Request):
+    return ApiResponse(data=request.app.state.aura_os.model_router.overview())
+
+
+@router.get("/voice/status", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def get_voice_status(request: Request):
+    return ApiResponse(data=request.app.state.voice_pipeline.status().model_dump())
+
+
+@router.post("/voice/process", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def process_voice(request_body: VoiceExecutionRequest, request: Request):
+    result = request.app.state.voice_pipeline.process_once(
+        transcript_hint=request_body.transcript_hint or "",
+        speak=request_body.speak_response,
+    )
+    return ApiResponse(data=result)
+
+
+@router.post("/research", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def research_web(request_body: ResearchRequest, request: Request):
+    result = await request.app.state.research_tool.research(request_body.query, limit=request_body.limit)
+    return ApiResponse(data=result)

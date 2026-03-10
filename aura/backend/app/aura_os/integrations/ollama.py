@@ -16,3 +16,12 @@ class OllamaProvider:
             model=self.model_name,
             details={"health": health},
         )
+
+    async def generate(self, prompt: str, task_type: str = "local") -> str:
+        response, _ = await self.ollama_service.generate_response(
+            message=prompt,
+            history=[],
+            temperature=0.2 if task_type != "conversation" else 0.5,
+            think=task_type in {"coding", "reasoning", "research"},
+        )
+        return response

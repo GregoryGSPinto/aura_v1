@@ -19,6 +19,16 @@ class ProviderStatus(BaseModel):
     details: Dict[str, Any] = Field(default_factory=dict)
 
 
+class VoiceExecutionRequest(BaseModel):
+    transcript_hint: Optional[str] = None
+    speak_response: bool = False
+
+
+class ResearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=2000)
+    limit: int = 3
+
+
 class VoiceStatus(BaseModel):
     stt_ready: bool
     tts_ready: bool

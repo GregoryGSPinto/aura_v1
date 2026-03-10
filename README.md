@@ -2,6 +2,14 @@
 
 Aura evoluiu de uma assistente operacional local-first para a base de um **Personal AI Operating System**. O projeto preserva o runtime atual em FastAPI + Next.js + Ollama, mas agora possui uma nova espinha dorsal modular para agent loop, memória, tools registry, integrações multi-modelo e pipeline de voz.
 
+## Runtime v1.1
+
+Aura agora possui três runtimes novos:
+
+- `Voice Runtime v1`
+- `Internet Research Runtime v1`
+- `Multi-LLM Router v1`
+
 ## Arquitetura
 
 ```text
@@ -142,6 +150,11 @@ pnpm dev --host 0.0.0.0 --port 3000
 - `POST /api/v1/projects/open`
 - `GET /api/v1/os/overview`
 - `POST /api/v1/os/agent/execute`
+- `GET /api/v1/os/agents`
+- `GET /api/v1/os/models`
+- `GET /api/v1/os/voice/status`
+- `POST /api/v1/os/voice/process`
+- `POST /api/v1/os/research`
 
 ## Scripts úteis
 
@@ -208,7 +221,9 @@ Guia detalhado: `docs/vercel.md`
   - agent loop
   - memory manager
   - tools registry
-  - voice pipeline preparada
+  - voice runtime v1
+  - internet research runtime v1
+  - multi-LLM router v1
   - providers para Ollama/OpenAI/Anthropic
 
 ## Documentos de arquitetura
@@ -218,3 +233,6 @@ Guia detalhado: `docs/vercel.md`
 - `TOOLS.md`
 - `CHANGELOG.md`
 - `MEMORY.md`
+- `VOICE_ARCHITECTURE.md`
+- `RESEARCH_ENGINE.md`
+- `MODEL_ROUTER.md`

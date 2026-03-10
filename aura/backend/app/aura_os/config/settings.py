@@ -1,4 +1,7 @@
+from pathlib import Path
 from typing import Dict
+
+import yaml
 
 from app.core.config import Settings
 
@@ -6,6 +9,7 @@ from app.core.config import Settings
 class AuraOSSettings:
     def __init__(self, settings: Settings):
         self.settings = settings
+        self.models_config_path = Path(__file__).resolve().parents[4] / "config" / "models.yaml"
 
     def providers(self) -> Dict[str, Dict[str, object]]:
         return {
@@ -41,3 +45,20 @@ class AuraOSSettings:
                 "killall",
             ],
         }
+
+    def model_routing(self) -> Dict[str, object]:
+        defaults = {
+            "default_model": "openai",
+            "coding_model": "anthropic",
+            "conversation_model": "openai",
+            "local_model": "ollama",
+            "research_model": "openai",
+        }
+        if not self.models_config_path.exists():
+            return defaults
+        try:
+            payload = yaml.safe_load(self.models_config_path.read_text(encoding="utf-8")) or {}
+        except Exception:
+            return defaults
+        defaults.update(payload)
+        return defaults

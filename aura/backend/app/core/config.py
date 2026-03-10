@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     app_name: str = Field("Aura", alias="AURA_APP_NAME")
     env: str = Field("development", alias="AURA_ENV")
-    version: str = Field("1.0.0", alias="AURA_VERSION")
+    version: str = Field("1.1.0", alias="AURA_VERSION")
     api_prefix: str = Field("/api/v1", alias="AURA_API_PREFIX")
     auth_mode: str = Field("local", alias="AURA_AUTH_MODE")
     model_name: str = Field("qwen3.5:9b", alias="AURA_MODEL")
