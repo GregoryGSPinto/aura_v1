@@ -191,3 +191,4 @@ Guia detalhado: `docs/vercel.md`
 - Frontend Vercel-ready com checagem de env
 - Infra SQL inicial para Supabase
 - Documentação para publicação e operação
+- Estratégia de teste operacional no Mac em `docs/usability-testing.md`

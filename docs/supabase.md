@@ -19,6 +19,25 @@ Usar Supabase como camada de dados e auth sem descaracterizar a arquitetura loca
 3. Execute `infra/supabase/schema.sql`.
 4. Execute `infra/supabase/seed.sql` se quiser seed inicial.
 
+## Passo a passo objetivo
+
+1. Crie o projeto Supabase.
+2. Copie `Project URL`.
+3. Copie a `anon key`.
+4. Copie a `service_role key`.
+5. No backend, configure:
+
+```env
+AURA_SUPABASE_ENABLED=true
+SUPABASE_URL=<project-url>
+SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+SUPABASE_DB_PASSWORD=<db-password-se-necessario>
+AURA_AUTH_MODE=dual
+```
+
+6. Reinicie o backend da Aura no Mac.
+
 ## Como a Aura usa o Supabase
 
 - `aura_projects`: catálogo principal de projetos
@@ -26,6 +45,26 @@ Usar Supabase como camada de dados e auth sem descaracterizar a arquitetura loca
 - `aura_audit_logs`: trilha de auditoria dos comandos
 - `aura_chat_sessions`: sessões de chat
 - `aura_chat_messages`: mensagens persistidas
+
+## Variáveis de ambiente exigidas
+
+### Backend
+
+```env
+AURA_SUPABASE_ENABLED=true
+SUPABASE_URL=<project-url>
+SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+SUPABASE_DB_PASSWORD=<db-password-se-necessario>
+AURA_AUTH_MODE=dual
+```
+
+### Frontend
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=<project-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+```
 
 ## Auth
 
@@ -39,4 +78,3 @@ Usar Supabase como camada de dados e auth sem descaracterizar a arquitetura loca
 - O schema já habilita RLS.
 - O backend usa `service role`, então não depende de policies para operar.
 - Foram deixadas policies iniciais para leitura de sessões/mensagens pelo dono autenticado.
-
