@@ -1,4 +1,5 @@
 import shlex
+import sys
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -81,6 +82,13 @@ class TerminalTool:
         return self.run(parts, cwd=cwd)
 
     def open_terminal(self) -> TerminalResult:
+        if sys.platform != "darwin":
+            raise AuraError(
+                "platform_not_supported",
+                "A ação open_terminal está disponível apenas no macOS.",
+                details={"platform": sys.platform},
+                status_code=400,
+            )
         return self.run_named_action("open_terminal")
 
     def pwd(self, cwd: Optional[str] = None) -> TerminalResult:

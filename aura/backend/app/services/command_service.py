@@ -29,6 +29,7 @@ class CommandService:
         self.system_tool = system_tool
         self.logger = logger
         self.allowed_commands = {
+            "open_terminal": self._open_terminal,
             "open_vscode": self._open_vscode,
             "open_project": self._open_project,
             "list_projects": self._list_projects,
@@ -44,6 +45,9 @@ class CommandService:
             "memory_status": self._memory_status,
             "disk_status": self._disk_status,
         }
+
+    def is_allowed(self, command_name: str) -> bool:
+        return command_name in self.allowed_commands
 
     def execute(
         self,
@@ -81,6 +85,11 @@ class CommandService:
             execution_time_ms=elapsed_ms,
             log_id=log_id,
         )
+
+    def _open_terminal(self, params: dict):
+        result = self.terminal_tool.open_terminal()
+        metadata = {"platform": "macOS", **result.metadata}
+        return "Terminal aberto com sucesso.", result.stdout, result.stderr, metadata
 
     def _open_vscode(self, params: dict):
         result = self.vscode_tool.open_app()

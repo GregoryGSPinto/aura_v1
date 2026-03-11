@@ -10,7 +10,7 @@ class Reasoner:
             intent = "voice"
         elif any(term in lowered for term in ["git", "build", "lint", "test", "deploy"]):
             intent = "developer"
-        elif any(term in lowered for term in ["cpu", "memória", "memoria", "disco", "sistema"]):
+        elif any(term in lowered for term in ["cpu", "memória", "memoria", "disco", "sistema", "terminal", "vscode"]):
             intent = "system"
         else:
             intent = "assistant"

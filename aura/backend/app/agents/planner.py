@@ -50,6 +50,15 @@ class AgentPlanner:
                 )
             )
 
+        if "terminal" in normalized and any(term in normalized for term in ["abra", "abrir", "open", "launch"]):
+            steps.append(
+                AgentPlanStep(
+                    title="Abrir Terminal",
+                    description="Abrir o app Terminal localmente no macOS.",
+                    command="open_terminal",
+                )
+            )
+
         if "git" in normalized or "status" in normalized:
             params = {"name": project_name} if project_name else {}
             steps.append(
@@ -175,7 +184,7 @@ class AgentPlanner:
                     title="Planejamento insuficiente",
                     description="Nenhum comando seguro mapeado para a meta informada.",
                     status="blocked",
-                    reason="Reformule a meta em termos dos comandos aprovados: projetos, VS Code, git, logs, dev, deploy.",
+                    reason="Reformule a meta em termos dos comandos aprovados: Terminal, projetos, VS Code, git, logs, dev e deploy.",
                 )
             )
             notes.append("O planner não encontrou passos seguros compatíveis com a meta.")
