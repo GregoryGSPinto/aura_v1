@@ -119,6 +119,25 @@ def test_chat_executes_allowed_open_terminal_action(monkeypatch):
     assert command_service.calls[0]["command"] == "open_terminal"
 
 
+def test_chat_executes_exact_abra_o_terminal_prompt(monkeypatch):
+    client, command_service = build_client(monkeypatch)
+
+    response = client.post(
+        "/api/v1/chat",
+        headers=AUTH_HEADERS,
+        json={
+            "message": "abra o terminal",
+            "context": {"session_id": "chat-terminal-short", "history": []},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["intent"] == "acao"
+    assert payload["action_taken"]["command"] == "open_terminal"
+    assert command_service.calls[0]["command"] == "open_terminal"
+
+
 def test_chat_returns_policy_block_for_disallowed_operational_request(monkeypatch):
     client, command_service = build_client(monkeypatch)
 

@@ -128,5 +128,9 @@ class TerminalTool:
             "pnpm test": "pnpm_test",
             "uvicorn": "uvicorn_run",
             "open terminal": "open_terminal",
+            "abrir terminal": "open_terminal",
+            "abra o terminal": "open_terminal",
+            "abrir o terminal": "open_terminal",
+            "launch terminal": "open_terminal",
         }
         return aliases.get(normalized)
