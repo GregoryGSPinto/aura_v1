@@ -54,6 +54,8 @@ async def run_terminal_tool(request_body: TerminalToolRequest, request: Request)
         project_path = project.path
 
     cwd = request_body.cwd or project_path
+    if cwd:
+        cwd = request.app.state.filesystem_tool.ensure_allowed_path(cwd)
     normalized = request.app.state.terminal_tool.normalize_allowed_command(request_body.action)
     if not normalized:
         raise AuraError("tool_action_not_supported", f"Ação de terminal não suportada: {request_body.action}", status_code=400)

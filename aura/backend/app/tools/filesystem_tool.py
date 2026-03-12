@@ -21,6 +21,9 @@ class FilesystemTool:
             details={"path": str(target), "allowed_roots": [str(root) for root in self.allowed_roots]},
         )
 
+    def ensure_allowed_path(self, raw_path: Optional[str] = None) -> str:
+        return str(self._resolve_allowed_path(raw_path))
+
     def list_directory(self, path: Optional[str] = None) -> List[Dict[str, object]]:
         target = self._resolve_allowed_path(path)
         if not target.exists():

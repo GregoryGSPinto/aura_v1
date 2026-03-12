@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     llm_timeout: int = Field(120, alias="AURA_LLM_TIMEOUT")
     http_timeout: int = Field(20, alias="AURA_HTTP_TIMEOUT")
     job_poll_interval: int = Field(2, alias="AURA_JOB_POLL_INTERVAL")
+    rate_limit_window_seconds: int = Field(60, alias="AURA_RATE_LIMIT_WINDOW_SECONDS")
+    rate_limit_auth_requests: int = Field(30, alias="AURA_RATE_LIMIT_AUTH_REQUESTS")
+    rate_limit_chat_requests: int = Field(20, alias="AURA_RATE_LIMIT_CHAT_REQUESTS")
+    rate_limit_command_requests: int = Field(20, alias="AURA_RATE_LIMIT_COMMAND_REQUESTS")
     default_projects_root: str = Field(
         str(Path.home() / "Projects"), alias="AURA_DEFAULT_PROJECTS_ROOT"
     )

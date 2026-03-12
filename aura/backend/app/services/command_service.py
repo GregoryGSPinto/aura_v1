@@ -2,6 +2,7 @@ import time
 from typing import Any, Dict, Optional
 
 from app.core.exceptions import AuraError, CommandBlockedError
+from app.core.security import sanitize_mapping, sanitize_string
 from app.models.command_models import CommandExecutionResult
 from app.services.persistence_service import PersistenceService
 from app.tools.project_tool import ProjectTool
@@ -79,9 +80,9 @@ class CommandService:
             command=command_name,
             status=status,
             message=message,
-            stdout=stdout,
-            stderr=stderr,
-            metadata=metadata,
+            stdout=sanitize_string(stdout),
+            stderr=sanitize_string(stderr),
+            metadata=sanitize_mapping(metadata),
             execution_time_ms=elapsed_ms,
             log_id=log_id,
         )
@@ -184,11 +185,12 @@ class CommandService:
             "timestamp": iso_now(),
             "command": command,
             "status": status,
-            "params": params,
-            "stdout": stdout[:1000],
-            "stderr": stderr[:1000],
+            "params": sanitize_mapping(params),
+            "stdout": sanitize_string(stdout, max_length=1000),
+            "stderr": sanitize_string(stderr, max_length=1000),
             "actor_id": actor.get("user_id") if actor else None,
-            "metadata": metadata or {},
+            "request_id": actor.get("request_id") if actor else None,
+            "metadata": sanitize_mapping(metadata),
         }
         self.logger.info("%s", line)
         self.persistence_service.record_audit_log(AuditLogEntry(**line))

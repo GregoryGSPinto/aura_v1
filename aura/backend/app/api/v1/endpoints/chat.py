@@ -3,7 +3,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 
-from app.core.security import require_bearer_token
+from app.core.security import require_bearer_token, sanitize_mapping, sanitize_string
+from app.core.security_policies import limit_chat_requests
 from app.models.chat_models import ChatRequest, ChatResponseData, SuggestedAction
 from app.models.command_models import CommandExecutionResult
 from app.models.common_models import ApiResponse
@@ -67,18 +68,22 @@ def summarize_command_result(command_result: CommandExecutionResult) -> str:
             return "Projetos disponíveis: " + ", ".join(names[:10])
 
     if command_result.stdout:
-        return command_result.stdout[:1200]
+        return sanitize_string(command_result.stdout, max_length=1200) or ""
 
     metadata = command_result.metadata or {}
     if metadata:
-        visible_items = [f"{key}: {value}" for key, value in metadata.items() if key not in {"projects"}]
+        visible_items = [f"{key}: {value}" for key, value in sanitize_mapping(metadata).items() if key not in {"projects"}]
         if visible_items:
             return "\n".join(visible_items[:8])
 
     return ""
 
 
-@router.post("/chat", response_model=ApiResponse[ChatResponseData], dependencies=[Depends(require_bearer_token)])
+@router.post(
+    "/chat",
+    response_model=ApiResponse[ChatResponseData],
+    dependencies=[Depends(require_bearer_token), Depends(limit_chat_requests)],
+)
 async def chat(request_body: ChatRequest, request: Request):
     started = time.perf_counter()
     auth_context = getattr(request.state, "auth_context", {})
@@ -100,17 +105,21 @@ async def chat(request_body: ChatRequest, request: Request):
         command_result: CommandExecutionResult = request.app.state.command_service.execute(
             tool_route.command,
             tool_route.params,
-            actor={"user_id": auth_context.get("user_id") or "chat-router", "provider": "chat"},
+            actor={
+                "user_id": auth_context.get("user_id") or "chat-router",
+                "provider": "chat",
+                "request_id": getattr(request.state, "request_id", None),
+            },
         )
         action_taken = {
             "command": command_result.command,
-            "params": tool_route.params,
+            "params": sanitize_mapping(tool_route.params),
             "status": command_result.status,
             "result": {
                 "message": command_result.message,
-                "stdout": command_result.stdout,
-                "stderr": command_result.stderr,
-                "metadata": command_result.metadata,
+                "stdout": sanitize_string(command_result.stdout),
+                "stderr": sanitize_string(command_result.stderr),
+                "metadata": sanitize_mapping(command_result.metadata),
             },
         }
         response = build_operational_response(tool_analysis, command_result)
@@ -118,7 +127,7 @@ async def chat(request_body: ChatRequest, request: Request):
     elif tool_analysis.status in {"blocked", "unimplemented"}:
         action_taken = {
             "command": tool_route.command if tool_route else None,
-            "params": tool_route.params if tool_route else {},
+            "params": sanitize_mapping(tool_route.params if tool_route else {}),
             "status": tool_analysis.status,
             "result": {
                 "message": tool_analysis.reason,

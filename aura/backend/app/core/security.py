@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import Header, Request
 
 from app.core.exceptions import AuthError
+from app.core.http_security import sanitize_mapping, sanitize_string
 
 
 BLOCKED_PATTERNS = [
@@ -53,3 +54,13 @@ async def require_bearer_token(
     if not auth_context.get("authenticated"):
         raise AuthError()
     request.state.auth_context = auth_context
+
+
+__all__ = [
+    "BLOCKED_PATTERNS",
+    "ensure_not_blocked",
+    "extract_bearer_token",
+    "require_bearer_token",
+    "sanitize_mapping",
+    "sanitize_string",
+]

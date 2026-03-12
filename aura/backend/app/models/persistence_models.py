@@ -15,6 +15,7 @@ class AuditLogEntry(BaseModel):
     stdout: str = ""
     stderr: str = ""
     actor_id: Optional[str] = None
+    request_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -40,4 +41,3 @@ class PersistenceState(BaseModel):
     supabase_configured: bool
     auth_mode: str
     warnings: List[str] = Field(default_factory=list)
-

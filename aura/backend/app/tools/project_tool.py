@@ -10,6 +10,8 @@ from app.tools.vscode_tool import VSCodeTool
 
 
 class ProjectTool:
+    SAFE_SCRIPT_NAMES = {"dev", "lint", "build", "test", "typecheck"}
+
     def __init__(self, project_service: ProjectService, terminal_tool: TerminalTool, vscode_tool: VSCodeTool):
         self.project_service = project_service
         self.terminal_tool = terminal_tool
@@ -33,6 +35,13 @@ class ProjectTool:
         return self._serialize_project(project)
 
     def run_named_script(self, name: str, script_name: str) -> Dict[str, object]:
+        if script_name not in self.SAFE_SCRIPT_NAMES:
+            raise AuraError(
+                "project_script_blocked",
+                "A Aura permite apenas scripts explicitamente aprovados para execucao operacional.",
+                details={"allowed_scripts": sorted(self.SAFE_SCRIPT_NAMES)},
+                status_code=403,
+            )
         project = self.get_project(name)
         command = self._resolve_script_command(project, script_name)
         result = self.terminal_tool.run_script_command(command, cwd=str(Path(project.path).expanduser()))
