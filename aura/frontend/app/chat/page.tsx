@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Bot, Paperclip, Send, Sparkles, User } from 'lucide-react';
+import { AlertTriangle, AudioLines, Bot, Paperclip, Plus, SendHorizontal, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { clientEnv } from '@/lib/env';
 import { sendChat } from '@/lib/api';
 import { notifyError, notifyInfo } from '@/lib/notifications';
@@ -31,8 +31,8 @@ export default function ChatPage() {
     {
       role: 'assistant',
       content:
-        'Sou a Aura. Esta conversa usa o backend real configurado para o seu computador. Posso responder, consultar estado operacional e sugerir acoes controladas.',
-      meta: 'Sessao pronta',
+        'Sou a Aura. Estou pronta para conversar, estruturar contexto e acionar operacoes permitidas com seguranca.',
+      meta: 'Sessao operacional pronta',
     },
   ]);
   const [input, setInput] = useState('');
@@ -43,6 +43,13 @@ export default function ChatPage() {
 
   useEffect(() => {
     sessionIdRef.current = createSessionId();
+  }, []);
+
+  useEffect(() => {
+    const prompt = new URLSearchParams(window.location.search).get('prompt');
+    if (!prompt) return;
+    void handleSubmit(prompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -111,22 +118,32 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-8.5rem)] flex-col gap-4 lg:min-h-[calc(100vh-8rem)] lg:gap-6">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4">
-        <div className="flex items-start gap-3 sm:items-center">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)] sm:h-12 sm:w-12">
-            <Sparkles className="h-6 w-6 text-black" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gradient-gold sm:text-2xl">Chat com a Aura</h1>
-            <p className="text-sm text-[var(--text-muted)]">
-              Conexao direta com {clientEnv.apiUrl || 'o backend da Aura'}.
+    <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-4">
+      <motion.section initial={{ opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }} className="aura-panel aura-panel-strong px-5 py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2">
+              <Badge variant="cyan">Conversation Runtime</Badge>
+              <Badge variant="default">{clientEnv.apiUrl ? 'Backend conectado' : 'Ambiente incompleto'}</Badge>
+            </div>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-[var(--text-primary)]">
+              Converse com uma presenca operacional, nao com um chat genérico.
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">
+              A Aura usa o backend real configurado para o seu computador e pode responder, lembrar contexto e sugerir acoes controladas.
             </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => (
+              <button key={action.label} onClick={() => void handleSubmit(action.prompt)} className="aura-chip">
+                {action.label}
+              </button>
+            ))}
           </div>
         </div>
 
         {(lastError || !clientEnv.apiUrl) && (
-          <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
+          <div className="mt-4 flex items-start gap-3 rounded-[20px] border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
             <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <div className="min-w-0">
               <p className="font-medium text-yellow-200">Atencao operacional</p>
@@ -136,99 +153,111 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-      </motion.div>
+      </motion.section>
 
-      <Card className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+      <section className="aura-panel flex flex-1 flex-col overflow-hidden px-0 py-0">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
           {messages.map((message, index) => (
             <motion.div
               key={`${message.role}-${index}-${message.timestamp ?? index}`}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 sm:gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}
             >
-              <div
-                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${
-                  message.role === 'assistant'
-                    ? 'bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]'
-                    : 'bg-white/10'
-                }`}
-              >
-                {message.role === 'assistant' ? (
-                  <Bot className="h-5 w-5 text-black" />
-                ) : (
-                  <User className="h-5 w-5 text-[var(--text-muted)]" />
+              <div className={`flex ${message.role === 'user' ? 'max-w-[78%] justify-end' : 'max-w-[86%]'} gap-3`}>
+                {message.role === 'assistant' && (
+                  <div className="aura-orb-sm mt-1">
+                    <Sparkles className="h-4 w-4 text-[var(--accent-cyan)]" />
+                  </div>
                 )}
-              </div>
+                {message.role === 'user' && (
+                  <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-[16px] border border-white/8 bg-white/[0.05]">
+                    <User className="h-4 w-4 text-[var(--text-secondary)]" />
+                  </div>
+                )}
 
-              <div className={`max-w-[88%] flex-1 sm:max-w-[80%] ${message.role === 'user' ? 'text-right' : ''}`}>
                 <div
-                  className={`inline-block rounded-2xl p-4 text-left ${
-                    message.role === 'assistant'
-                      ? 'border border-[var(--border-subtle)] bg-[var(--bg-tertiary)]'
-                      : 'bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-black'
-                  }`}
+                  className={`message-shell ${message.role === 'assistant' ? 'message-assistant' : 'message-user'}`}
                 >
-                  <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-subtle)]">
+                      {message.role === 'assistant' ? 'Aura' : 'Voce'}
+                    </p>
+                    {message.meta && <span className="text-[11px] text-[var(--text-subtle)]">{message.meta}</span>}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-8 text-[var(--text-primary)]">
+                    {message.content}
+                  </p>
                 </div>
-                {message.meta && <p className="mt-2 text-xs text-[var(--text-muted)]">{message.meta}</p>}
               </div>
             </motion.div>
           ))}
 
           {isLoading && (
-            <div className="flex gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]">
-                <Bot className="h-5 w-5 text-black" />
+            <div className="flex gap-3">
+              <div className="aura-orb-sm mt-1">
+                <Bot className="h-4 w-4 text-[var(--accent-cyan)]" />
               </div>
-              <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '0ms' }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '120ms' }} />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--gold)]" style={{ animationDelay: '240ms' }} />
+              <div className="message-shell message-assistant flex items-center gap-2">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--accent-cyan)]" style={{ animationDelay: '0ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--accent-cyan)]" style={{ animationDelay: '120ms' }} />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--accent-cyan)]" style={{ animationDelay: '240ms' }} />
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto border-t border-[var(--border-subtle)] px-4 py-3 sm:px-6">
-          {quickActions.map((action) => (
-            <button
-              key={action.label}
-              onClick={() => void handleSubmit(action.prompt)}
-              className="whitespace-nowrap rounded-full bg-white/5 px-3 py-1.5 text-xs text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-[var(--text-primary)]"
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
+        <div className="border-t border-white/8 px-4 py-4 sm:px-6">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => void handleSubmit(action.prompt)}
+                className="aura-chip"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="border-t border-[var(--border-subtle)] p-3 sm:p-4">
-          <div className="flex items-end gap-2 sm:gap-3">
+          <div className="composer-shell">
             <button
               type="button"
               onClick={() => notifyInfo('Anexos ainda nao estao ativos', 'O fluxo de anexos sera integrado quando o backend suportar upload.')}
-              className="rounded-xl bg-white/5 p-3 transition-colors hover:bg-white/10"
+              className="composer-icon"
+              aria-label="Anexar"
             >
-              <Paperclip className="h-5 w-5 text-[var(--text-muted)]" />
+              <Paperclip className="h-4 w-4" />
             </button>
-            <div className="relative flex-1">
+            <button
+              type="button"
+              className="composer-icon"
+              aria-label="Acoes"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <div className="flex-1">
               <textarea
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Descreva a meta ou operacao que a Aura deve resolver..."
+                placeholder="Descreva a meta, contexto ou operacao que a Aura deve resolver..."
                 rows={1}
-                className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--cyan)]"
-                style={{ minHeight: '52px', maxHeight: '140px' }}
+                className="composer-input"
+                style={{ minHeight: '58px', maxHeight: '160px' }}
               />
             </div>
-            <Button onClick={() => void handleSubmit()} disabled={isLoading || !input.trim()} className="shrink-0">
-              <Send className="h-5 w-5" />
+            <button type="button" className="composer-icon composer-voice" aria-label="Voz">
+              <AudioLines className="h-4 w-4" />
+            </button>
+            <Button onClick={() => void handleSubmit()} disabled={isLoading || !input.trim()} className="shrink-0 rounded-[18px] px-5">
+              <SendHorizontal className="h-4 w-4" />
+              Enviar
             </Button>
           </div>
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

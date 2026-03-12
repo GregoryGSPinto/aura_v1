@@ -3,10 +3,8 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
 import { ParticleBackground } from '@/components/layout/particle-background';
-import { Sidebar } from '@/components/layout/sidebar';
-import { MobileNav } from '@/components/layout/mobile-nav';
-import { CommandPalette } from '@/components/layout/command-palette';
 import { AppProvider } from '@/components/providers/app-provider';
+import { AppShell } from '@/components/layout/app-shell';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -58,15 +56,7 @@ export default function RootLayout({
       >
         <AppProvider>
           <ParticleBackground />
-          <Sidebar />
-          <MobileNav />
-          <CommandPalette />
-          
-          <main className="min-h-screen transition-all duration-300 lg:pl-72">
-            <div className="mx-auto max-w-[1600px] px-4 pb-28 pt-4 sm:px-5 md:px-6 lg:p-8 lg:pb-8">
-              {children}
-            </div>
-          </main>
+          <AppShell>{children}</AppShell>
 
           <Toaster
             position="bottom-right"

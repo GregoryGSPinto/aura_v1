@@ -63,15 +63,15 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-4 overflow-x-hidden">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 sm:h-12 sm:w-12">
+          <div className="aura-orb-sm">
             <Settings className="h-6 w-6 text-white" />
           </div>
           <div className="min-w-0">
             <h1 className="text-xl font-bold sm:text-2xl">Configuracoes</h1>
-            <p className="text-sm text-[var(--text-muted)]">Preferencias reais, atalhos ativos e integracoes com o backend.</p>
+            <p className="text-sm text-[var(--text-muted)]">Preferencias pessoais, apresentacao visual e ambiente operacional.</p>
           </div>
         </div>
         <Button className="self-start sm:self-auto" onClick={saveFeedback}>
@@ -80,9 +80,9 @@ export default function SettingsPage() {
         </Button>
       </motion.div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-1">
-          <Card className="lg:sticky lg:top-4">
+          <Card className="lg:sticky lg:top-24 aura-panel px-2 py-2">
             <CardContent className="p-2">
               <nav className="flex gap-1 overflow-x-auto lg:block lg:space-y-1">
                 {tabs.map((tab) => (
@@ -143,7 +143,7 @@ export default function SettingsPage() {
                   <CardDescription>Modo claro, escuro ou automatico aplicado em toda a interface.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {[
                       { id: 'light', label: 'Claro', icon: Sun },
                       { id: 'dark', label: 'Escuro', icon: Moon },

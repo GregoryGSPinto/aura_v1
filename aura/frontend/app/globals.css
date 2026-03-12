@@ -3,46 +3,45 @@
 @tailwind utilities;
 
 :root {
-  /* Cores Primárias - Identidade Aura */
-  --gold: #D4AF37;
-  --gold-light: #F4E4BC;
-  --gold-dark: #8B7355;
-  --cyan: #00D4FF;
-  --cyan-deep: #0088AA;
-  --cyan-glow: rgba(0, 212, 255, 0.3);
-  --gold-glow: rgba(212, 175, 55, 0.3);
-  
-  /* Backgrounds */
-  --bg-primary: #0A0A0F;
-  --bg-secondary: #0D1117;
-  --bg-tertiary: #161B22;
-  --bg-elevated: #1C2128;
-  
-  /* Textos */
-  --text-primary: #FFFFFF;
-  --text-secondary: #E6EDF3;
-  --text-muted: #8B949E;
-  --text-subtle: #6E7681;
-  
-  /* Bordas */
-  --border-subtle: rgba(212, 175, 55, 0.08);
-  --border-default: rgba(212, 175, 55, 0.15);
-  --border-focus: rgba(0, 212, 255, 0.5);
-  --border-cyan: rgba(0, 212, 255, 0.2);
-  
-  /* Estados */
-  --success: #238636;
-  --warning: #D29922;
-  --error: #DA3633;
-  --info: #58A6FF;
-  
-  /* Gradients */
-  --gradient-gold: linear-gradient(135deg, #D4AF37 0%, #F4E4BC 50%, #D4AF37 100%);
-  --gradient-gold-soft: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 228, 188, 0.1) 100%);
-  --gradient-cyan: linear-gradient(180deg, #00D4FF 0%, #0088AA 100%);
-  --gradient-aura: linear-gradient(135deg, #D4AF37 0%, #00D4FF 100%);
-  --gradient-space: radial-gradient(ellipse at top, #1A1D2E 0%, #0A0A0F 50%, #000000 100%);
-  --gradient-radial: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+  --gold: #d3b46f;
+  --gold-light: #efe0bc;
+  --gold-dark: #7a6b4a;
+  --cyan: #6bd0ff;
+  --cyan-deep: #2b83a8;
+  --accent-cyan: #88dbff;
+  --accent-violet: #8f8cf8;
+  --bg-primary: #06080d;
+  --bg-secondary: #0e131b;
+  --bg-tertiary: #121a24;
+  --bg-elevated: #182230;
+  --text-primary: #f4f7fb;
+  --text-secondary: #d2dbe8;
+  --text-muted: #8d9ab0;
+  --text-subtle: #667286;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(140, 166, 194, 0.16);
+  --border-strong: rgba(107, 208, 255, 0.28);
+  --border-focus: rgba(107, 208, 255, 0.45);
+  --border-cyan: rgba(107, 208, 255, 0.2);
+  --success: #4ecf8b;
+  --warning: #d9b669;
+  --error: #f06a74;
+  --info: #7ecfff;
+  --gradient-gold: linear-gradient(135deg, #b79857 0%, #f0e1bd 46%, #c9a666 100%);
+  --gradient-cyan: linear-gradient(180deg, #91ddff 0%, #418db2 100%);
+  --gradient-aura: linear-gradient(135deg, rgba(107, 208, 255, 0.25) 0%, rgba(143, 140, 248, 0.18) 100%);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.34);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.18);
+  --radius-panel: 28px;
+  --radius-card: 22px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --duration-fast: 160ms;
+  --duration-base: 220ms;
 }
 
 html.light {
@@ -77,7 +76,7 @@ html.light {
     @apply antialiased;
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
     transition: background-color 180ms ease, color 180ms ease;
@@ -88,7 +87,7 @@ html.light {
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: var(--font-space-grotesk), system-ui, sans-serif;
     font-weight: 600;
   }
   
@@ -128,6 +127,161 @@ html.light {
   .glass-card:hover {
     border-color: var(--border-default);
     box-shadow: 0 0 30px rgba(212, 175, 55, 0.05);
+  }
+
+  .aura-panel {
+    border: 1px solid var(--border-default);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.018) 100%),
+      color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    border-radius: var(--radius-panel);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .aura-panel-strong {
+    background:
+      radial-gradient(circle at top left, rgba(107, 208, 255, 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%),
+      color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  }
+
+  .aura-hero {
+    border-radius: calc(var(--radius-panel) + 4px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+      radial-gradient(circle at top left, rgba(107, 208, 255, 0.14), transparent 28%),
+      radial-gradient(circle at top right, rgba(143, 140, 248, 0.12), transparent 25%),
+      linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%),
+      color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-panel);
+  }
+
+  .aura-orb,
+  .aura-orb-sm {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+      linear-gradient(135deg, rgba(107, 208, 255, 0.18), rgba(143, 140, 248, 0.16));
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 0 30px rgba(107, 208, 255, 0.12);
+  }
+
+  .aura-orb {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .aura-orb-sm {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .aura-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 0.65rem 0.95rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: all var(--duration-base) ease;
+  }
+
+  .aura-chip:hover {
+    border-color: var(--border-strong);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+  }
+
+  .message-shell {
+    width: 100%;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 1rem 1rem 1.05rem;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .message-assistant {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.015) 100%),
+      rgba(14, 19, 27, 0.84);
+  }
+
+  .message-user {
+    background:
+      linear-gradient(135deg, rgba(107, 208, 255, 0.18), rgba(143, 140, 248, 0.08)),
+      rgba(15, 22, 34, 0.9);
+  }
+
+  .composer-shell {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    border-radius: 24px;
+    border: 1px solid var(--border-default);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 100%),
+      rgba(14, 19, 27, 0.9);
+    padding: 0.8rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 36px rgba(0,0,0,0.2);
+  }
+
+  .composer-input {
+    width: 100%;
+    resize: none;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    outline: none;
+    padding: 0.55rem 0;
+    font-size: 0.96rem;
+    line-height: 1.75;
+  }
+
+  .composer-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .composer-icon {
+    display: inline-flex;
+    height: 2.9rem;
+    width: 2.9rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+    color: var(--text-muted);
+    transition: all var(--duration-base) ease;
+  }
+
+  .composer-icon:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.06);
+  }
+
+  .composer-voice {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .composer-voice::after {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(107, 208, 255, 0.18);
+    animation: aura-pulse 2.8s ease-in-out infinite;
   }
   
   /* Glow Effects */
@@ -258,6 +412,11 @@ html.light {
     background: var(--glass-card);
     border: 1px solid var(--border-subtle);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes aura-pulse {
+    0%, 100% { transform: scale(0.96); opacity: 0.35; }
+    50% { transform: scale(1.06); opacity: 0.7; }
   }
   
   .card-aura:hover {

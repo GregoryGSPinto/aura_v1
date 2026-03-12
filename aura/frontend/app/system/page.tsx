@@ -164,7 +164,7 @@ export default function SystemPage() {
   }, [status]);
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-4 overflow-x-hidden">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 sm:h-12 sm:w-12">

@@ -9,8 +9,8 @@ import {
   Bot,
   FolderOpen,
   Grid2x2,
-  LayoutDashboard,
-  MessageSquare,
+  House,
+  MessageSquareText,
   Monitor,
   Settings,
   Sparkles,
@@ -19,16 +19,16 @@ import {
 import { cn } from '@/lib/utils';
 
 const primaryItems = [
-  { href: '/chat', label: 'Chat', icon: MessageSquare },
-  { href: '/swarm', label: 'Swarm', icon: Bot },
+  { href: '/', label: 'Home', icon: House },
+  { href: '/chat', label: 'Conversa', icon: MessageSquareText },
 ];
 
 const menuItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects', label: 'Projects', icon: FolderOpen },
-  { href: '/remote', label: 'Remote', icon: Monitor },
-  { href: '/system', label: 'System', icon: Activity },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/swarm', label: 'Rotinas', icon: Bot },
+  { href: '/projects', label: 'Projetos', icon: FolderOpen },
+  { href: '/remote', label: 'Ferramentas', icon: Monitor },
+  { href: '/system', label: 'Operacao', icon: Activity },
+  { href: '/settings', label: 'Configuracoes', icon: Settings },
 ];
 
 export function MobileNav() {

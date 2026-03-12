@@ -78,7 +78,7 @@ export default function ProjectsPage() {
   const archivedCount = projects.filter((project) => project.status === 'archived').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -107,7 +107,7 @@ export default function ProjectsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col gap-4"
+        className="aura-panel flex flex-col gap-4 px-4 py-4"
       >
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)]" />
@@ -146,7 +146,7 @@ export default function ProjectsPage() {
       >
         {filteredProjects.map((project) => (
           <motion.div key={project.id} variants={item}>
-            <Card className="h-full hover:border-[var(--border-default)] transition-colors group">
+            <Card className="aura-panel h-full px-0 py-0 transition-colors group">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
