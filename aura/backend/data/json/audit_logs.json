@@ -92,5 +92,48 @@
         }
       ]
     }
+  },
+  {
+    "log_id": "log_746a2a2c96",
+    "timestamp": "2026-03-11T20:54:10.676569+00:00",
+    "command": "system_info",
+    "status": "success",
+    "params": {},
+    "stdout": "",
+    "stderr": "",
+    "actor_id": "local-operator",
+    "metadata": {
+      "timestamp": "2026-03-11T20:54:10.363265+00:00",
+      "hostname": "MacBook-Pro-de-user-pc.local",
+      "platform": "macOS-15.7.4-x86_64-i386-64bit",
+      "python_version": "3.9.6",
+      "backend_status": "online",
+      "llm_status": "unknown",
+      "persistence_mode": "local",
+      "auth_mode": "local",
+      "cpu": {
+        "usage_percent": 2.0,
+        "core_count": 16,
+        "load_average": [
+          4.6259765625,
+          3.75390625,
+          3.1943359375
+        ]
+      },
+      "memory": {
+        "usage_percent": 38.2,
+        "total": 34359738368,
+        "available": 21241110528,
+        "used": 13114310656
+      },
+      "disk": {
+        "path": "/",
+        "usage_percent": 5.8,
+        "total": 250685575168,
+        "used": 11261100032,
+        "free": 182989172736
+      },
+      "process_count": 200
+    }
   }
 ]

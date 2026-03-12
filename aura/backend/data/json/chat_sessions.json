@@ -14,5 +14,21 @@
     "metadata": {
       "source": "api.chat"
     }
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "user_id": "local-operator",
+    "project_id": null,
+    "metadata": {
+      "source": "api.chat"
+    }
+  },
+  {
+    "session_id": "aura-59983f7a-49cd-490c-a301-d396f110e059",
+    "user_id": "local-operator",
+    "project_id": null,
+    "metadata": {
+      "source": "api.chat"
+    }
   }
 ]

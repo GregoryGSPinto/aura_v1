@@ -106,5 +106,113 @@
     "model": "qwen3.5:9b",
     "intent": "conversa",
     "metadata": {}
+  },
+  {
+    "session_id": "default-session",
+    "role": "user",
+    "content": "Olá Aura, você está funcionando?",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 0
+    }
+  },
+  {
+    "session_id": "default-session",
+    "role": "assistant",
+    "content": "Olá! Sim, estou totalmente funcional e pronta para auxiliá-lo. Como sua assistente operacional pessoal, estou à disposição para executar tarefas, organizar informações ou resolver problemas de forma clara e eficiente. Em que posso ajudar agora?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "user",
+    "content": "oi",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 1
+    }
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "assistant",
+    "content": "Olá! Sou a Aura, sua assistente operacional pessoal. Como posso ajudar você hoje?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "user",
+    "content": "tudo bem ?",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 3
+    }
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "assistant",
+    "content": "Sim, estou operando normalmente. E com você? Há alguma tarefa específica que deseja que eu execute ou algum status do sistema que gostaria de verificar agora?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "user",
+    "content": "consegue abrir o terminal do meu computador ?",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 5
+    }
+  },
+  {
+    "session_id": "aura-3fc990c0-1719-4cea-b112-6d53fdf76679",
+    "role": "assistant",
+    "content": "Como assistente operacional, não tenho capacidade nativa para acessar e executar comandos diretamente no seu sistema operacional local (como abrir janelas ou iniciar terminais), pois minhas interações ocorrem em um ambiente de backend seguro e isolado.\n\nNo entanto, posso guiá-lo com precisão para realizar essa ação manualmente:\n1.  **Windows:** Pressione `Ctrl` + `Shift` + `Esc` para abrir o Gerenciador de Tarefas e selecione \"Nova tarefa\" > Digite `cmd` ou `powershell`.\n2.  **macOS/Linux:** Abra seu Finder/Terminal padrão e digite `open -a Terminal` (ou apenas abra o app do Terminal).\n\nDeseja que eu formule um comando específico para copiar e colar na sua janela de terminal agora?",
+    "model": "qwen3.5:9b",
+    "intent": "acao",
+    "metadata": {}
+  },
+  {
+    "session_id": "aura-59983f7a-49cd-490c-a301-d396f110e059",
+    "role": "user",
+    "content": "oi",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 1
+    }
+  },
+  {
+    "session_id": "aura-59983f7a-49cd-490c-a301-d396f110e059",
+    "role": "assistant",
+    "content": "Olá! Sou a Aura, sua assistente operacional pessoal. Como posso ajudar você hoje? Estou pronta para executar tarefas, consultar informações ou sugerir ações dentro das políticas de segurança estabelecidas.",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
+  },
+  {
+    "session_id": "aura-59983f7a-49cd-490c-a301-d396f110e059",
+    "role": "user",
+    "content": "tudo bem ?",
+    "model": null,
+    "intent": null,
+    "metadata": {
+      "history_size": 5
+    }
+  },
+  {
+    "session_id": "aura-59983f7a-49cd-490c-a301-d396f110e059",
+    "role": "assistant",
+    "content": "Tudo bem! Aqui, na Aura, estou totalmente operacional e pronta para auxiliar com suas tarefas. Em que posso ser útil agora? Precisa de acesso a informações específicas, execução de ações controladas ou apenas uma conversa objetiva?",
+    "model": "qwen3.5:9b",
+    "intent": "conversa",
+    "metadata": {}
   }
 ]
