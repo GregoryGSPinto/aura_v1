@@ -14,7 +14,15 @@ import type {
   AgentTask,
   SystemMetrics,
   Activity,
-  ProcessInfo 
+  ProcessInfo,
+  Routine,
+  RoutineExecution,
+  RoutineListResponse,
+  RoutineExecutionListResponse,
+  RoutineCreateRequest,
+  RoutineUpdateRequest,
+  VoiceProcessPayload,
+  VoiceStatusPayload
 } from './types';
 
 const API_URL = clientEnv.apiUrl || 'http://localhost:8000';
@@ -96,6 +104,20 @@ export async function sendChat(
       message,
       context: { history, session_id: sessionId },
       options: { stream: false, temperature: 0.7 },
+    }),
+  });
+}
+
+export async function fetchVoiceStatus(): Promise<ApiResponse<VoiceStatusPayload>> {
+  return fetchApi('/api/v1/os/voice/status');
+}
+
+export async function processVoice(transcriptHint: string, speakResponse = false): Promise<ApiResponse<VoiceProcessPayload>> {
+  return fetchApi('/api/v1/os/voice/process', {
+    method: 'POST',
+    body: JSON.stringify({
+      transcript_hint: transcriptHint,
+      speak_response: speakResponse,
     }),
   });
 }
@@ -221,4 +243,67 @@ export async function controlApplication(
 export async function listFiles(path?: string): Promise<ApiResponse<{ name: string; type: 'file' | 'directory'; size?: number }[]>> {
   const query = path ? `?path=${encodeURIComponent(path)}` : '';
   return fetchApi(`/api/v1/remote/files${query}`);
+}
+
+// Routines
+export async function fetchRoutines(status?: string, triggerType?: string): Promise<ApiResponse<RoutineListResponse>> {
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+  if (triggerType) params.append('trigger_type', triggerType);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return fetchApi(`/api/v1/routines${query}`);
+}
+
+export async function fetchRoutine(routineId: string): Promise<ApiResponse<Routine>> {
+  return fetchApi(`/api/v1/routines/${routineId}`);
+}
+
+export async function createRoutine(routine: RoutineCreateRequest): Promise<ApiResponse<Routine>> {
+  return fetchApi('/api/v1/routines', {
+    method: 'POST',
+    body: JSON.stringify(routine),
+  });
+}
+
+export async function updateRoutine(routineId: string, updates: RoutineUpdateRequest): Promise<ApiResponse<Routine>> {
+  return fetchApi(`/api/v1/routines/${routineId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteRoutine(routineId: string): Promise<ApiResponse<{ deleted: boolean; routine_id: string }>> {
+  return fetchApi(`/api/v1/routines/${routineId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function triggerRoutine(routineId: string): Promise<ApiResponse<{ success: boolean; execution_id: string; message: string; started_at: string }>> {
+  return fetchApi(`/api/v1/routines/${routineId}/trigger`, {
+    method: 'POST',
+  });
+}
+
+export async function toggleRoutine(routineId: string): Promise<ApiResponse<{ success: boolean; routine_id: string; new_status: 'active' | 'paused'; message: string }>> {
+  return fetchApi(`/api/v1/routines/${routineId}/toggle`, {
+    method: 'POST',
+  });
+}
+
+export async function fetchRoutineHistory(routineId: string, limit?: number): Promise<ApiResponse<RoutineExecutionListResponse>> {
+  const query = limit ? `?limit=${limit}` : '';
+  return fetchApi(`/api/v1/routines/${routineId}/history${query}`);
+}
+
+export async function fetchRecentExecutions(limit?: number): Promise<ApiResponse<RoutineExecutionListResponse>> {
+  const query = limit ? `?limit=${limit}` : '';
+  return fetchApi(`/api/v1/routines/executions/recent${query}`);
+}
+
+export async function triggerAppOpenRoutines(): Promise<ApiResponse<{ triggered_routines: string[]; executions: RoutineExecution[]; message: string }>> {
+  return fetchApi('/api/v1/routines/triggers/app-open');
+}
+
+export async function fetchExecution(executionId: string): Promise<ApiResponse<RoutineExecution>> {
+  return fetchApi(`/api/v1/executions/${executionId}`);
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   createContext,
   useContext,
   useEffect,
@@ -8,6 +9,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+
+import { fetchStatus, fetchVoiceStatus } from '@/lib/api';
+import type { StatusPayload, VoiceStatusPayload } from '@/lib/types';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -32,6 +36,9 @@ type AuraPreferencesContextValue = {
   setNotifications: (value: NotificationPreferences) => void;
   visuals: VisualPreferences;
   setVisuals: (value: VisualPreferences) => void;
+  runtimeStatus: StatusPayload | null;
+  voiceStatus: VoiceStatusPayload | null;
+  refreshRuntime: () => Promise<void>;
 };
 
 const DEFAULT_NOTIFICATIONS: NotificationPreferences = {
@@ -70,6 +77,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
   const [notifications, setNotificationsState] = useState<NotificationPreferences>(DEFAULT_NOTIFICATIONS);
   const [visuals, setVisualsState] = useState<VisualPreferences>(DEFAULT_VISUALS);
+  const [runtimeStatus, setRuntimeStatus] = useState<StatusPayload | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatusPayload | null>(null);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
@@ -99,6 +108,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     media.addEventListener('change', applyTheme);
     return () => media.removeEventListener('change', applyTheme);
   }, [themeMode]);
+
+  const refreshRuntime = useCallback(async () => {
+    try {
+      const [statusResponse, voiceResponse] = await Promise.all([fetchStatus(), fetchVoiceStatus()]);
+      setRuntimeStatus(statusResponse.data);
+      setVoiceStatus(voiceResponse.data);
+    } catch {
+      setRuntimeStatus((current) =>
+        current
+          ? {
+              ...current,
+              status: 'offline',
+              services: {
+                ...current.services,
+                api: 'offline',
+              },
+            }
+          : null,
+      );
+      setVoiceStatus((current) =>
+        current
+          ? {
+              ...current,
+              pipeline_ready: false,
+            }
+          : null,
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRuntime();
+    const timer = window.setInterval(() => {
+      void refreshRuntime();
+    }, 20000);
+
+    return () => window.clearInterval(timer);
+  }, [refreshRuntime]);
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
@@ -130,8 +177,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNotifications,
       visuals,
       setVisuals,
+      runtimeStatus,
+      voiceStatus,
+      refreshRuntime,
     }),
-    [notifications, resolvedTheme, themeMode, visuals]
+    [notifications, refreshRuntime, resolvedTheme, runtimeStatus, themeMode, visuals, voiceStatus]
   );
 
   return <AuraPreferencesContext.Provider value={contextValue}>{children}</AuraPreferencesContext.Provider>;

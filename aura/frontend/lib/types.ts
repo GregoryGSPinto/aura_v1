@@ -73,6 +73,37 @@ export interface ChatResponse {
   tokens_used?: number;
 }
 
+export interface VoiceStatusPayload {
+  stt_ready: boolean;
+  tts_ready: boolean;
+  wake_word: string;
+  pipeline_ready: boolean;
+  notes: string[];
+}
+
+export interface VoiceProcessPayload {
+  activated: boolean;
+  transcript?: string;
+  goal?: string;
+  reason?: string;
+  result?: {
+    goal: string;
+    intent: string;
+    reasoning: string;
+    plan_status: string;
+    planned_steps: number;
+    job_id?: string | null;
+    started: boolean;
+    route?: Record<string, unknown> | null;
+    memory_snapshot: Record<string, unknown>;
+    notes: string[];
+  };
+  tts?: {
+    success?: boolean;
+    message?: string;
+  } | null;
+}
+
 export interface MemorySignal {
   id: string;
   kind: 'session' | 'recent' | 'project' | 'personal' | 'operational' | 'long_term';
@@ -262,4 +293,76 @@ export interface Activity {
   description: string;
   timestamp: string;
   status: 'success' | 'error' | 'info';
+}
+
+// Routines and Automation Types
+export type RoutineTriggerType = 'scheduled' | 'app_open' | 'manual' | 'event_based';
+export type RoutineStatus = 'active' | 'paused';
+export type ExecutionStatus = 'success' | 'failed' | 'running';
+
+export interface RoutineAction {
+  id: string;
+  type: string;
+  params: Record<string, unknown>;
+  order: number;
+}
+
+export interface Routine {
+  id: string;
+  name: string;
+  description: string;
+  trigger_type: RoutineTriggerType;
+  schedule: string | null;
+  actions: RoutineAction[];
+  status: RoutineStatus;
+  is_builtin: boolean;
+  builtin_type: string | null;
+  last_run: string | null;
+  next_run: string | null;
+  run_count: number;
+  created_at: string;
+  updated_at: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RoutineExecution {
+  id: string;
+  routine_id: string;
+  routine_name: string;
+  status: ExecutionStatus;
+  started_at: string;
+  completed_at: string | null;
+  results: Record<string, unknown>[];
+  error_message: string | null;
+  triggered_by: string;
+  execution_time_ms: number | null;
+}
+
+export interface RoutineListResponse {
+  routines: Routine[];
+  total: number;
+  active_count: number;
+  paused_count: number;
+}
+
+export interface RoutineExecutionListResponse {
+  executions: RoutineExecution[];
+  total: number;
+}
+
+export interface RoutineCreateRequest {
+  name: string;
+  description: string;
+  trigger_type: RoutineTriggerType;
+  schedule?: string | null;
+  actions: RoutineAction[];
+}
+
+export interface RoutineUpdateRequest {
+  name?: string;
+  description?: string;
+  trigger_type?: RoutineTriggerType;
+  schedule?: string | null;
+  actions?: RoutineAction[];
+  status?: RoutineStatus;
 }

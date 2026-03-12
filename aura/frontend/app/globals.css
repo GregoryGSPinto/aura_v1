@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --gold: #d3b46f;
-  --gold-light: #efe0bc;
-  --gold-dark: #7a6b4a;
-  --cyan: #6bd0ff;
-  --cyan-deep: #2b83a8;
-  --accent-cyan: #88dbff;
-  --accent-violet: #8f8cf8;
-  --bg-primary: #06080d;
-  --bg-secondary: #0e131b;
-  --bg-tertiary: #121a24;
-  --bg-elevated: #182230;
-  --text-primary: #f4f7fb;
-  --text-secondary: #d2dbe8;
-  --text-muted: #8d9ab0;
-  --text-subtle: #667286;
+  --gold: #d6b472;
+  --gold-light: #f0ddbc;
+  --gold-dark: #7b6740;
+  --cyan: #8ed6ff;
+  --cyan-deep: #3a89af;
+  --accent-cyan: #a6ddff;
+  --accent-violet: #8792ff;
+  --bg-primary: #04070d;
+  --bg-secondary: #0a1019;
+  --bg-tertiary: #111826;
+  --bg-elevated: #172234;
+  --text-primary: #f5f7fb;
+  --text-secondary: #d5deea;
+  --text-muted: #92a0b6;
+  --text-subtle: #6c7a90;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-default: rgba(140, 166, 194, 0.16);
   --border-strong: rgba(107, 208, 255, 0.28);
@@ -29,9 +29,9 @@
   --info: #7ecfff;
   --gradient-gold: linear-gradient(135deg, #b79857 0%, #f0e1bd 46%, #c9a666 100%);
   --gradient-cyan: linear-gradient(180deg, #91ddff 0%, #418db2 100%);
-  --gradient-aura: linear-gradient(135deg, rgba(107, 208, 255, 0.25) 0%, rgba(143, 140, 248, 0.18) 100%);
-  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.34);
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.18);
+  --gradient-aura: linear-gradient(135deg, rgba(142, 214, 255, 0.22) 0%, rgba(135, 146, 255, 0.16) 100%);
+  --shadow-panel: 0 28px 100px rgba(0, 0, 0, 0.34);
+  --shadow-soft: 0 12px 36px rgba(0, 0, 0, 0.2);
   --radius-panel: 28px;
   --radius-card: 22px;
   --space-1: 0.25rem;
@@ -70,11 +70,19 @@ html.light {
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    background:
+      radial-gradient(circle at top left, rgba(125, 191, 255, 0.16), transparent 26%),
+      radial-gradient(circle at top right, rgba(149, 134, 255, 0.1), transparent 22%),
+      linear-gradient(180deg, #04070d 0%, #08101a 52%, #04070d 100%);
   }
   
   body {
     @apply antialiased;
-    background: var(--bg-primary);
+    background:
+      radial-gradient(circle at top left, rgba(125, 191, 255, 0.14), transparent 22%),
+      radial-gradient(circle at 85% 12%, rgba(149, 134, 255, 0.11), transparent 18%),
+      linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0)),
+      var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
     min-height: 100vh;
@@ -92,7 +100,7 @@ html.light {
   }
   
   ::selection {
-    background: rgba(212, 175, 55, 0.3);
+    background: rgba(142, 214, 255, 0.28);
     color: white;
   }
 }
@@ -132,10 +140,10 @@ html.light {
   .aura-panel {
     border: 1px solid var(--border-default);
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.018) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.018) 100%),
       color-mix(in srgb, var(--bg-secondary) 92%, transparent);
     border-radius: var(--radius-panel);
-    backdrop-filter: blur(24px);
+    backdrop-filter: blur(26px);
     -webkit-backdrop-filter: blur(24px);
     box-shadow: var(--shadow-panel);
   }
@@ -199,6 +207,19 @@ html.light {
     border-color: var(--border-strong);
     background: rgba(255, 255, 255, 0.06);
     color: var(--text-primary);
+  }
+
+  .app-noise::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 120px 120px;
+    mask-image: radial-gradient(circle at center, black, transparent 82%);
   }
 
   .message-shell {

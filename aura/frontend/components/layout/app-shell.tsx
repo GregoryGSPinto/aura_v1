@@ -1,17 +1,17 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 import { CommandPalette } from "@/components/layout/command-palette";
-import { MobileNav } from "@/components/layout/mobile-nav";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
-import { ContextPanel } from "@/components/panels/context-panel";
 import { auraPageMeta } from "@/lib/design-system/tokens";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const pageMeta =
     auraPageMeta[pathname] ??
     ({
@@ -24,21 +24,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <CommandPalette />
-      <div className="relative z-10 min-h-screen">
-        <div className="mx-auto grid min-h-screen max-w-[1760px] grid-cols-1 gap-4 px-3 pb-28 pt-3 sm:px-4 md:px-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:px-6 lg:pb-6 xl:grid-cols-[18rem_minmax(0,1fr)_21rem] xl:gap-5">
-          <Sidebar />
+      <div className="relative z-10 min-h-screen overflow-x-hidden">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1680px] gap-4 px-0 pb-0 pt-0 sm:px-3 sm:py-3 lg:px-4 lg:py-4">
+          <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
 
-          <div className="flex min-h-screen min-w-0 flex-col gap-4">
-            <TopBar pageMeta={pageMeta} />
-            <main className="min-w-0 flex-1">
+          <div className="flex min-h-screen min-w-0 flex-1 flex-col px-0 sm:px-0">
+            <TopBar pageMeta={pageMeta} onOpenSidebar={() => setMobileSidebarOpen(true)} />
+            <main className="min-w-0 flex-1 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:px-1 lg:px-0 lg:pb-4">
               {children}
             </main>
           </div>
-
-          <ContextPanel pageMeta={pageMeta} />
         </div>
       </div>
-      <MobileNav />
     </>
   );
 }
