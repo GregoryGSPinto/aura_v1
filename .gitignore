@@ -23,3 +23,4 @@ aura/frontend/out/
 aura/backend/.env
 aura/frontend/.env.local
 aura/backend/.venv/
+data/

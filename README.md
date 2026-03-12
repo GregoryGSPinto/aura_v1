@@ -1,238 +1,161 @@
-# Aura v1
+# Aura
 
-Aura evoluiu de uma assistente operacional local-first para a base de um **Personal AI Operating System**. O projeto preserva o runtime atual em FastAPI + Next.js + Ollama, mas agora possui uma nova espinha dorsal modular para agent loop, memória, tools registry, integrações multi-modelo e pipeline de voz.
+**AI Companion Operacional Pessoal**
 
-## Runtime v1.1
+Aura é um companion operacional local-first, multimodal e acionável, criado para atuar como extensão digital confiável do usuário. O produto combina conversa natural, memória contextual, apoio à decisão e execução segura de operações reais em uma arquitetura preparada para evolução enterprise.
 
-Aura agora possui três runtimes novos:
+## Product Vision
 
-- `Voice Runtime v1`
-- `Internet Research Runtime v1`
-- `Multi-LLM Router v1`
+Aura existe para profissionais que querem reduzir fricção entre diálogo, organização, execução e contexto digital. Em vez de funcionar como mais um chatbot reativo, Aura foi desenhada para operar como uma presença de software contínua: conversa, lembra, estrutura metas, aciona ferramentas e mantém rastreabilidade das ações.
 
-## Arquitetura
+Aura não é apenas uma interface conversacional. Ela foi projetada para organizar contexto, apoiar decisões e operar sobre o ambiente digital do usuário com segurança e clareza.
 
-```text
-Client Layer
-  └─ aura/frontend (Next.js, TypeScript, Tailwind, Vercel-ready)
-API Layer
-  └─ aura/backend/app/api (FastAPI)
-Core Layer
-  ├─ OllamaService
-  ├─ CommandService
-  ├─ ProjectService
-  ├─ AuthService
-  ├─ PersistenceService
-  └─ SupabaseService
-System Layer
-  └─ macOS, VS Code, terminal, Ollama
-AI OS Layer
-  └─ aura/backend/app/aura_os
-     ├─ core
-     ├─ memory
-     ├─ voice
-     ├─ tools
-     ├─ integrations
-     └─ config
-```
+## Core Capabilities
 
-## Modos de operação
+- `conversational intelligence`: interação natural em português com suporte a fluxos operacionais
+- `contextual memory`: memória de curto e longo prazo para sessões, jobs e contexto persistido
+- `project and operations support`: suporte a projetos, navegação, status e tarefas recorrentes
+- `tools and actions`: execução segura por allowlist para terminal, sistema, arquivos e VS Code
+- `local-first runtime`: operação completa em máquina local com JSON e Ollama
+- `multi-model orchestration`: roteamento entre Ollama, OpenAI e Anthropic por perfil de tarefa
+- `voice runtime`: pipeline modular para wake word, STT, agent loop e TTS
+- `research runtime`: fluxo de busca, coleta, sumarização e resposta estruturada
 
-- `local-first`: JSON local + token simples
-- `cloud-ready`: FastAPI + Supabase para projetos, settings, auditoria e sessões
-- `dual auth`: token local e Supabase Auth convivendo no backend
+## System Architecture
 
-## Estrutura
+Aura está organizada em camadas para separar interface, orquestração, execução e persistência:
+
+- `frontend`: Next.js 15 para chat, visão operacional e experiência de uso
+- `backend/api`: FastAPI com endpoints versionados e contratos estáveis
+- `core services`: autenticação, projetos, persistência, memória, comandos e integrações base
+- `Aura OS layer`: loop cognitivo `perceive -> reason -> plan -> act -> learn`, agentes, memória, tools, voice e model routing
+- `infra/deploy`: Vercel, Supabase, macOS runtime e scripts operacionais
+- `integrations`: Ollama local e provedores cloud preparados para ativação controlada
+
+## Repository Structure
 
 ```text
-aura/
-  backend/
-  frontend/
-  docs/
-  backend/app/aura_os/
-docs/
-infra/
-  supabase/
-  vercel/
-scripts/
-README.md
+/
+├── .github/           # CI e automações do repositório
+├── aura/
+│   ├── backend/       # API FastAPI, serviços, Aura OS e testes
+│   └── frontend/      # Aplicação Next.js e assets web
+├── config/            # Configuração de modelos e runtime
+├── docs/
+│   ├── architecture/  # Visão técnica canônica do sistema
+│   ├── engineering/   # Standards e governança de implementação
+│   ├── operations/    # Deploy, runbooks e operação
+│   ├── product/       # Visão, posicionamento e roadmap
+│   ├── prompts/       # Materiais internos de prompting e design guidance
+│   └── archive/       # Legado consolidado e histórico documental
+├── infra/             # Artefatos de deploy e infraestrutura
+├── scripts/           # Scripts locais de execução e suporte
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── README.md
+└── ROADMAP.md
 ```
 
-## Stack
+## Quick Start
 
-- Frontend: Next.js 15, TypeScript, Tailwind CSS
-- Backend: FastAPI, Pydantic, httpx
-- LLM local: Ollama em `http://localhost:11434`
-- Modelo padrão: `qwen3.5:9b`
-- Dados: JSON local com fallback e sincronização opcional com Supabase
-- Publicação: GitHub + Vercel
+### Pré-requisitos
 
-## Requisitos
-
-- Python 3.9+
+- Python 3.11 recomendado
 - Node.js 20+
-- pnpm 10+
-- Ollama ativo
-- Modelo `qwen3.5:9b` disponível
-- VS Code com `code` habilitado
+- `pnpm` 10+
+- Ollama ativo em `http://localhost:11434`
+- modelo local `qwen3.5:9b`
 
-## Setup local
-
-### Backend
+### Instalação
 
 ```bash
 cd aura/backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python3 -m pip install -r requirements.txt
 ```
-
-### Frontend
-
-```bash
-cd aura/frontend
-cp .env.example .env.local
-pnpm install
-pnpm dev --host 0.0.0.0 --port 3000
-```
-
-## Variáveis de ambiente
-
-### Backend
-
-- `AURA_APP_NAME`
-- `AURA_ENV`
-- `AURA_API_PREFIX`
-- `AURA_AUTH_MODE`
-- `AURA_MODEL`
-- `OLLAMA_URL`
-- `AURA_ALLOWED_ORIGINS`
-- `AURA_AUTH_TOKEN`
-- `AURA_REQUIRE_AUTH`
-- `AURA_PROJECTS_FILE`
-- `AURA_SETTINGS_FILE`
-- `AURA_AUDIT_LOG_FILE`
-- `AURA_AUDIT_JSON_FILE`
-- `AURA_CHAT_SESSIONS_FILE`
-- `AURA_CHAT_MESSAGES_FILE`
-- `AURA_COMMAND_TIMEOUT`
-- `AURA_LLM_TIMEOUT`
-- `AURA_HTTP_TIMEOUT`
-- `AURA_SUPABASE_ENABLED`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_DB_PASSWORD`
-
-### Frontend
-
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_AURA_ENV`
-- `NEXT_PUBLIC_AURA_TOKEN`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-## URLs locais
-
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
-
-## Endpoints principais
-
-- `GET /api/v1/status`
-- `GET /api/v1/auth/status`
-- `POST /api/v1/chat`
-- `POST /api/v1/command`
-- `GET /api/v1/projects`
-- `POST /api/v1/projects/open`
-- `GET /api/v1/os/overview`
-- `POST /api/v1/os/agent/execute`
-- `GET /api/v1/os/agents`
-- `GET /api/v1/os/models`
-- `GET /api/v1/os/voice/status`
-- `POST /api/v1/os/voice/process`
-- `POST /api/v1/os/research`
-
-## Scripts úteis
-
-- `scripts/run-backend`
-- `scripts/run-frontend`
-- `scripts/dev-all`
-
-## GitHub
-
-```bash
-git init
-git add .
-git commit -m "feat: professionalize aura v1"
-git branch -M main
-git remote add origin <repo>
-git push -u origin main
-```
-
-## Supabase
-
-1. Crie o projeto no Supabase.
-2. Execute `infra/supabase/schema.sql`.
-3. Execute `infra/supabase/seed.sql`.
-4. Configure as envs do backend.
-5. Ative `AURA_SUPABASE_ENABLED=true`.
-
-Guias detalhados:
-
-- `docs/supabase.md`
-- `docs/deployment.md`
-
-## Vercel
 
 ```bash
 cd aura/frontend
 pnpm install
-pnpm lint
-pnpm typecheck
-pnpm build
-vercel
 ```
 
-Configure no painel:
+### Execução do backend
 
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_AURA_ENV`
-- `NEXT_PUBLIC_AURA_TOKEN` se ainda usar token local
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+```bash
+./scripts/run-backend
+```
 
-Guia detalhado: `docs/vercel.md`
+### Execução do frontend
 
-## O que fica pronto agora
+```bash
+./scripts/run-frontend
+```
 
-- Backend pronto para local e cloud
-- Persistência dual local/Supabase
-- Auth local, Supabase ou dual
-- Frontend Vercel-ready com checagem de env
-- Infra SQL inicial para Supabase
-- Documentação para publicação e operação
-- Estratégia de teste operacional no Mac em `docs/usability-testing.md`
-- Jobs autônomos com fila local, retomada após reinício e logs persistidos
-- Nova camada `aura_os` com architecture-ready modules:
-  - agent loop
-  - memory manager
-  - tools registry
-  - voice runtime v1
-  - internet research runtime v1
-  - multi-LLM router v1
-  - providers para Ollama/OpenAI/Anthropic
+### Variáveis de ambiente essenciais
 
-## Documentos de arquitetura
+Backend:
 
-- `ARCHITECTURE.md`
-- `AGENTS.md`
-- `TOOLS.md`
-- `CHANGELOG.md`
-- `MEMORY.md`
-- `VOICE_ARCHITECTURE.md`
-- `RESEARCH_ENGINE.md`
-- `MODEL_ROUTER.md`
+```env
+AURA_ENV=development
+AURA_MODEL=qwen3.5:9b
+OLLAMA_URL=http://localhost:11434
+AURA_AUTH_TOKEN=change-me
+AURA_REQUIRE_AUTH=true
+```
+
+Frontend:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+NEXT_PUBLIC_AURA_ENV=local
+NEXT_PUBLIC_AURA_TOKEN=change-me
+```
+
+### Comandos essenciais
+
+```bash
+cd aura/backend && python3 -m pytest
+cd aura/frontend && pnpm lint && pnpm typecheck && pnpm build
+```
+
+## Operation Modes
+
+- `local-first`: backend, memória e execução local com JSON, token simples e Ollama
+- `cloud-ready`: Supabase pode assumir dados e autenticação sem remover a lógica operacional local
+- `hybrid / dual auth`: backend aceita token local e credenciais Supabase quando `AURA_AUTH_MODE=dual`
+
+## Engineering Standards
+
+Aura segue um padrão de evolução orientado a produto operacional:
+
+- segurança de execução acima de conveniência
+- modularidade com responsabilidade explícita por camada
+- observabilidade por logs e trilha de auditoria
+- configuração por ambiente, sem acoplamento a máquina pessoal
+- crescimento incremental sem quebrar o runtime atual
+
+Os padrões completos estão em [docs/engineering/standards.md](docs/engineering/standards.md).
+
+## Roadmap Summary
+
+- curto prazo: consolidar runtime local, observabilidade, governança documental e fluxo seguro de jobs
+- médio prazo: memória persistente mais robusta, pesquisa enriquecida, voz local madura e integrações operacionais
+- longo prazo: runtime multimodal completo, cloud híbrida, automações confiáveis e roteamento avançado por contexto
+
+O roadmap executivo está em [ROADMAP.md](ROADMAP.md) e o detalhado em [docs/product/roadmap.md](docs/product/roadmap.md).
+
+## Documentation Map
+
+- visão do produto: [docs/product/vision.md](docs/product/vision.md)
+- posicionamento: [docs/product/positioning.md](docs/product/positioning.md)
+- arquitetura geral: [docs/architecture/overview.md](docs/architecture/overview.md)
+- runtime Aura OS: [docs/architecture/runtime.md](docs/architecture/runtime.md)
+- memória: [docs/architecture/memory.md](docs/architecture/memory.md)
+- voz: [docs/architecture/voice.md](docs/architecture/voice.md)
+- tools: [docs/architecture/tools.md](docs/architecture/tools.md)
+- model router: [docs/architecture/model-router.md](docs/architecture/model-router.md)
+- deploy: [docs/operations/deploy.md](docs/operations/deploy.md)
+- runbooks: [docs/operations/runbooks.md](docs/operations/runbooks.md)
+
+## Positioning Statement
+
+Aura é um produto de IA operacional construído para centralizar diálogo, organização, inteligência e ação em uma presença única, confiável e evolutiva. A inspiração em JARVIS e Friday aparece na experiência desejada de precisão, contexto e prontidão, sem sacrificar maturidade técnica, governança e segurança de execução.

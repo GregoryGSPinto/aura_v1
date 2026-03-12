@@ -4,6 +4,8 @@
 # Fluxo: Local Build → Git Commit → Git Push → Vercel Deploy
 
 set -e  # Parar em caso de erro
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "🚀 Iniciando deploy da Aura..."
 
@@ -22,7 +24,7 @@ echo -e "${BLUE}🔍 Verificações iniciais...${NC}"
 # Verificar diretório
 if [ ! -d "aura/frontend" ]; then
     echo -e "${RED}❌ Erro: Diretório aura/frontend não encontrado${NC}"
-    echo "   Execute este script da raiz do projeto aura_v1"
+    echo "   Execute este script a partir do repositório Aura"
     exit 1
 fi
 
