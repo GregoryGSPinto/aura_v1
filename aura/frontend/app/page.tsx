@@ -3,36 +3,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, AudioLines, Compass, FolderKanban, ShieldCheck, Sparkles, Telescope, Workflow } from 'lucide-react';
+import { ArrowRight, AudioLines, BrainCircuit, FolderKanban, ShieldCheck, Sparkles, Workflow } from 'lucide-react';
 
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { fetchProjects, fetchStatus } from '@/lib/api';
-import { auraMoodCopy, auraQuickPrompts } from '@/lib/design-system/tokens';
-import type { Project, StatusPayload } from '@/lib/types';
-import { getRelativeTime } from '@/lib/utils';
-
-function resolveGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return auraMoodCopy.morning;
-  if (hour < 18) return auraMoodCopy.afternoon;
-  return auraMoodCopy.evening;
-}
+import { MemoryPanel } from '@/components/panels/memory-panel';
+import { TrustPanel } from '@/components/panels/trust-panel';
+import { fetchCompanionMemory, fetchCompanionOverview, fetchCompanionTrust, fetchStatus } from '@/lib/api';
+import type { CompanionMemorySnapshot, CompanionOverview, CompanionTrustSnapshot, StatusPayload } from '@/lib/types';
 
 export default function DashboardPage() {
   const [status, setStatus] = useState<StatusPayload | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loadedAt, setLoadedAt] = useState<string | null>(null);
+  const [overview, setOverview] = useState<CompanionOverview | null>(null);
+  const [memory, setMemory] = useState<CompanionMemorySnapshot | null>(null);
+  const [trust, setTrust] = useState<CompanionTrustSnapshot | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const [statusRes, projectsRes] = await Promise.all([fetchStatus(), fetchProjects()]);
+        const [statusRes, overviewRes, memoryRes, trustRes] = await Promise.all([
+          fetchStatus(),
+          fetchCompanionOverview(),
+          fetchCompanionMemory(),
+          fetchCompanionTrust(),
+        ]);
         if (!mounted) return;
         setStatus(statusRes.data);
-        setProjects(projectsRes.data.projects.slice(0, 4));
-        setLoadedAt(new Date().toISOString());
+        setOverview(overviewRes.data);
+        setMemory(memoryRes.data);
+        setTrust(trustRes.data);
       } catch {
         if (!mounted) return;
       }
@@ -56,17 +56,17 @@ export default function DashboardPage() {
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="cyan">Aura Presence</Badge>
-              <Badge variant="default">Local-first</Badge>
-              <StatusBadge status={status?.services.api === 'online' ? 'online' : 'busy'} label={status?.status ?? 'sincronizando'} />
+              <Badge variant="cyan">Founder Cockpit</Badge>
+              <Badge variant="default">Gregory Mode</Badge>
+              <StatusBadge status={overview?.presence_state === 'ready' ? 'online' : 'busy'} label={status?.status ?? 'sincronizando'} />
             </div>
 
             <div className="max-w-3xl">
               <h1 className="text-4xl font-semibold tracking-[-0.05em] text-[var(--text-primary)] sm:text-5xl">
-                Uma presenca operacional pessoal, calma e pronta para agir.
+                {overview?.greeting ?? 'Aura organizando o contexto do momento.'}
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--text-secondary)]">
-                {resolveGreeting()} Aura concentra conversa, contexto, memoria e acao em uma experiencia refinada para uso diario.
+                {overview?.focus_summary ?? 'Um cockpit pessoal para conversa, memoria, confianca e operacao real.'}
               </p>
             </div>
 
@@ -77,22 +77,24 @@ export default function DashboardPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/swarm">
+              <Link href="/trust">
                 <Button variant="outline" size="lg">
-                  Ver rotinas
-                  <Workflow className="h-4 w-4" />
+                  Ver trust dashboard
+                  <ShieldCheck className="h-4 w-4" />
                 </Button>
               </Link>
-              <Button variant="ghost" size="lg">
-                <AudioLines className="h-4 w-4" />
-                Ativar voz
-              </Button>
+              <Link href="/memory">
+                <Button variant="ghost" size="lg">
+                  <BrainCircuit className="h-4 w-4" />
+                  Revisar memoria
+                </Button>
+              </Link>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {auraQuickPrompts.map((item) => (
-                <Link key={item} href={`/chat?prompt=${encodeURIComponent(item)}`} className="aura-chip">
-                  {item}
+              {(overview?.quick_actions ?? []).map((item) => (
+                <Link key={item.label} href={`/chat?prompt=${encodeURIComponent(item.prompt)}`} className="aura-chip">
+                  {item.label}
                 </Link>
               ))}
             </div>
@@ -103,9 +105,9 @@ export default function DashboardPage() {
               <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Momento operacional</p>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <MetricTile label="Readiness" value={`${readiness}%`} />
-                <MetricTile label="Projetos" value={String(projects.length)} />
-                <MetricTile label="Jobs ativos" value={String(status?.jobs?.running ?? 0)} />
-                <MetricTile label="Modelo" value={status?.model?.split(':')[0] ?? 'Aura'} />
+                <MetricTile label="Voz" value={overview?.voice_state ?? 'standby'} />
+                <MetricTile label="Prioridades" value={String(overview?.priorities.length ?? 0)} />
+                <MetricTile label="Confianca" value={String(overview?.trust_signals.length ?? 0)} />
               </div>
             </div>
 
@@ -115,9 +117,9 @@ export default function DashboardPage() {
                   <Sparkles className="h-4 w-4 text-[var(--accent-cyan)]" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">A Aura esta presente</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Presenca ativa</p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    {loadedAt ? `Sincronizada ${getRelativeTime(loadedAt)}` : 'Aguardando telemetria'}
+                    {overview?.behavior_mode ?? 'founder-operational'} · {status?.model ?? 'Aura'}
                   </p>
                 </div>
               </div>
@@ -130,16 +132,21 @@ export default function DashboardPage() {
         <div className="aura-panel px-5 py-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Foco do dia</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Superficies principais</h2>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Agora</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Prioridades e retomada</h2>
             </div>
             <Badge variant="gold">Uso diario</Badge>
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <SurfaceCard href="/chat" icon={Compass} title="Conversa viva" description="Abrir uma sessao com contexto, sugestoes e memoria ativa." />
-            <SurfaceCard href="/projects" icon={FolderKanban} title="Projetos recentes" description="Retomar workspaces, contexto de execucao e proximas acoes." />
-            <SurfaceCard href="/system" icon={ShieldCheck} title="Confianca operacional" description="Ver readiness, auth, runtime e sinais de degradacao." />
-            <SurfaceCard href="/remote" icon={Telescope} title="Ferramentas acionaveis" description="Acessar superficies reais com controle e rastreabilidade." />
+          <div className="mt-5 space-y-3">
+            {(overview?.priorities ?? []).map((priority) => (
+              <div key={priority.id} className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{priority.label}</p>
+                  <Badge variant={priority.level === 'urgent' ? 'gold' : 'default'}>{priority.level}</Badge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{priority.description}</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -147,23 +154,21 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Projetos em foco</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Contexto recente</h2>
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Retomar de onde paramos</h2>
             </div>
             <Link href="/projects" className="text-sm text-[var(--accent-cyan)] hover:text-[var(--text-primary)]">
               Ver todos
             </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {projects.length ? (
-              projects.map((project) => (
+            {(overview?.recent_projects ?? []).length ? (
+              overview?.recent_projects.map((project) => (
                 <div key={project.id ?? project.name} className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-[var(--text-primary)]">{project.name}</p>
-                      <p className="mt-1 text-xs text-[var(--text-muted)]">{project.description || project.path}</p>
-                    </div>
-                    <Badge variant="default">{project.status ?? 'active'}</Badge>
+                  <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                    <FolderKanban className="h-4 w-4 text-[var(--accent-cyan)]" />
+                    {project.name}
                   </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{project.description || project.path}</p>
                 </div>
               ))
             ) : (
@@ -172,6 +177,60 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="aura-panel px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Companion signals</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Memoria ativa e confirmacoes</h2>
+            </div>
+            <Badge variant="cyan">{overview?.memory_signals.length ?? 0}</Badge>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {(overview?.memory_signals ?? []).map((item) => (
+              <div key={item.id} className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-subtle)]">{item.kind}</p>
+                <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{item.content}</p>
+              </div>
+            ))}
+            {(overview?.pending_actions ?? []).map((action) => (
+              <div key={action.command} className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <Workflow className="h-4 w-4 text-[var(--accent-cyan)]" />
+                  {action.command}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{action.preview}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="aura-panel px-5 py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Presence system</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em]">Voz, confianca e disponibilidade</h2>
+            </div>
+            <AudioLines className="h-4 w-4 text-[var(--accent-cyan)]" />
+          </div>
+          <div className="mt-5 space-y-3">
+            {(overview?.trust_signals ?? []).map((signal) => (
+              <div key={signal.id} className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{signal.label}</p>
+                  <Badge variant={signal.level === 'warning' ? 'gold' : 'default'}>{signal.level}</Badge>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{signal.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <MemoryPanel snapshot={memory} />
+      <TrustPanel snapshot={trust} />
     </div>
   );
 }
@@ -182,31 +241,5 @@ function MetricTile({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-subtle)]">{label}</p>
       <p className="mt-2 truncate text-lg font-semibold text-[var(--text-primary)]">{value}</p>
     </div>
-  );
-}
-
-function SurfaceCard({
-  href,
-  icon: Icon,
-  title,
-  description,
-}: {
-  href: string;
-  icon: typeof Compass;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link href={href} className="group rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 transition hover:border-[var(--border-strong)] hover:bg-white/[0.05]">
-      <div className="flex items-start gap-3">
-        <div className="rounded-[16px] border border-white/8 bg-white/[0.04] p-3">
-          <Icon className="h-5 w-5 text-[var(--accent-cyan)]" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-[var(--text-primary)]">{title}</p>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{description}</p>
-        </div>
-      </div>
-    </Link>
   );
 }

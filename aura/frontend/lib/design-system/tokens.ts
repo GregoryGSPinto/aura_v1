@@ -31,8 +31,9 @@ export const auraNavigation = [
   {
     title: "Contexto",
     items: [
-      { href: "/chat", label: "Memoria", icon: BrainCircuit, description: "Contexto ativo da sessao" },
+      { href: "/memory", label: "Memoria", icon: BrainCircuit, description: "Contexto governado e preferencias" },
       { href: "/chat", label: "Research", icon: Telescope, description: "Busca e sintese orientada" },
+      { href: "/trust", label: "Trust", icon: ShieldCheck, description: "Auditoria, limites e transparencia" },
       { href: "/settings", label: "Voz", icon: AudioLines, description: "Runtime e presenca falada" },
     ],
   },
@@ -86,6 +87,18 @@ export const auraPageMeta: Record<string, { eyebrow: string; title: string; desc
     title: "Ferramentas e controle",
     description: "Acoes assistidas em superfícies reais com controle e rastreabilidade.",
     accent: "tools",
+  },
+  "/memory": {
+    eyebrow: "Memory Governance",
+    title: "Memoria e continuidade",
+    description: "O que a Aura lembra, por que lembra e como isso melhora a continuidade.",
+    accent: "memory",
+  },
+  "/trust": {
+    eyebrow: "Trust Dashboard",
+    title: "Transparencia e governanca",
+    description: "Visibilidade sobre memoria ativa, sinais de seguranca e trilha operacional.",
+    accent: "trust",
   },
 };
 

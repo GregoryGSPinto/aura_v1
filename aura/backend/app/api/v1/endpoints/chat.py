@@ -87,6 +87,11 @@ def summarize_command_result(command_result: CommandExecutionResult) -> str:
 async def chat(request_body: ChatRequest, request: Request):
     started = time.perf_counter()
     auth_context = getattr(request.state, "auth_context", {})
+    runtime_context = request.app.state.context_service.build_chat_runtime_context(
+        session_id=request_body.context.session_id,
+        message=request_body.message,
+        project_id=request_body.context.project_id,
+    )
     intent = classify_intent(request_body.message)
     tool_analysis: ToolAnalysis = request.app.state.tool_router.analyze(
         request_body.message,
@@ -98,33 +103,53 @@ async def chat(request_body: ChatRequest, request: Request):
     elif tool_route and intent == "conversa":
         intent = "consulta"
     action_taken: Optional[dict] = None
+    action_preview: Optional[dict] = None
     response: str
     elapsed_ms: int
 
     if tool_analysis.status == "allowed" and tool_route:
-        command_result: CommandExecutionResult = request.app.state.command_service.execute(
-            tool_route.command,
-            tool_route.params,
-            actor={
-                "user_id": auth_context.get("user_id") or "chat-router",
-                "provider": "chat",
-                "request_id": getattr(request.state, "request_id", None),
-            },
-        )
-        action_taken = {
-            "command": command_result.command,
-            "params": sanitize_mapping(tool_route.params),
-            "status": command_result.status,
-            "result": {
-                "message": command_result.message,
-                "stdout": sanitize_string(command_result.stdout),
-                "stderr": sanitize_string(command_result.stderr),
-                "metadata": sanitize_mapping(command_result.metadata),
-            },
-        }
-        response = build_operational_response(tool_analysis, command_result)
-        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
+        action_preview = preview.model_dump()
+        if preview.requires_confirmation:
+            action_taken = {
+                "command": tool_route.command,
+                "params": sanitize_mapping(tool_route.params),
+                "status": "awaiting_confirmation",
+                "result": {
+                    "message": "Aguardando confirmação explícita do usuário.",
+                    "stdout": None,
+                    "stderr": None,
+                    "metadata": {"risk_level": preview.risk_level, "category": preview.category},
+                },
+            }
+            response = request.app.state.behavior_service.action_confirmation_copy(action_preview)
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+        else:
+            command_result: CommandExecutionResult = request.app.state.command_service.execute(
+                tool_route.command,
+                tool_route.params,
+                actor={
+                    "user_id": auth_context.get("user_id") or "chat-router",
+                    "provider": "chat",
+                    "request_id": getattr(request.state, "request_id", None),
+                },
+            )
+            action_taken = {
+                "command": command_result.command,
+                "params": sanitize_mapping(tool_route.params),
+                "status": command_result.status,
+                "result": {
+                    "message": command_result.message,
+                    "stdout": sanitize_string(command_result.stdout),
+                    "stderr": sanitize_string(command_result.stderr),
+                    "metadata": sanitize_mapping(command_result.metadata),
+                },
+            }
+            response = build_operational_response(tool_analysis, command_result)
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
     elif tool_analysis.status in {"blocked", "unimplemented"}:
+        if tool_route:
+            action_preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params).model_dump()
         action_taken = {
             "command": tool_route.command if tool_route else None,
             "params": sanitize_mapping(tool_route.params if tool_route else {}),
@@ -144,6 +169,11 @@ async def chat(request_body: ChatRequest, request: Request):
             history=request_body.context.history,
             temperature=request_body.options.temperature,
             think=request_body.options.think,
+            system_prompt=request.app.state.behavior_service.build_chat_prompt(
+                runtime_context["context_summary"],
+                runtime_context["memory_prompt_points"],
+                runtime_context["behavior_mode"],
+            ),
         )
 
     request.app.state.persistence_service.upsert_chat_session(
@@ -171,11 +201,31 @@ async def chat(request_body: ChatRequest, request: Request):
             ),
         ]
     )
+    request.app.state.context_service.remember_exchange(
+        session_id=request_body.context.session_id,
+        user_message=request_body.message,
+        assistant_message=response,
+        intent=intent,
+        action_taken=action_taken,
+    )
+    trust_snapshot = request.app.state.context_service.trust_snapshot(
+        status={
+            "auth_mode": request.app.state.settings.auth_mode,
+            "services": {"llm": await request.app.state.ollama_service.check_health()},
+        },
+        voice_status=request.app.state.voice_pipeline.status().model_dump(),
+        audit_logs=request.app.state.persistence_service.get_recent_audit_logs(limit=6),
+    )
     data = ChatResponseData(
         response=response,
         intent=intent,  # type: ignore[arg-type]
         action_taken=action_taken,
         suggested_action=suggest_action(request_body.message) if not action_taken and tool_analysis.status == "non_operational" else None,
+        action_preview=action_preview,
+        context_summary=runtime_context["context_summary"],
+        memory_signals=runtime_context["memory_signals"],
+        trust_signals=trust_snapshot["signals"][:3],
+        behavioral_mode=runtime_context["behavior_mode"],
         session_id=request_body.context.session_id,
         processing_time_ms=elapsed_ms,
         model=request.app.state.settings.model_name,

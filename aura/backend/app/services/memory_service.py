@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.models.job_models import JobLogEntry, JobRecord
 from app.models.persistence_models import AuditLogEntry, ChatMessageRecord, ChatSessionRecord
@@ -15,6 +15,7 @@ class MemoryService:
         audit_json_file: str,
         chat_sessions_file: str,
         chat_messages_file: str,
+        companion_memory_file: str,
         jobs_file: str,
         job_logs_file: str,
     ):
@@ -23,6 +24,7 @@ class MemoryService:
         self.audit_json_path = Path(audit_json_file)
         self.chat_sessions_path = Path(chat_sessions_file)
         self.chat_messages_path = Path(chat_messages_file)
+        self.companion_memory_path = Path(companion_memory_file)
         self.jobs_path = Path(jobs_file)
         self.job_logs_path = Path(job_logs_file)
 
@@ -83,6 +85,47 @@ class MemoryService:
         existing.extend(message.model_dump() for message in messages)
         self._write_json(self.chat_messages_path, existing)
         return messages
+
+    def get_chat_messages(self, session_id: Optional[str] = None, limit: int = 80) -> List[Dict[str, Any]]:
+        messages = self._read_json(self.chat_messages_path, [])
+        if session_id:
+            messages = [item for item in messages if item.get("session_id") == session_id]
+        return messages[-limit:]
+
+    def get_chat_sessions(self, limit: int = 20) -> List[Dict[str, Any]]:
+        sessions = self._read_json(self.chat_sessions_path, [])
+        return sessions[-limit:]
+
+    def get_companion_memory(self) -> Dict[str, Any]:
+        fallback = {
+            "profile": {
+                "user_label": "Gregory",
+                "mode": "founder",
+                "communication_style": "executivo, direto e orientado a operacao",
+                "decision_style": "rapido com trade-offs claros",
+                "updated_at": None,
+            },
+            "preferences": [],
+            "project_memory": [],
+            "operational_memory": [],
+            "recent_context": [],
+        }
+        return self._read_json(self.companion_memory_path, fallback)
+
+    def save_companion_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        self._write_json(self.companion_memory_path, payload)
+        return payload
+
+    def remember_companion_item(self, bucket: str, item: Dict[str, Any], limit: int = 24) -> Dict[str, Any]:
+        memory = self.get_companion_memory()
+        items = list(memory.get(bucket, []))
+        dedupe_key = item.get("dedupe_key") or item.get("title") or item.get("content")
+        items = [existing for existing in items if (existing.get("dedupe_key") or existing.get("title") or existing.get("content")) != dedupe_key]
+        items.insert(0, item)
+        memory[bucket] = items[:limit]
+        memory["profile"] = {**memory.get("profile", {}), "updated_at": iso_now()}
+        self.save_companion_memory(memory)
+        return item
 
     def list_jobs(self) -> List[Dict[str, Any]]:
         return self._read_json(self.jobs_path, [])

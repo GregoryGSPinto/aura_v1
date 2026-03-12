@@ -1,11 +1,11 @@
 "use client";
 
-import { Clock3, FolderKanban, Radio, Shield, Sparkles, Waves } from "lucide-react";
+import { BrainCircuit, Clock3, FolderKanban, Radio, Shield, Sparkles, Waves } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { fetchProjects, fetchStatus } from "@/lib/api";
-import type { Project, StatusPayload } from "@/lib/types";
+import { fetchCompanionOverview, fetchProjects, fetchStatus } from "@/lib/api";
+import type { CompanionOverview, Project, StatusPayload } from "@/lib/types";
 import { getRelativeTime } from "@/lib/utils";
 
 export function ContextPanel({
@@ -14,6 +14,7 @@ export function ContextPanel({
   pageMeta: { eyebrow: string; title: string; description: string; accent: string };
 }) {
   const [status, setStatus] = useState<StatusPayload | null>(null);
+  const [overview, setOverview] = useState<CompanionOverview | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [timestamp, setTimestamp] = useState<string | null>(null);
 
@@ -21,10 +22,11 @@ export function ContextPanel({
     let mounted = true;
     const load = async () => {
       try {
-        const [statusRes, projectsRes] = await Promise.all([fetchStatus(), fetchProjects()]);
+        const [statusRes, projectsRes, overviewRes] = await Promise.all([fetchStatus(), fetchProjects(), fetchCompanionOverview()]);
         if (!mounted) return;
         setStatus(statusRes.data);
         setProjects(projectsRes.data.projects.slice(0, 3));
+        setOverview(overviewRes.data);
         setTimestamp(new Date().toISOString());
       } catch {
         if (!mounted) return;
@@ -59,6 +61,25 @@ export function ContextPanel({
             </div>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{pageMeta.description}</p>
+        </section>
+
+        <section className="aura-panel px-4 py-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Memoria ativa</p>
+            <Badge variant="cyan">{overview?.memory_signals.length ?? 0}</Badge>
+          </div>
+          <div className="mt-4 space-y-3">
+            {(overview?.memory_signals ?? []).slice(0, 2).map((item) => (
+              <div key={item.id} className="rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <BrainCircuit className="h-4 w-4 text-[var(--accent-cyan)]" />
+                  <span className="truncate">{item.title}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[var(--text-muted)]">{item.content}</p>
+              </div>
+            ))}
+            {!overview?.memory_signals.length && <p className="text-sm text-[var(--text-muted)]">A Aura mostrara memorias relevantes aqui.</p>}
+          </div>
         </section>
 
         <section className="aura-panel px-4 py-4">

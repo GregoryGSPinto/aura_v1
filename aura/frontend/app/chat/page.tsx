@@ -38,6 +38,17 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [contextSummary, setContextSummary] = useState<string | null>(null);
+  const [behaviorMode, setBehaviorMode] = useState<string | null>(null);
+  const [memorySignals, setMemorySignals] = useState<{ id: string; title: string; content: string; kind: string }[]>([]);
+  const [trustSignals, setTrustSignals] = useState<{ id: string; label: string; detail: string; level: string }[]>([]);
+  const [actionPreview, setActionPreview] = useState<{
+    command: string;
+    preview: string;
+    risk_level: string;
+    requires_confirmation: boolean;
+    side_effects: string[];
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string>('aura-session');
 
@@ -72,6 +83,11 @@ export default function ChatPage() {
     try {
       const response = await sendChat(content, history, sessionIdRef.current);
       const payload = response.data;
+      setContextSummary(payload.context_summary ?? null);
+      setBehaviorMode(payload.behavioral_mode ?? null);
+      setMemorySignals(payload.memory_signals ?? []);
+      setTrustSignals(payload.trust_signals ?? []);
+      setActionPreview(payload.action_preview ?? null);
 
       setMessages((prev) => [
         ...prev,
@@ -154,6 +170,59 @@ export default function ChatPage() {
           </div>
         )}
       </motion.section>
+
+      {(contextSummary || actionPreview || memorySignals.length > 0) && (
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="aura-panel px-5 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Context engine</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Contexto ativo</h3>
+              </div>
+              <Badge variant="default">{behaviorMode ?? 'operacional'}</Badge>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-[var(--text-muted)]">{contextSummary ?? 'A Aura vai consolidar o contexto relevante desta sessao aqui.'}</p>
+            <div className="mt-4 grid gap-3">
+              {memorySignals.map((item) => (
+                <div key={item.id} className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-subtle)]">{item.kind}</p>
+                  <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">{item.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{item.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="aura-panel px-5 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Action governance</p>
+                <h3 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Previa e confianca</h3>
+              </div>
+              <Badge variant="cyan">{actionPreview?.risk_level ?? 'low'}</Badge>
+            </div>
+            {actionPreview ? (
+              <div className="mt-4 rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">{actionPreview.command}</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{actionPreview.preview}</p>
+                {actionPreview.requires_confirmation && (
+                  <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[var(--accent-cyan)]">Exige confirmacao explicita</p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-[var(--text-muted)]">Quando houver uma acao governada, a Aura mostrara a previa e o nivel de risco aqui.</p>
+            )}
+            <div className="mt-4 space-y-3">
+              {trustSignals.map((signal) => (
+                <div key={signal.id} className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{signal.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">{signal.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="aura-panel flex flex-1 flex-col overflow-hidden px-0 py-0">
         <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">

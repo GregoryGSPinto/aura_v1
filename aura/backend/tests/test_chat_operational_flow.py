@@ -32,9 +32,15 @@ class DummyPersistenceService:
             warnings=[],
         )
 
+    def get_recent_audit_logs(self, limit=40):
+        return []
+
 
 class DummyOllamaService:
-    async def generate_response(self, message, history, temperature=0.2, think=False):
+    async def check_health(self):
+        return "online"
+
+    async def generate_response(self, message, history, temperature=0.2, think=False, system_prompt=None):
         return "Resposta conversacional.", 17
 
 
@@ -95,6 +101,8 @@ def test_chat_keeps_simple_conversation_on_llm(monkeypatch):
     assert payload["intent"] == "conversa"
     assert payload["response"] == "Resposta conversacional."
     assert payload["action_taken"] is None
+    assert payload["context_summary"]
+    assert payload["behavioral_mode"]
     assert command_service.calls == []
 
 
@@ -175,6 +183,25 @@ def test_chat_returns_not_implemented_for_unknown_operational_request(monkeypatc
     assert payload["intent"] == "acao"
     assert payload["action_taken"]["status"] == "unimplemented"
     assert "ainda não foi implementada" in payload["response"]
+    assert command_service.calls == []
+
+
+def test_chat_requires_confirmation_for_elevated_action(monkeypatch):
+    client, command_service = build_client(monkeypatch)
+
+    response = client.post(
+        "/api/v1/chat",
+        headers=AUTH_HEADERS,
+        json={
+            "message": "rode lint no projeto aura_v1",
+            "context": {"session_id": "chat-lint", "history": []},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()["data"]
+    assert payload["action_taken"]["status"] == "awaiting_confirmation"
+    assert payload["action_preview"]["risk_level"] == "elevated"
     assert command_service.calls == []
 
 

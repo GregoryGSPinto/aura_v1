@@ -40,6 +40,11 @@ class ChatResponseData(BaseModel):
     intent: IntentType
     action_taken: Optional[dict] = None
     suggested_action: Optional[SuggestedAction] = None
+    action_preview: Optional[dict] = None
+    context_summary: Optional[str] = None
+    memory_signals: List[dict] = Field(default_factory=list)
+    trust_signals: List[dict] = Field(default_factory=list)
+    behavioral_mode: Optional[str] = None
     session_id: str
     processing_time_ms: int
     model: str

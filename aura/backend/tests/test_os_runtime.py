@@ -50,7 +50,7 @@ class DummyOllamaService:
     async def check_health(self):
         return "online"
 
-    async def generate_response(self, message, history, temperature=0.2, think=False):
+    async def generate_response(self, message, history, temperature=0.2, think=False, system_prompt=None):
         return "resumo sintetizado", 12
 
 

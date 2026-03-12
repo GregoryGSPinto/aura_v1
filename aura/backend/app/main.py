@@ -33,7 +33,10 @@ from app.core.http_security import ensure_request_id
 from app.core.logger import setup_logger
 from app.models.common_models import ApiResponse, ErrorDetail
 from app.services.auth_service import AuthService
+from app.services.action_governance_service import ActionGovernanceService
+from app.services.behavior_service import BehaviorService
 from app.services.command_service import CommandService
+from app.services.context_service import ContextService
 from app.services.job_service import JobService
 from app.services.memory_service import MemoryService
 from app.services.ollama_service import OllamaService
@@ -53,6 +56,7 @@ class Container:
             audit_json_file=self.settings.audit_json_file,
             chat_sessions_file=self.settings.chat_sessions_file,
             chat_messages_file=self.settings.chat_messages_file,
+            companion_memory_file=self.settings.companion_memory_file,
             jobs_file=self.settings.jobs_file,
             job_logs_file=self.settings.job_logs_file,
         )
@@ -61,6 +65,9 @@ class Container:
         self.project_service = ProjectService(self.persistence_service)
         self.auth_service = AuthService(self.settings, self.supabase_service)
         self.ollama_service = OllamaService(self.settings)
+        self.behavior_service = BehaviorService()
+        self.action_governance_service = ActionGovernanceService()
+        self.context_service = ContextService(self.memory_service, self.behavior_service)
         self.terminal_tool = TerminalTool(self.settings)
         self.filesystem_tool = FilesystemTool(self.settings)
         self.vscode_tool = VSCodeTool()
@@ -140,6 +147,9 @@ def create_app() -> FastAPI:
     app.state.project_service = container.project_service
     app.state.auth_service = container.auth_service
     app.state.ollama_service = container.ollama_service
+    app.state.behavior_service = container.behavior_service
+    app.state.action_governance_service = container.action_governance_service
+    app.state.context_service = container.context_service
     app.state.terminal_tool = container.terminal_tool
     app.state.filesystem_tool = container.filesystem_tool
     app.state.vscode_tool = container.vscode_tool

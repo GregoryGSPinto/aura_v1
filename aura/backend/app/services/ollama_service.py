@@ -1,5 +1,5 @@
 import time
-from typing import Iterable
+from typing import Iterable, Optional
 
 import httpx
 
@@ -39,8 +39,9 @@ class OllamaService:
         history: Iterable[ChatHistoryItem],
         temperature: float = 0.2,
         think: bool = False,
+        system_prompt: Optional[str] = None,
     ) -> tuple[str, int]:
-        prompt_parts = [SYSTEM_PROMPT]
+        prompt_parts = [system_prompt.strip() if system_prompt else SYSTEM_PROMPT]
         for item in history:
             prompt_parts.append(f"{item.role.upper()}: {item.content}")
         prompt_parts.append(f"USER: {message}")

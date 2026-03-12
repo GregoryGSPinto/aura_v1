@@ -4,6 +4,9 @@ import type {
   Project, 
   ChatResponse, 
   CommandResult,
+  CompanionMemorySnapshot,
+  CompanionOverview,
+  CompanionTrustSnapshot,
   AuthStatusPayload,
   Agent,
   AgentJobDetail,
@@ -95,6 +98,18 @@ export async function sendChat(
       options: { stream: false, temperature: 0.7 },
     }),
   });
+}
+
+export async function fetchCompanionOverview(): Promise<ApiResponse<CompanionOverview>> {
+  return fetchApi('/api/v1/companion/overview');
+}
+
+export async function fetchCompanionMemory(): Promise<ApiResponse<CompanionMemorySnapshot>> {
+  return fetchApi('/api/v1/companion/memory');
+}
+
+export async function fetchCompanionTrust(): Promise<ApiResponse<CompanionTrustSnapshot>> {
+  return fetchApi('/api/v1/companion/trust');
 }
 
 // Commands

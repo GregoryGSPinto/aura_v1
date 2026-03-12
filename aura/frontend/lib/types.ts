@@ -65,7 +65,87 @@ export interface ChatResponse {
     command: string;
     reason: string;
   } | null;
+  action_preview?: ActionPreview | null;
+  context_summary?: string | null;
+  memory_signals?: MemorySignal[];
+  trust_signals?: TrustSignal[];
+  behavioral_mode?: string | null;
   tokens_used?: number;
+}
+
+export interface MemorySignal {
+  id: string;
+  kind: 'session' | 'recent' | 'project' | 'personal' | 'operational' | 'long_term';
+  title: string;
+  content: string;
+  confidence: number;
+  source: string;
+  updated_at: string;
+  sensitive?: boolean;
+}
+
+export interface TrustSignal {
+  id: string;
+  label: string;
+  detail: string;
+  level: 'good' | 'attention' | 'warning';
+  source: string;
+}
+
+export interface ActionPreview {
+  command: string;
+  category: string;
+  risk_level: 'low' | 'moderate' | 'elevated' | 'high' | 'critical';
+  risk_score: number;
+  requires_confirmation: boolean;
+  preview: string;
+  side_effects: string[];
+  allowed: boolean;
+}
+
+export interface PrioritySignal {
+  id: string;
+  label: string;
+  description: string;
+  level: 'urgent' | 'important' | 'active' | 'watch' | 'informational';
+  source: string;
+}
+
+export interface QuickAction {
+  label: string;
+  prompt: string;
+  category: string;
+}
+
+export interface CompanionOverview {
+  greeting: string;
+  focus_summary: string;
+  founder_mode: boolean;
+  behavior_mode: string;
+  presence_state: string;
+  voice_state: string;
+  priorities: PrioritySignal[];
+  recent_projects: Project[];
+  memory_signals: MemorySignal[];
+  trust_signals: TrustSignal[];
+  pending_actions: ActionPreview[];
+  quick_actions: QuickAction[];
+  telemetry: Record<string, unknown>;
+}
+
+export interface CompanionMemorySnapshot {
+  profile: Record<string, unknown>;
+  preferences: MemorySignal[];
+  project_memory: MemorySignal[];
+  operational_memory: MemorySignal[];
+  recent_context: MemorySignal[];
+}
+
+export interface CompanionTrustSnapshot {
+  signals: TrustSignal[];
+  recent_activity: Record<string, unknown>[];
+  voice: Record<string, unknown>;
+  policy_state: Record<string, unknown>;
 }
 
 export interface Agent {
@@ -182,11 +262,4 @@ export interface Activity {
   description: string;
   timestamp: string;
   status: 'success' | 'error' | 'info';
-}
-
-export interface ProcessInfo {
-  pid: number;
-  name: string;
-  cpu: number;
-  memory: number;
 }
