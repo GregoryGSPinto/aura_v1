@@ -14,6 +14,13 @@ Frontend:
 ./scripts/run-frontend
 ```
 
+Autostart macOS:
+
+```bash
+./scripts/install-launch-agents
+./scripts/healthcheck-aura
+```
+
 ## Validação de qualidade
 
 Backend:
@@ -35,9 +42,11 @@ pnpm build
 ## Verificação de saúde
 
 - `GET /`
+- `GET /api/v1/healthz`
 - `GET /api/v1/status`
 - `GET /api/v1/system/status`
 - `GET /api/v1/os/overview`
+- `GET /api/health`
 
 ## Fluxo de jobs
 
@@ -52,6 +61,7 @@ pnpm build
 - frontend sem conectar: revisar `NEXT_PUBLIC_API_URL`
 - autenticação falhando: revisar `AURA_AUTH_MODE`, token e credenciais Supabase
 - ações bloqueadas: verificar allowlist, regras do `CommandService` e trilha de auditoria
+- autostart falhando no login: revisar [docs/operations/macos-autostart.md](docs/operations/macos-autostart.md)
 
 ## Princípio de resposta
 

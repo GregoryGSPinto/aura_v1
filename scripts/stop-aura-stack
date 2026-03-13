@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+
+LABEL="$(launch_agent_label)"
+UID_VALUE="$(id -u)"
+AGENT_PATH="${AURA_LAUNCH_AGENTS_DIR}/${LABEL}.plist"
+
+if [[ -f "$AGENT_PATH" ]]; then
+  launchctl bootout "gui/${UID_VALUE}" "$AGENT_PATH" >/dev/null 2>&1 || true
+fi
+
+for service in aura-stack aura-frontend aura-backend aura-ollama; do
+  PIDFILE="$(pidfile_path "$service")"
+  PID="$(read_pidfile "$PIDFILE" || true)"
+  if [[ -n "$PID" ]] && is_running_pid "$PID"; then
+    log_warn "Stopping ${service} pid ${PID}."
+    kill_pid_gracefully "$PID"
+  fi
+  remove_pidfile "$PIDFILE"
+done
+
+for port_service in "3000 aura_frontend" "8000 aura_backend"; do
+  PORT="${port_service%% *}"
+  MATCHER="${port_service##* }"
+  while IFS= read -r PID; do
+    if pid_matches_service "$PID" "$MATCHER"; then
+      kill_pid_gracefully "$PID"
+    fi
+  done < <(listening_pids "$PORT")
+done
+
+read -r _ OLLAMA_PORT < <(load_backend_env; ollama_url_parts)
+while IFS= read -r PID; do
+  if pid_matches_service "$PID" aura_ollama; then
+    kill_pid_gracefully "$PID"
+  fi
+done < <(listening_pids "$OLLAMA_PORT")
+
+log_info "Aura stack stopped."

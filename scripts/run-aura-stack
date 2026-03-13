@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+load_backend_env
+load_frontend_env
+
+require_command curl
+
+readonly STACK_PIDFILE="$(pidfile_path aura-stack)"
+readonly OLLAMA_PIDFILE="$(pidfile_path aura-ollama)"
+readonly BACKEND_PIDFILE="$(pidfile_path aura-backend)"
+readonly FRONTEND_PIDFILE="$(pidfile_path aura-frontend)"
+
+readonly OLLAMA_LOGFILE="${AURA_LOG_DIR}/ollama.log"
+readonly BACKEND_LOGFILE="${AURA_LOG_DIR}/backend.log"
+readonly FRONTEND_LOGFILE="${AURA_LOG_DIR}/frontend.log"
+
+readonly STACK_HEALTH_INTERVAL="${AURA_STACK_HEALTH_INTERVAL:-10}"
+readonly OLLAMA_HEALTH_TIMEOUT="${AURA_OLLAMA_HEALTH_TIMEOUT:-60}"
+readonly BACKEND_HEALTH_TIMEOUT="${AURA_BACKEND_HEALTH_TIMEOUT:-60}"
+readonly FRONTEND_HEALTH_TIMEOUT="${AURA_FRONTEND_HEALTH_TIMEOUT:-90}"
+
+readonly BACKEND_HOST="${AURA_BACKEND_HOST:-127.0.0.1}"
+readonly BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
+readonly FRONTEND_HOST="${AURA_FRONTEND_HOST:-127.0.0.1}"
+readonly FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+readonly FRONTEND_HEALTH_URL="http://${FRONTEND_HOST}:${FRONTEND_PORT}/api/health"
+readonly BACKEND_HEALTH_URL="http://${BACKEND_HOST}:${BACKEND_PORT}/api/v1/healthz"
+
+read -r OLLAMA_HOST OLLAMA_PORT < <(ollama_url_parts)
+readonly OLLAMA_HEALTH_URL="http://${OLLAMA_HOST}:${OLLAMA_PORT}/api/tags"
+
+browser_opened=0
+
+start_managed_service() {
+  local name="$1"
+  local pidfile="$2"
+  local logfile="$3"
+  shift 3
+
+  log_info "Launching ${name}."
+  "$@" >>"$logfile" 2>&1 &
+  local pid=$!
+  write_pidfile "$pidfile" "$pid"
+}
+
+cleanup_pidfile_if_stale() {
+  local pidfile="$1"
+  local pid
+  pid="$(read_pidfile "$pidfile" || true)"
+  if [[ -n "$pid" ]] && ! is_running_pid "$pid"; then
+    remove_pidfile "$pidfile"
+  fi
+}
+
+stop_managed_service() {
+  local name="$1"
+  local pidfile="$2"
+  local port="$3"
+  local matcher="$4"
+  local pid
+
+  pid="$(read_pidfile "$pidfile" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    log_warn "Stopping ${name} pid ${pid}."
+    kill_pid_gracefully "$pid"
+  fi
+  remove_pidfile "$pidfile"
+
+  while IFS= read -r pid; do
+    if pid_matches_service "$pid" "$matcher"; then
+      log_warn "Stopping stray ${name} pid ${pid} on port ${port}."
+      kill_pid_gracefully "$pid"
+    fi
+  done < <(listening_pids "$port")
+}
+
+ensure_ollama() {
+  cleanup_pidfile_if_stale "$OLLAMA_PIDFILE"
+
+  if check_http "$OLLAMA_HEALTH_URL"; then
+    return 0
+  fi
+
+  if port_is_listening "$OLLAMA_PORT" && ! service_port_owned_by_aura "$OLLAMA_PORT" aura_ollama; then
+    log_error "Port $OLLAMA_PORT is occupied by a non-Ollama process."
+    return 1
+  fi
+
+  local pid
+  pid="$(read_pidfile "$OLLAMA_PIDFILE" || true)"
+  if [[ -z "$pid" ]] || ! is_running_pid "$pid"; then
+    start_managed_service "Ollama" "$OLLAMA_PIDFILE" "$OLLAMA_LOGFILE" "$SCRIPT_DIR/run-ollama"
+  fi
+
+  wait_for_http "Ollama" "$OLLAMA_HEALTH_URL" "$OLLAMA_HEALTH_TIMEOUT"
+}
+
+ensure_backend() {
+  cleanup_pidfile_if_stale "$BACKEND_PIDFILE"
+
+  if check_http "$BACKEND_HEALTH_URL"; then
+    return 0
+  fi
+
+  if port_is_listening "$BACKEND_PORT" && ! service_port_owned_by_aura "$BACKEND_PORT" aura_backend; then
+    log_error "Port $BACKEND_PORT is occupied by a non-Aura backend process."
+    return 1
+  fi
+
+  local pid
+  pid="$(read_pidfile "$BACKEND_PIDFILE" || true)"
+  if [[ -z "$pid" ]] || ! is_running_pid "$pid"; then
+    start_managed_service "Aura backend" "$BACKEND_PIDFILE" "$BACKEND_LOGFILE" env AURA_BACKEND_RELOAD=0 AURA_BACKEND_HOST="$BACKEND_HOST" AURA_BACKEND_PORT="$BACKEND_PORT" "$SCRIPT_DIR/run-backend"
+  fi
+
+  wait_for_http "Aura backend" "$BACKEND_HEALTH_URL" "$BACKEND_HEALTH_TIMEOUT"
+}
+
+ensure_frontend() {
+  cleanup_pidfile_if_stale "$FRONTEND_PIDFILE"
+
+  if check_http "$FRONTEND_HEALTH_URL"; then
+    maybe_open_browser
+    return 0
+  fi
+
+  if port_is_listening "$FRONTEND_PORT" && ! service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
+    log_error "Port $FRONTEND_PORT is occupied by a non-Aura frontend process."
+    return 1
+  fi
+
+  local pid
+  pid="$(read_pidfile "$FRONTEND_PIDFILE" || true)"
+  if [[ -z "$pid" ]] || ! is_running_pid "$pid"; then
+    start_managed_service "Aura frontend" "$FRONTEND_PIDFILE" "$FRONTEND_LOGFILE" env AURA_FRONTEND_HOST="$FRONTEND_HOST" AURA_FRONTEND_PORT="$FRONTEND_PORT" "$SCRIPT_DIR/run-frontend"
+  fi
+
+  wait_for_http "Aura frontend" "$FRONTEND_HEALTH_URL" "$FRONTEND_HEALTH_TIMEOUT"
+  maybe_open_browser
+}
+
+maybe_open_browser() {
+  if [[ "${AURA_OPEN_BROWSER_AT_LOGIN:-0}" != "1" ]]; then
+    return 0
+  fi
+
+  if [[ "$browser_opened" -eq 1 ]]; then
+    return 0
+  fi
+
+  if command -v open >/dev/null 2>&1; then
+    open "http://${FRONTEND_HOST}:${FRONTEND_PORT}" >/dev/null 2>&1 || true
+    browser_opened=1
+  fi
+}
+
+shutdown_stack() {
+  log_warn "Shutting down Aura stack."
+  stop_managed_service "Aura frontend" "$FRONTEND_PIDFILE" "$FRONTEND_PORT" aura_frontend
+  stop_managed_service "Aura backend" "$BACKEND_PIDFILE" "$BACKEND_PORT" aura_backend
+  stop_managed_service "Ollama" "$OLLAMA_PIDFILE" "$OLLAMA_PORT" aura_ollama
+  remove_pidfile "$STACK_PIDFILE"
+}
+
+if [[ -f "$STACK_PIDFILE" ]]; then
+  existing_pid="$(read_pidfile "$STACK_PIDFILE" || true)"
+  if [[ -n "$existing_pid" ]] && is_running_pid "$existing_pid" && pid_matches_service "$existing_pid" aura_stack; then
+    log_info "Aura stack supervisor already running with pid ${existing_pid}."
+    exit 0
+  fi
+fi
+
+write_pidfile "$STACK_PIDFILE" "$$"
+trap shutdown_stack EXIT INT TERM
+
+log_info "Aura stack supervisor started."
+
+while true; do
+  if ensure_ollama; then
+    if ensure_backend; then
+      ensure_frontend || true
+    fi
+  fi
+  sleep "$STACK_HEALTH_INTERVAL"
+done

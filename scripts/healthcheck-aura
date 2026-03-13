@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+load_backend_env
+load_frontend_env
+
+require_command curl
+
+BACKEND_HOST="${AURA_BACKEND_HOST:-127.0.0.1}"
+BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
+FRONTEND_HOST="${AURA_FRONTEND_HOST:-127.0.0.1}"
+FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+
+read -r OLLAMA_HOST OLLAMA_PORT < <(ollama_url_parts)
+
+check_url() {
+  local name="$1"
+  local url="$2"
+  if curl -fsS --max-time 3 "$url" >/dev/null 2>&1; then
+    printf '%-10s %s\n' "$name" "healthy"
+    return 0
+  fi
+
+  printf '%-10s %s\n' "$name" "unhealthy"
+  return 1
+}
+
+status=0
+printf 'Aura healthcheck\n'
+printf 'Logs: %s\n' "$AURA_LOG_DIR"
+printf 'LaunchAgent: %s/%s.plist\n' "$AURA_LAUNCH_AGENTS_DIR" "$(launch_agent_label)"
+
+check_url "ollama" "http://${OLLAMA_HOST}:${OLLAMA_PORT}/api/tags" || status=1
+check_url "backend" "http://${BACKEND_HOST}:${BACKEND_PORT}/api/v1/healthz" || status=1
+check_url "frontend" "http://${FRONTEND_HOST}:${FRONTEND_PORT}/api/health" || status=1
+
+exit "$status"

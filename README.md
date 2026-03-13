@@ -90,6 +90,17 @@ pnpm install
 ./scripts/run-frontend
 ```
 
+### Autostart no macOS
+
+Para iniciar Ollama, backend e frontend automaticamente no login do usuário via `launchd`:
+
+```bash
+./scripts/install-launch-agents
+./scripts/healthcheck-aura
+```
+
+A operação completa está em [docs/operations/macos-autostart.md](docs/operations/macos-autostart.md).
+
 ### Variáveis de ambiente essenciais
 
 Backend:
@@ -155,6 +166,7 @@ O roadmap executivo está em [ROADMAP.md](ROADMAP.md) e o detalhado em [docs/pro
 - model router: [docs/architecture/model-router.md](docs/architecture/model-router.md)
 - deploy: [docs/operations/deploy.md](docs/operations/deploy.md)
 - runbooks: [docs/operations/runbooks.md](docs/operations/runbooks.md)
+- autostart macOS: [docs/operations/macos-autostart.md](docs/operations/macos-autostart.md)
 
 ## Positioning Statement
 

@@ -8,6 +8,16 @@ from app.models.common_models import ApiResponse
 router = APIRouter()
 
 
+@router.get("/healthz", response_model=ApiResponse[dict])
+async def healthz():
+    return ApiResponse(
+        data={
+            "status": "ok",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
 @router.get("/status", response_model=ApiResponse[dict])
 async def get_status(request: Request):
     persistence_state = request.app.state.persistence_service.get_state()

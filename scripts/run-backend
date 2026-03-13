@@ -1,9 +1,44 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$REPO_ROOT/aura/backend"
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+load_backend_env
+
+require_command python3
+
+BACKEND_HOST="${AURA_BACKEND_HOST:-127.0.0.1}"
+BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
+BACKEND_RELOAD="${AURA_BACKEND_RELOAD:-}"
+
+if [[ -z "$BACKEND_RELOAD" ]]; then
+  if [[ -t 1 ]]; then
+    BACKEND_RELOAD="1"
+  else
+    BACKEND_RELOAD="0"
+  fi
 fi
-python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+if service_port_owned_by_aura "$BACKEND_PORT" aura_backend; then
+  log_info "Aura backend already listening on port $BACKEND_PORT."
+  exit 0
+fi
+
+if port_is_listening "$BACKEND_PORT"; then
+  log_error "Port $BACKEND_PORT is already in use by a non-Aura process."
+  exit 1
+fi
+
+cd "$BACKEND_DIR"
+
+BACKEND_PYTHON="$(resolve_backend_python)"
+UVICORN_ARGS=( -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" )
+
+if [[ "$BACKEND_RELOAD" == "1" ]]; then
+  UVICORN_ARGS+=( --reload )
+fi
+
+log_info "Starting Aura backend on ${BACKEND_HOST}:${BACKEND_PORT}."
+exec "$BACKEND_PYTHON" "${UVICORN_ARGS[@]}"

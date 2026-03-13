@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+
+require_command launchctl
+
+LABEL="$(launch_agent_label)"
+UID_VALUE="$(id -u)"
+TARGET_PLIST="${AURA_LAUNCH_AGENTS_DIR}/${LABEL}.plist"
+
+if [[ -f "$TARGET_PLIST" ]]; then
+  launchctl bootout "gui/${UID_VALUE}" "$TARGET_PLIST" >/dev/null 2>&1 || true
+  launchctl disable "gui/${UID_VALUE}/${LABEL}" >/dev/null 2>&1 || true
+  rm -f "$TARGET_PLIST"
+fi
+
+"$SCRIPT_DIR/stop-aura-stack"
+
+log_info "Removed LaunchAgent ${LABEL}."

@@ -3,21 +3,23 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.aura.backend</string>
+  <string>com.gregory.aura.stack</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/zsh</string>
-    <string>/Users/user_pc/Projetos/aura_v1/scripts/run-backend-private</string>
+    <string>/bin/bash</string>
+    <string>__AURA_REPO_ROOT__/scripts/run-aura-stack</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
   <key>WorkingDirectory</key>
-  <string>/Users/user_pc/Projetos/aura_v1</string>
+  <string>__AURA_REPO_ROOT__</string>
   <key>StandardOutPath</key>
-  <string>/Users/user_pc/Projetos/aura_v1/aura/backend/data/logs/launchd.stdout.log</string>
+  <string>__AURA_LOG_DIR__/launchd.stack.stdout.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/user_pc/Projetos/aura_v1/aura/backend/data/logs/launchd.stderr.log</string>
+  <string>__AURA_LOG_DIR__/launchd.stack.stderr.log</string>
 </dict>
 </plist>

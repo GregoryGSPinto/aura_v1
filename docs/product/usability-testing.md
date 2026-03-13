@@ -51,29 +51,26 @@ Faça login na mesma conta/tailnet que será usada no iPhone.
 
 ## Manter a Aura trabalhando quando você estiver offline
 
-Para tarefas longas, use `launchd` no macOS para manter o backend ativo mesmo após fechar o terminal.
-
-Arquivo pronto:
-
-- `infra/macos/com.aura.backend.plist`
+Para tarefas longas e inicialização automática no login, use o supervisor `launchd` da stack local.
 
 Instalação:
 
 ```bash
-mkdir -p ~/Library/LaunchAgents
-cp infra/macos/com.aura.backend.plist ~/Library/LaunchAgents/com.aura.backend.plist
-launchctl unload ~/Library/LaunchAgents/com.aura.backend.plist 2>/dev/null || true
-launchctl load ~/Library/LaunchAgents/com.aura.backend.plist
-launchctl start com.aura.backend
+./scripts/install-launch-agents
 ```
 
 Verificação:
 
 ```bash
-launchctl list | grep com.aura.backend
-tail -f aura/backend/data/logs/launchd.stdout.log
-tail -f aura/backend/data/logs/launchd.stderr.log
+./scripts/healthcheck-aura
+launchctl print gui/$(id -u)/com.gregory.aura.stack
+tail -f ~/Library/Logs/Aura/launchd.stack.stdout.log
+tail -f ~/Library/Logs/Aura/launchd.stack.stderr.log
 ```
+
+Documentação operacional completa:
+
+- `docs/operations/macos-autostart.md`
 
 ## Publicar o backend dentro da tailnet
 

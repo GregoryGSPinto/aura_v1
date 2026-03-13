@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+
+require_command launchctl
+
+LABEL="$(launch_agent_label)"
+UID_VALUE="$(id -u)"
+SOURCE_PLIST="${REPO_ROOT}/infra/macos/${LABEL}.plist"
+TARGET_PLIST="${AURA_LAUNCH_AGENTS_DIR}/${LABEL}.plist"
+TEMP_PLIST="$(mktemp "/tmp/${LABEL}.XXXXXX.plist")"
+
+mkdir -p "$AURA_LAUNCH_AGENTS_DIR"
+
+sed \
+  -e "s|__AURA_REPO_ROOT__|${REPO_ROOT}|g" \
+  -e "s|__AURA_LOG_DIR__|${AURA_LOG_DIR}|g" \
+  "$SOURCE_PLIST" >"$TEMP_PLIST"
+
+mv "$TEMP_PLIST" "$TARGET_PLIST"
+
+launchctl bootout "gui/${UID_VALUE}" "$TARGET_PLIST" >/dev/null 2>&1 || true
+launchctl enable "gui/${UID_VALUE}/${LABEL}" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/${UID_VALUE}" "$TARGET_PLIST"
+launchctl kickstart -k "gui/${UID_VALUE}/${LABEL}"
+
+log_info "Installed LaunchAgent ${LABEL}."
+log_info "LaunchAgent path: ${TARGET_PLIST}"
+log_info "Logs directory: ${AURA_LOG_DIR}"

@@ -1,6 +1,43 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$REPO_ROOT/aura/frontend"
-pnpm dev --host 0.0.0.0 --port 3000
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+load_frontend_env
+
+require_command pnpm
+require_command node
+
+FRONTEND_HOST="${AURA_FRONTEND_HOST:-127.0.0.1}"
+FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+FRONTEND_MODE="${AURA_FRONTEND_MODE:-dev}"
+
+if service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
+  log_info "Aura frontend already listening on port $FRONTEND_PORT."
+  exit 0
+fi
+
+if port_is_listening "$FRONTEND_PORT"; then
+  log_error "Port $FRONTEND_PORT is already in use by a non-Aura process."
+  exit 1
+fi
+
+cd "$FRONTEND_DIR"
+
+case "$FRONTEND_MODE" in
+  dev)
+    CMD=( pnpm dev --hostname "$FRONTEND_HOST" --port "$FRONTEND_PORT" )
+    ;;
+  start)
+    CMD=( pnpm start --hostname "$FRONTEND_HOST" --port "$FRONTEND_PORT" )
+    ;;
+  *)
+    log_error "Unsupported AURA_FRONTEND_MODE='$FRONTEND_MODE'. Use 'dev' or 'start'."
+    exit 1
+    ;;
+esac
+
+log_info "Starting Aura frontend in ${FRONTEND_MODE} mode on ${FRONTEND_HOST}:${FRONTEND_PORT}."
+exec "${CMD[@]}"
