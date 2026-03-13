@@ -96,14 +96,28 @@ export async function openProject(name: string): Promise<ApiResponse<{ message: 
 export async function sendChat(
   message: string,
   history: { role: string; content: string }[] = [],
-  sessionId = 'default-session'
+  sessionId = 'default-session',
+  metadata?: {
+    modeId?: string;
+    modeLabel?: string;
+    capability?: string;
+    temperature?: number;
+    think?: boolean;
+    shouldReplyWithVoice?: boolean;
+  }
 ): Promise<ApiResponse<ChatResponse>> {
   return fetchApi('/api/v1/chat', {
     method: 'POST',
+    headers: {
+      ...(metadata?.modeId ? { 'X-Aura-Mode': metadata.modeId } : {}),
+      ...(metadata?.modeLabel ? { 'X-Aura-Model-Label': metadata.modeLabel } : {}),
+      ...(metadata?.capability ? { 'X-Aura-Capability': metadata.capability } : {}),
+      ...(metadata?.shouldReplyWithVoice ? { 'X-Aura-Voice-Reply': 'true' } : {}),
+    },
     body: JSON.stringify({
       message,
       context: { history, session_id: sessionId },
-      options: { stream: false, temperature: 0.7 },
+      options: { stream: false, temperature: metadata?.temperature ?? 0.7, think: metadata?.think ?? false },
     }),
   });
 }

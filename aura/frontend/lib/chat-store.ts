@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { DEFAULT_AURA_CHAT_MODE_ID, type AuraChatModeId } from '@/lib/chat-modes';
 import type { ChatConversation, ComposerCommand, ConversationMessage } from '@/lib/chat-types';
 
 type ChatStoreState = {
@@ -10,6 +11,7 @@ type ChatStoreState = {
   activeConversationId: string;
   sidebarCollapsed: boolean;
   voiceReplyEnabled: boolean;
+  selectedModeId: AuraChatModeId;
   composerCommand: ComposerCommand | null;
   createConversation: () => string;
   setActiveConversation: (id: string) => void;
@@ -23,6 +25,7 @@ type ChatStoreState = {
   togglePinnedMessage: (conversationId: string, messageId: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setVoiceReplyEnabled: (enabled: boolean) => void;
+  setSelectedMode: (modeId: AuraChatModeId) => void;
   requestComposerCommand: (command: ComposerCommand) => void;
   clearComposerCommand: () => void;
 };
@@ -57,6 +60,7 @@ export const useChatStore = create<ChatStoreState>()(
         activeConversationId: initialConversation.id,
         sidebarCollapsed: false,
         voiceReplyEnabled: false,
+        selectedModeId: DEFAULT_AURA_CHAT_MODE_ID,
         composerCommand: null,
         createConversation: () => {
           const conversation = createConversation();
@@ -122,6 +126,7 @@ export const useChatStore = create<ChatStoreState>()(
           })),
         setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
         setVoiceReplyEnabled: (enabled) => set({ voiceReplyEnabled: enabled }),
+        setSelectedMode: (selectedModeId) => set({ selectedModeId }),
         requestComposerCommand: (command) => set({ composerCommand: command }),
         clearComposerCommand: () => set({ composerCommand: null }),
       };
@@ -134,6 +139,7 @@ export const useChatStore = create<ChatStoreState>()(
         activeConversationId: state.activeConversationId || state.conversations[0]?.id || '',
         sidebarCollapsed: state.sidebarCollapsed,
         voiceReplyEnabled: state.voiceReplyEnabled,
+        selectedModeId: state.selectedModeId,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

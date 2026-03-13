@@ -1,20 +1,29 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { PanelRightClose, SlidersHorizontal } from 'lucide-react';
 
 import { ChatComposer } from '@/components/chat/composer';
+import { ChatControlPanel } from '@/components/chat/chat-control-panel';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
 import { MessageList } from '@/components/chat/message-list';
+import { ChatModeSelector } from '@/components/chat/mode-selector';
+import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { sendChat } from '@/lib/api';
+import { getAuraChatMode } from '@/lib/chat-modes';
 import { useChatStore } from '@/lib/chat-store';
 import type { AttachmentPreview, ConversationMessage } from '@/lib/chat-types';
 import { notifyError, notifyInfo } from '@/lib/notifications';
 
-type BrowserRecognitionResult = ArrayLike<{
+type BrowserRecognitionAlternative = {
   transcript: string;
-}>;
+};
+
+type BrowserRecognitionResult = ArrayLike<BrowserRecognitionAlternative> & {
+  isFinal?: boolean;
+};
 
 type BrowserRecognitionEvent = Event & {
   results: ArrayLike<BrowserRecognitionResult>;
@@ -33,6 +42,11 @@ type BrowserSpeechRecognition = {
 
 type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
+type SubmitOptions = {
+  source: 'text' | 'voice';
+  autoVoiceReply: boolean;
+};
+
 declare global {
   interface Window {
     SpeechRecognition?: SpeechRecognitionConstructor;
@@ -49,7 +63,12 @@ function summarizeAttachments(attachments: AttachmentPreview[]) {
   return attachments.map((attachment) => `${attachment.name} (${Math.ceil(attachment.size / 1024)} KB)`).join(', ');
 }
 
-function createUserMessage(content: string, attachments: AttachmentPreview[]): ConversationMessage {
+function createUserMessage(
+  content: string,
+  attachments: AttachmentPreview[],
+  source: 'text' | 'voice',
+  modeLabel: string,
+): ConversationMessage {
   return {
     id: createMessageId('message'),
     role: 'user',
@@ -57,16 +76,19 @@ function createUserMessage(content: string, attachments: AttachmentPreview[]): C
     attachments,
     createdAt: new Date().toISOString(),
     status: 'complete',
+    inputSource: source,
+    modeLabel,
   };
 }
 
-function createAssistantMessage(): ConversationMessage {
+function createAssistantMessage(modeLabel: string): ConversationMessage {
   return {
     id: createMessageId('message'),
     role: 'assistant',
     content: '',
     createdAt: new Date().toISOString(),
     status: 'pending',
+    modeLabel,
   };
 }
 
@@ -84,28 +106,38 @@ export function ChatWorkspace() {
   const clearConversation = useChatStore((state) => state.clearConversation);
   const togglePinnedMessage = useChatStore((state) => state.togglePinnedMessage);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
+  const createConversation = useChatStore((state) => state.createConversation);
   const voiceReplyEnabled = useChatStore((state) => state.voiceReplyEnabled);
   const setVoiceReplyEnabled = useChatStore((state) => state.setVoiceReplyEnabled);
+  const selectedModeId = useChatStore((state) => state.selectedModeId);
+  const setSelectedMode = useChatStore((state) => state.setSelectedMode);
   const composerCommand = useChatStore((state) => state.composerCommand);
   const clearComposerCommand = useChatStore((state) => state.clearComposerCommand);
+
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
+  const messages = activeConversation?.messages ?? [];
+  const currentMode = getAuraChatMode(selectedModeId);
+  const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant' && message.content.trim());
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const streamTimerRef = useRef<number | null>(null);
+  const voiceFinalRef = useRef('');
+  const voicePartialRef = useRef('');
 
-  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? conversations[0];
-  const [input, setInput] = useState('');
+  const [draftText, setDraftText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [shouldReplyWithVoice, setShouldReplyWithVoice] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [activeSpeakingMessageId, setActiveSpeakingMessageId] = useState<string | null>(null);
-  const [composerState, setComposerState] = useState<'idle' | 'recording' | 'processing' | 'sending' | 'error' | 'speaking'>('idle');
+  const [voiceTranscriptPartial, setVoiceTranscriptPartial] = useState('');
+  const [voiceTranscriptFinal, setVoiceTranscriptFinal] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const messages = activeConversation?.messages ?? [];
-  const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant' && message.content.trim());
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   useEffect(() => {
     if (!activeConversationId && conversations[0]) {
@@ -116,167 +148,91 @@ export function ChatWorkspace() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const prompt = new URLSearchParams(window.location.search).get('prompt');
-    if (!prompt || input || messages.length) return;
-    setInput(prompt);
-  }, [input, messages.length]);
+    if (!prompt || draftText || messages.length) return;
+    setDraftText(prompt);
+  }, [draftText, messages.length]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length, isLoading]);
+  }, [messages.length, isLoading, isProcessingVoice]);
 
-  const statusLabel = useMemo(() => {
-    switch (composerState) {
-      case 'recording':
-        return 'Gravando com reconhecimento de fala no navegador.';
-      case 'processing':
-        return 'Processando contexto e anexos.';
-      case 'sending':
-        return 'Enviando para a Aura.';
-      case 'speaking':
-        return 'Respondendo em audio.';
-      case 'error':
-        return 'Falha operacional. Revise o backend ou tente novamente.';
-      default:
-        return attachments.length ? 'Anexos prontos para envio.' : 'Enter envia. Shift + Enter quebra linha.';
-    }
-  }, [attachments.length, composerState]);
+  const clearVoiceCapture = useCallback(() => {
+    voiceFinalRef.current = '';
+    voicePartialRef.current = '';
+    setVoiceTranscriptFinal('');
+    setVoiceTranscriptPartial('');
+    setIsProcessingVoice(false);
+  }, []);
 
-  const runStreaming = (messageId: string, fullText: string, meta: string, model?: string) =>
-    new Promise<void>((resolve) => {
-      if (!activeConversation) {
-        resolve();
-        return;
-      }
-
-      let index = 0;
-      const step = Math.max(4, Math.ceil(fullText.length / 56));
-
-      streamTimerRef.current = window.setInterval(() => {
-        index = Math.min(fullText.length, index + step);
-        updateMessage(activeConversation.id, messageId, {
-          content: fullText.slice(0, index),
-          status: index >= fullText.length ? 'complete' : 'streaming',
-          meta,
-          model,
-        });
-
-        if (index >= fullText.length) {
-          if (streamTimerRef.current) window.clearInterval(streamTimerRef.current);
-          streamTimerRef.current = null;
+  const runStreaming = useCallback(
+    (messageId: string, fullText: string, meta: string, model?: string) =>
+      new Promise<void>((resolve) => {
+        if (!activeConversation) {
           resolve();
+          return;
         }
-      }, 18);
-    });
+
+        let index = 0;
+        const step = Math.max(4, Math.ceil(fullText.length / 56));
+
+        streamTimerRef.current = window.setInterval(() => {
+          index = Math.min(fullText.length, index + step);
+          updateMessage(activeConversation.id, messageId, {
+            content: fullText.slice(0, index),
+            status: index >= fullText.length ? 'complete' : 'streaming',
+            meta,
+            model,
+            modeLabel: currentMode.label,
+          });
+
+          if (index >= fullText.length) {
+            if (streamTimerRef.current) window.clearInterval(streamTimerRef.current);
+            streamTimerRef.current = null;
+            resolve();
+          }
+        }, 18);
+      }),
+    [activeConversation, currentMode.label, updateMessage],
+  );
 
   const stopSpeaking = useCallback(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
     setActiveSpeakingMessageId(null);
-    setComposerState((current) => (current === 'speaking' ? 'idle' : current));
+    setShouldReplyWithVoice(false);
   }, []);
 
-  const speakMessage = useCallback((message: ConversationMessage) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window) || !message.content.trim()) {
-      notifyInfo('Audio indisponivel', 'A leitura em voz depende do speech synthesis do navegador.');
-      return;
-    }
+  const speakMessage = useCallback(
+    (message: ConversationMessage) => {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window) || !message.content.trim()) {
+        notifyInfo('Audio indisponivel', 'A leitura em voz depende do speech synthesis do navegador.');
+        return;
+      }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message.content);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1;
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setComposerState('speaking');
-      setActiveSpeakingMessageId(message.id);
-    };
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      setComposerState('idle');
-      setActiveSpeakingMessageId(null);
-    };
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      setComposerState('error');
-      setActiveSpeakingMessageId(null);
-      notifyError('Falha no audio', 'Nao foi possivel reproduzir a resposta em audio.');
-    };
-    window.speechSynthesis.speak(utterance);
-  }, []);
-
-  const toggleListening = useCallback(() => {
-    const SpeechRecognitionApi = getRecognitionConstructor();
-    if (!SpeechRecognitionApi) {
-      notifyInfo('Microfone indisponivel', 'O navegador atual nao suporta reconhecimento de fala nativo.');
-      return;
-    }
-
-    if (isListening && speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
-      setIsListening(false);
-      setComposerState('idle');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionApi() as BrowserSpeechRecognition;
-    recognition.lang = 'pt-BR';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((result) => result[0]?.transcript ?? '')
-        .join(' ')
-        .trim();
-      setInput((current) => (current ? `${current.trim()} ${transcript}` : transcript));
-    };
-    recognition.onerror = () => {
-      setIsListening(false);
-      setComposerState('error');
-      notifyError('Microfone indisponivel', 'Nao foi possivel converter sua fala em texto.');
-    };
-    recognition.onend = () => {
-      setIsListening(false);
-      setComposerState('idle');
-    };
-    speechRecognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-    setComposerState('recording');
-  }, [isListening]);
-
-  useEffect(() => {
-    if (!composerCommand) return;
-
-    if (composerCommand === 'attach') {
-      fileInputRef.current?.click();
-    } else if (composerCommand === 'microphone') {
-      toggleListening();
-    } else if (composerCommand === 'read-last' && lastAssistantMessage) {
-      speakMessage(lastAssistantMessage);
-    } else if (composerCommand === 'clear' && activeConversation) {
-      clearConversation(activeConversation.id);
-      setAttachments([]);
-      setInput('');
-    }
-
-    clearComposerCommand();
-  }, [
-    activeConversation,
-    clearComposerCommand,
-    clearConversation,
-    composerCommand,
-    lastAssistantMessage,
-    speakMessage,
-    toggleListening,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      stopSpeaking();
-      if (streamTimerRef.current) window.clearInterval(streamTimerRef.current);
-    };
-  }, [stopSpeaking]);
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message.content);
+      utterance.lang = 'pt-BR';
+      utterance.rate = 1;
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setActiveSpeakingMessageId(message.id);
+      };
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setActiveSpeakingMessageId(null);
+        setShouldReplyWithVoice(false);
+      };
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        setActiveSpeakingMessageId(null);
+        setShouldReplyWithVoice(false);
+        notifyError('Falha no audio', 'Nao foi possivel reproduzir a resposta em audio.');
+      };
+      window.speechSynthesis.speak(utterance);
+    },
+    [],
+  );
 
   const handleAttachmentSelection = (selectedFiles: FileList | null) => {
     if (!selectedFiles?.length) return;
@@ -314,71 +270,214 @@ export function ChatWorkspace() {
     }, 450);
   };
 
-  const submitPrompt = async (overridePrompt?: string, regenerateHistory?: ConversationMessage[]) => {
-    const readyAttachments = attachments.filter((attachment) => attachment.status === 'ready');
-    const content = (overridePrompt ?? input).trim();
-    if ((!content && !readyAttachments.length) || !activeConversation || isLoading) return;
+  const submitPrompt = useCallback(
+    async (overridePrompt?: string, regenerateHistory?: ConversationMessage[], submitOptions?: SubmitOptions) => {
+      const readyAttachments = submitOptions?.source === 'voice' ? [] : attachments.filter((attachment) => attachment.status === 'ready');
+      const content = (overridePrompt ?? draftText).trim();
 
-    setComposerState('sending');
-    setIsLoading(true);
+      if ((!content && !readyAttachments.length) || !activeConversation || isLoading) return;
+
+      const replyWithVoice = submitOptions?.autoVoiceReply ?? voiceReplyEnabled;
+      const source = submitOptions?.source ?? 'text';
+      const assistantMessage = createAssistantMessage(currentMode.label);
+      const historyBase = regenerateHistory ?? activeConversation.messages;
+      const history = historyBase
+        .filter((message) => message.role === 'user' || message.role === 'assistant')
+        .map((message) => ({ role: message.role, content: message.content }));
+
+      setShouldReplyWithVoice(replyWithVoice);
+      setIsLoading(true);
+      setError(null);
+
+      if (!regenerateHistory) {
+        appendMessage(activeConversation.id, createUserMessage(content || 'Analisar anexos enviados.', readyAttachments, source, currentMode.label));
+      }
+      appendMessage(activeConversation.id, assistantMessage);
+
+      const attachmentContext = readyAttachments.length ? `\n\nArquivos anexados: ${summarizeAttachments(readyAttachments)}.` : '';
+      const prompt = `${content || 'Analise os anexos enviados e responda em portugues.'}${attachmentContext}`.trim();
+
+      setDraftText('');
+      setAttachments([]);
+
+      try {
+        const response = await sendChat(prompt, history, activeConversation.id, {
+          modeId: currentMode.id,
+          modeLabel: currentMode.label,
+          capability: currentMode.capability,
+          temperature: currentMode.request.temperature,
+          think: currentMode.request.think,
+          shouldReplyWithVoice: replyWithVoice,
+        });
+        const payload = response.data;
+        const meta = [payload.intent, currentMode.label, payload.model, payload.context_summary].filter(Boolean).join(' · ');
+        await runStreaming(assistantMessage.id, payload.response, meta, payload.model);
+        await refreshRuntime();
+
+        if (replyWithVoice) {
+          speakMessage({
+            ...assistantMessage,
+            content: payload.response,
+            status: 'complete',
+            modeLabel: currentMode.label,
+          });
+        } else {
+          setShouldReplyWithVoice(false);
+        }
+      } catch (requestError) {
+        const description =
+          requestError instanceof Error ? requestError.message : 'Nao foi possivel completar a resposta.';
+        updateMessage(activeConversation.id, assistantMessage.id, {
+          content: 'Nao consegui completar esta resposta agora. Verifique se a API da Aura e o modelo local estao acessiveis.',
+          status: 'error',
+          meta: 'Falha operacional',
+          modeLabel: currentMode.label,
+        });
+        setError(description);
+        setShouldReplyWithVoice(false);
+        notifyError('Aura indisponivel', description);
+      } finally {
+        setIsLoading(false);
+        setIsProcessingVoice(false);
+        clearVoiceCapture();
+      }
+    },
+    [
+      activeConversation,
+      appendMessage,
+      attachments,
+      clearVoiceCapture,
+      currentMode.capability,
+      currentMode.id,
+      currentMode.label,
+      currentMode.request.temperature,
+      currentMode.request.think,
+      draftText,
+      isLoading,
+      refreshRuntime,
+      runStreaming,
+      speakMessage,
+      updateMessage,
+      voiceReplyEnabled,
+    ],
+  );
+
+  const submitVoiceTranscript = useCallback(() => {
+    const transcript = [voiceFinalRef.current, voicePartialRef.current].filter(Boolean).join(' ').trim();
+    if (!transcript || isLoading) {
+      setIsListening(false);
+      setIsProcessingVoice(false);
+      return;
+    }
+
+    setVoiceTranscriptFinal(transcript);
+    setVoiceTranscriptPartial('');
+    setIsListening(false);
+    setIsProcessingVoice(true);
+    void submitPrompt(transcript, undefined, { source: 'voice', autoVoiceReply: true });
+  }, [isLoading, submitPrompt]);
+
+  const toggleListening = useCallback(() => {
+    const SpeechRecognitionApi = getRecognitionConstructor();
+    if (!SpeechRecognitionApi) {
+      notifyInfo('Microfone indisponivel', 'O navegador atual nao suporta reconhecimento de fala nativo.');
+      return;
+    }
+
+    if (isListening && speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      return;
+    }
+
+    stopSpeaking();
+    clearVoiceCapture();
     setError(null);
 
-    const assistantMessage = createAssistantMessage();
-    const historyBase = regenerateHistory ?? activeConversation.messages;
-    const history = historyBase
-      .filter((message) => message.role === 'user' || message.role === 'assistant')
-      .map((message) => ({ role: message.role, content: message.content }));
+    const recognition = new SpeechRecognitionApi() as BrowserSpeechRecognition;
+    recognition.lang = 'pt-BR';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      let nextFinal = '';
+      let nextPartial = '';
 
-    if (!overridePrompt) {
-      appendMessage(activeConversation.id, createUserMessage(content || 'Analisar anexos enviados.', readyAttachments));
-    }
-    appendMessage(activeConversation.id, assistantMessage);
-
-    const attachmentContext = readyAttachments.length ? `\n\nArquivos anexados: ${summarizeAttachments(readyAttachments)}.` : '';
-    const prompt = `${content || 'Analise os anexos enviados e responda em portugues.'}${attachmentContext}`.trim();
-
-    setInput('');
-    setAttachments([]);
-
-    try {
-      const response = await sendChat(prompt, history, activeConversation.id);
-      const payload = response.data;
-      const meta = [payload.intent, payload.model, payload.context_summary].filter(Boolean).join(' · ');
-      await runStreaming(assistantMessage.id, payload.response, meta, payload.model);
-      await refreshRuntime();
-      setComposerState(voiceReplyEnabled ? 'speaking' : 'idle');
-
-      if (voiceReplyEnabled) {
-        speakMessage({
-          ...assistantMessage,
-          content: payload.response,
-          status: 'complete',
-        });
-      }
-    } catch (requestError) {
-      const description =
-        requestError instanceof Error ? requestError.message : 'Nao foi possivel completar a resposta.';
-      updateMessage(activeConversation.id, assistantMessage.id, {
-        content: 'Nao consegui completar esta resposta agora. Verifique se a API da Aura e o modelo local estao acessiveis.',
-        status: 'error',
-        meta: 'Falha operacional',
+      Array.from(event.results).forEach((result) => {
+        const transcript = result[0]?.transcript?.trim() ?? '';
+        if (!transcript) return;
+        if (result.isFinal) {
+          nextFinal = `${nextFinal} ${transcript}`.trim();
+        } else {
+          nextPartial = `${nextPartial} ${transcript}`.trim();
+        }
       });
-      setComposerState('error');
-      setError(description);
-      notifyError('Aura indisponivel', description);
-    } finally {
-      setIsLoading(false);
-      if (!voiceReplyEnabled) {
-        setComposerState('idle');
+
+      voiceFinalRef.current = nextFinal;
+      voicePartialRef.current = nextPartial;
+      setVoiceTranscriptFinal(nextFinal);
+      setVoiceTranscriptPartial(nextPartial);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      setIsProcessingVoice(false);
+      notifyError('Microfone indisponivel', 'Nao foi possivel converter sua fala em texto.');
+    };
+    recognition.onend = () => {
+      if (!voiceFinalRef.current.trim() && !voicePartialRef.current.trim()) {
+        setIsListening(false);
+        clearVoiceCapture();
+        return;
       }
+      submitVoiceTranscript();
+    };
+
+    speechRecognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [clearVoiceCapture, isListening, stopSpeaking, submitVoiceTranscript]);
+
+  useEffect(() => {
+    if (!composerCommand) return;
+
+    if (composerCommand === 'attach') {
+      fileInputRef.current?.click();
+    } else if (composerCommand === 'microphone') {
+      toggleListening();
+    } else if (composerCommand === 'read-last' && lastAssistantMessage) {
+      speakMessage(lastAssistantMessage);
+    } else if (composerCommand === 'clear' && activeConversation) {
+      clearConversation(activeConversation.id);
+      setAttachments([]);
+      setDraftText('');
+      clearVoiceCapture();
     }
-  };
+
+    clearComposerCommand();
+  }, [
+    activeConversation,
+    clearComposerCommand,
+    clearConversation,
+    clearVoiceCapture,
+    composerCommand,
+    lastAssistantMessage,
+    speakMessage,
+    toggleListening,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+      if (streamTimerRef.current) window.clearInterval(streamTimerRef.current);
+    };
+  }, [stopSpeaking]);
 
   const handleRegenerate = async (message: ConversationMessage, previousUserContent?: string) => {
     if (!activeConversation || !previousUserContent) return;
     const assistantIndex = activeConversation.messages.findIndex((item) => item.id === message.id);
     const history = assistantIndex > -1 ? activeConversation.messages.slice(0, assistantIndex) : activeConversation.messages;
-    await submitPrompt(previousUserContent, history);
+    await submitPrompt(previousUserContent, history, { source: 'text', autoVoiceReply: false });
   };
 
   const handleCopy = async (message: ConversationMessage) => {
@@ -389,6 +488,48 @@ export function ChatWorkspace() {
     } catch {
       notifyError('Falha ao copiar', 'O navegador nao permitiu copiar esta mensagem.');
     }
+  };
+
+  const openNewChat = () => {
+    if (speechRecognitionRef.current && isListening) {
+      speechRecognitionRef.current.stop();
+    }
+    stopSpeaking();
+    const nextId = createConversation();
+    setActiveConversation(nextId);
+    setAttachments([]);
+    setDraftText('');
+    clearVoiceCapture();
+    setMobilePanelOpen(false);
+  };
+
+  const clearCurrentConversation = () => {
+    if (!activeConversation) return;
+    if (speechRecognitionRef.current && isListening) {
+      speechRecognitionRef.current.stop();
+    }
+    stopSpeaking();
+    clearConversation(activeConversation.id);
+    setAttachments([]);
+    setDraftText('');
+    clearVoiceCapture();
+    setMobilePanelOpen(false);
+  };
+
+  const testVoice = () => {
+    if (lastAssistantMessage) {
+      speakMessage(lastAssistantMessage);
+      return;
+    }
+
+    speakMessage({
+      id: createMessageId('sample'),
+      role: 'assistant',
+      content: 'Aura pronta para responder em voz sempre que a conversa começar pelo microfone.',
+      createdAt: new Date().toISOString(),
+      status: 'complete',
+      modeLabel: currentMode.label,
+    });
   };
 
   return (
@@ -404,49 +545,143 @@ export function ChatWorkspace() {
         }}
       />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
-        <div className="mb-4 flex-1">
-          {messages.length ? (
-            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-4xl space-y-4 pb-8 pt-2">
-              <MessageList
-                messages={messages}
-                activeSpeakingMessageId={activeSpeakingMessageId}
-                onCopy={handleCopy}
-                onRead={speakMessage}
-                onRegenerate={handleRegenerate}
-                onTogglePin={(messageId) => activeConversation && togglePinnedMessage(activeConversation.id, messageId)}
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 gap-6 xl:gap-8">
+        <div className="min-w-0 flex-1">
+          <div className="mx-auto flex h-full max-w-[56rem] flex-col">
+            <div className="mb-4 flex items-center justify-between gap-3 xl:hidden">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-subtle)]">Aura</p>
+                <p className="truncate pt-1 text-sm text-[var(--text-muted)]">{currentMode.label}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobilePanelOpen(true)}
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm text-[var(--text-primary)]"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Painel
+              </button>
+            </div>
+
+            <div className="mb-4 xl:hidden">
+              <ChatModeSelector selectedModeId={selectedModeId} onSelectMode={setSelectedMode} compact />
+            </div>
+
+            <div className="mb-4 flex-1">
+              {messages.length ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mx-auto w-full space-y-4 pb-8 pt-2"
+                >
+                  <MessageList
+                    messages={messages}
+                    activeSpeakingMessageId={activeSpeakingMessageId}
+                    onCopy={handleCopy}
+                    onRead={speakMessage}
+                    onRegenerate={handleRegenerate}
+                    onTogglePin={(messageId) => activeConversation && togglePinnedMessage(activeConversation.id, messageId)}
+                  />
+                  <div ref={bottomRef} />
+                </motion.div>
+              ) : (
+                <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <VoiceTranscriptPanel
+                partialTranscript={voiceTranscriptPartial}
+                finalTranscript={voiceTranscriptFinal}
+                isListening={isListening}
+                isProcessingVoice={isProcessingVoice}
+                onClear={clearVoiceCapture}
               />
-              <div ref={bottomRef} />
-            </motion.div>
-          ) : (
-            <ChatEmptyState
-              onUsePrompt={(prompt) => {
-                setInput(prompt);
-              }}
-            />
-          )}
+
+              <ChatComposer
+                value={draftText}
+                onChange={setDraftText}
+                onSubmit={() => void submitPrompt(undefined, undefined, { source: 'text', autoVoiceReply: voiceReplyEnabled })}
+                attachments={attachments}
+                onAttach={() => fileInputRef.current?.click()}
+                onRemoveAttachment={(attachmentId) =>
+                  setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
+                }
+                isLoading={isLoading || isProcessingVoice}
+                isListening={isListening}
+                isSpeaking={isSpeaking}
+                voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+                onToggleListening={toggleListening}
+                onStopSpeaking={stopSpeaking}
+                onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
+                error={error}
+                selectedModeLabel={currentMode.label}
+              />
+            </div>
+          </div>
         </div>
 
-        <ChatComposer
-          value={input}
-          onChange={setInput}
-          onSubmit={() => void submitPrompt()}
-          attachments={attachments}
-          onAttach={() => fileInputRef.current?.click()}
-          onRemoveAttachment={(attachmentId) =>
-            setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId))
-          }
-          isLoading={isLoading}
-          isListening={isListening}
-          isSpeaking={isSpeaking}
-          voiceReplyEnabled={voiceReplyEnabled}
-          onToggleListening={toggleListening}
-          onStopSpeaking={stopSpeaking}
-          onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
-          statusLabel={statusLabel}
-          error={error}
-        />
+        <aside className="hidden w-[336px] shrink-0 xl:block">
+          <div className="sticky top-24">
+            <ChatControlPanel
+              selectedModeId={selectedModeId}
+              onSelectMode={setSelectedMode}
+              onNewChat={openNewChat}
+              onClearChat={clearCurrentConversation}
+              onRefresh={() => void refreshRuntime()}
+              onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
+              onTestVoice={testVoice}
+              voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+            />
+          </div>
+        </aside>
       </div>
+
+      <AnimatePresence>
+        {mobilePanelOpen ? (
+          <>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-[rgba(4,8,14,0.76)] backdrop-blur-sm xl:hidden"
+              onClick={() => setMobilePanelOpen(false)}
+              aria-label="Fechar painel da Aura"
+            />
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              className="fixed inset-x-3 bottom-3 top-[6.5rem] z-50 overflow-y-auto xl:hidden"
+            >
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setMobilePanelOpen(false)}
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-[rgba(8,13,22,0.92)] px-4 text-sm text-[var(--text-primary)]"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                  Fechar painel
+                </button>
+              </div>
+              <ChatControlPanel
+                selectedModeId={selectedModeId}
+                onSelectMode={setSelectedMode}
+                onNewChat={openNewChat}
+                onClearChat={clearCurrentConversation}
+                onRefresh={() => void refreshRuntime()}
+                onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
+                onTestVoice={testVoice}
+                voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+                isListening={isListening}
+                isSpeaking={isSpeaking}
+              />
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
     </section>
   );
 }

@@ -16,7 +16,6 @@ import {
   Ellipsis,
 } from 'lucide-react';
 
-import { ChatStatusBadges } from '@/components/chat/status-badges';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '@/lib/chat-store';
 
@@ -45,13 +44,13 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
   const lastMessage = activeConversation?.messages.at(-1);
   const isChatRoute = pathname === '/chat';
 
-  const title = isChatRoute ? activeConversation?.title || 'Novo chat' : pageMeta.title;
+  const title = isChatRoute ? 'Aura' : pageMeta.title;
   const subtitle = useMemo(() => {
     if (!isChatRoute) return pageMeta.description;
-    if (!activeConversation?.messages.length) return 'Sessao pronta para voz, anexos e operacao assistida.';
-    if (lastMessage?.role === 'assistant') return lastMessage.meta || 'Resposta pronta para leitura em audio.';
-    return 'Aura acompanhando esta conversa em tempo real.';
-  }, [activeConversation?.messages.length, isChatRoute, lastMessage?.meta, lastMessage?.role, pageMeta.description]);
+    if (!activeConversation?.messages.length) return 'Assistente pessoal operacional com chat centralizado.';
+    if (lastMessage?.role === 'assistant') return lastMessage.meta || 'Resposta pronta no historico.';
+    return activeConversation?.title || 'Sessao ativa';
+  }, [activeConversation?.messages.length, activeConversation?.title, isChatRoute, lastMessage?.meta, lastMessage?.role, pageMeta.description]);
 
   const triggerAction = (command: 'attach' | 'microphone' | 'read-last' | 'clear') => {
     requestComposerCommand(command);
@@ -84,35 +83,39 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="rounded-full"
-              onClick={() => {
-                const nextId = createConversation();
-                setActiveConversation(nextId);
-              }}
-            >
-              <SquarePen className="h-4 w-4" />
-              Novo chat
-            </Button>
-            {actionConfig.map((action) => {
-              const Icon = action.icon;
-              return (
+            {!isChatRoute ? (
+              <>
                 <Button
-                  key={action.key}
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-secondary)]"
-                  onClick={() => triggerAction(action.key)}
-                  aria-label={action.label}
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => {
+                    const nextId = createConversation();
+                    setActiveConversation(nextId);
+                  }}
                 >
-                  <Icon className="h-4 w-4" />
+                  <SquarePen className="h-4 w-4" />
+                  Novo chat
                 </Button>
-              );
-            })}
+                {actionConfig.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Button
+                      key={action.key}
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-secondary)]"
+                      onClick={() => triggerAction(action.key)}
+                      aria-label={action.label}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </Button>
+                  );
+                })}
+              </>
+            ) : null}
             <Link
               href="/settings"
               aria-label="Abrir configuracoes"
@@ -143,9 +146,6 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
           </div>
         </div>
 
-        <div className="mt-3">
-          <ChatStatusBadges compact />
-        </div>
       </header>
 
       <AnimatePresence>

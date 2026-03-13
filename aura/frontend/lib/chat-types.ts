@@ -21,6 +21,8 @@ export interface ConversationMessage {
   status?: 'pending' | 'streaming' | 'complete' | 'error';
   pinned?: boolean;
   model?: string;
+  inputSource?: 'text' | 'voice';
+  modeLabel?: string;
 }
 
 export interface ChatConversation {

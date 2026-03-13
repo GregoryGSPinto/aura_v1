@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     ({
       eyebrow: "Aura",
       title: "Aura",
-      description: "AI Companion Operacional Pessoal",
+      description: "Assistente operacional pessoal",
       accent: "core",
     } as const);
 

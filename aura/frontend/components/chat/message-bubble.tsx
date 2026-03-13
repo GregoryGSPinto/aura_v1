@@ -26,13 +26,25 @@ export function MessageBubble({
 
   return (
     <article className={cn('flex w-full', isAssistant ? 'justify-start' : 'justify-end')}>
-      <div className={cn('max-w-3xl rounded-[28px] border px-4 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.18)] sm:px-5', isAssistant ? 'border-white/10 bg-[rgba(16,22,33,0.92)]' : 'border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(94,170,255,0.2),rgba(119,128,255,0.12))]')}>
+      <div className={cn('max-w-[44rem] rounded-[28px] border px-4 py-4 shadow-[0_18px_44px_rgba(0,0,0,0.18)] sm:px-5', isAssistant ? 'border-white/10 bg-[rgba(16,22,33,0.92)]' : 'border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(94,170,255,0.2),rgba(119,128,255,0.12))]')}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-subtle)]">
               {isAssistant ? 'Aura' : 'Voce'}
             </p>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">{getRelativeTime(message.createdAt)}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+              <span>{getRelativeTime(message.createdAt)}</span>
+              {message.inputSource === 'voice' ? (
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                  Voz
+                </span>
+              ) : null}
+              {message.modeLabel ? (
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                  {message.modeLabel}
+                </span>
+              ) : null}
+            </div>
           </div>
           {message.pinned && (
             <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
