@@ -59,7 +59,7 @@ export function AttachmentButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-[1.05rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-[0.95rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
       aria-label="Adicionar arquivo"
     >
       <Paperclip className="h-4 w-4" />

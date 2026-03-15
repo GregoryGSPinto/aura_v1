@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { PanelRightClose, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen, SlidersHorizontal } from 'lucide-react';
 
+import { ChatContextSidebar } from '@/components/chat/chat-context-sidebar';
 import { ChatComposer } from '@/components/chat/composer';
 import { ChatControlPanel } from '@/components/chat/chat-control-panel';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
 import { MessageList } from '@/components/chat/message-list';
-import { ChatModeSelector } from '@/components/chat/mode-selector';
-import { ChatStatusBadges } from '@/components/chat/status-badges';
 import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { ApiClientError, sendChat } from '@/lib/api';
@@ -145,11 +144,15 @@ export function ChatWorkspace() {
   const { refreshRuntime, runtimeStatus } = useAuraPreferences();
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const chatInfoCollapsed = useChatStore((state) => state.chatInfoCollapsed);
+  const chatInspectorCollapsed = useChatStore((state) => state.chatInspectorCollapsed);
   const appendMessage = useChatStore((state) => state.appendMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
   const clearConversation = useChatStore((state) => state.clearConversation);
   const togglePinnedMessage = useChatStore((state) => state.togglePinnedMessage);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
+  const setChatInfoCollapsed = useChatStore((state) => state.setChatInfoCollapsed);
+  const setChatInspectorCollapsed = useChatStore((state) => state.setChatInspectorCollapsed);
   const createConversation = useChatStore((state) => state.createConversation);
   const voiceReplyEnabled = useChatStore((state) => state.voiceReplyEnabled);
   const setVoiceReplyEnabled = useChatStore((state) => state.setVoiceReplyEnabled);
@@ -190,6 +193,7 @@ export function ChatWorkspace() {
   const [voiceTranscriptFinal, setVoiceTranscriptFinal] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+  const [mobileContextOpen, setMobileContextOpen] = useState(false);
 
   useEffect(() => {
     if (!activeConversationId && conversations[0]) {
@@ -552,6 +556,7 @@ export function ChatWorkspace() {
     setDraftText('');
     clearVoiceCapture();
     setMobilePanelOpen(false);
+    setMobileContextOpen(false);
   };
 
   const clearCurrentConversation = () => {
@@ -565,6 +570,7 @@ export function ChatWorkspace() {
     setDraftText('');
     clearVoiceCapture();
     setMobilePanelOpen(false);
+    setMobileContextOpen(false);
   };
 
   const testVoice = () => {
@@ -596,61 +602,48 @@ export function ChatWorkspace() {
         }}
       />
 
-      <div className="mx-auto flex w-full max-w-[1540px] flex-1 gap-6 xl:gap-8">
-        <div className="min-w-0 flex-1">
-          <div className="mx-auto flex h-full max-w-[60rem] flex-col">
-            <div className="shell-panel mb-4 rounded-[2rem] px-4 py-4 sm:px-5 sm:py-5">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--fg-subtle)]">Conversation Runtime</p>
-                    <h2 className="pt-1 text-[1.9rem] font-semibold tracking-[-0.06em] text-[var(--fg-primary)]">
-                      Conversa com foco, contexto e acabamento premium.
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--fg-muted)]">
-                      A Aura centraliza leitura, estados operacionais e composer em uma superficie calma, clara e pronta para uso diario.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <ChatStatusBadges />
-                  <div className="hidden xl:block">
-                    <ChatModeSelector selectedModeId={selectedModeId} onSelectMode={setSelectedMode} compact />
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div className="mx-auto flex w-full max-w-[1640px] flex-1 gap-4 xl:gap-6">
+        <ChatContextSidebar
+          collapsed={chatInfoCollapsed}
+          onToggleCollapse={() => setChatInfoCollapsed(!chatInfoCollapsed)}
+          selectedModeId={selectedModeId}
+          onSelectMode={setSelectedMode}
+          warning={statusBanner}
+        />
 
+        <div className="min-w-0 flex-1">
+          <div className="mx-auto flex h-full max-w-[64rem] flex-col">
             <div className="mb-4 flex items-center justify-between gap-3 xl:hidden">
-              <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--fg-subtle)]">Aura</p>
-                <p className="truncate pt-1 text-sm text-[var(--fg-muted)]">{currentMode.label}</p>
+              <div className="flex min-w-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileContextOpen(true)}
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-sm text-[var(--fg-primary)]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  Resumo
+                </button>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--fg-primary)]">{activeConversation?.title ?? 'Novo chat'}</p>
+                  <p className="truncate pt-1 text-xs text-[var(--fg-muted)]">{currentMode.label}</p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setMobilePanelOpen(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-4 text-sm text-[var(--fg-primary)]"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-sm text-[var(--fg-primary)]"
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Painel
               </button>
             </div>
 
-            <div className="mb-4 xl:hidden">
-              <ChatModeSelector selectedModeId={selectedModeId} onSelectMode={setSelectedMode} compact />
-            </div>
-
             <div className="mb-4 flex-1">
-              {statusBanner ? (
-                <div className="surface-alert mb-4 rounded-[1.35rem] px-4 py-3 text-sm">
-                  {statusBanner}
-                </div>
-              ) : null}
               {messages.length ? (
                 <motion.div
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mx-auto w-full space-y-5 pb-8 pt-2"
+                  className="mx-auto w-full space-y-5 pb-8 pt-1"
                 >
                   <MessageList
                     messages={messages}
@@ -699,25 +692,89 @@ export function ChatWorkspace() {
           </div>
         </div>
 
-        <aside className="hidden w-[336px] shrink-0 xl:block">
+        <aside className={chatInspectorCollapsed ? 'hidden xl:block xl:w-[64px] xl:shrink-0' : 'hidden xl:block xl:w-[336px] xl:shrink-0'}>
           <div className="sticky top-24">
-            <ChatControlPanel
-              selectedModeId={selectedModeId}
-              onSelectMode={setSelectedMode}
-              onNewChat={openNewChat}
-              onClearChat={clearCurrentConversation}
-              onRefresh={() => void refreshRuntime()}
-              onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
-              onTestVoice={testVoice}
-              voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
-              isListening={isListening}
-              isSpeaking={isSpeaking}
-            />
+            {chatInspectorCollapsed ? (
+              <div className="shell-panel flex items-center justify-center rounded-[2rem] p-3">
+                <button
+                  type="button"
+                  onClick={() => setChatInspectorCollapsed(false)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-primary)] transition hover:border-[var(--border-strong)]"
+                  aria-label="Expandir painel lateral direito"
+                >
+                  <PanelRightOpen className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setChatInspectorCollapsed(true)}
+                    className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-sm text-[var(--fg-primary)] transition hover:border-[var(--border-strong)]"
+                    aria-label="Recolher painel lateral direito"
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                    Recolher
+                  </button>
+                </div>
+                <ChatControlPanel
+                  selectedModeId={selectedModeId}
+                  onSelectMode={setSelectedMode}
+                  onNewChat={openNewChat}
+                  onClearChat={clearCurrentConversation}
+                  onRefresh={() => void refreshRuntime()}
+                  onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
+                  onTestVoice={testVoice}
+                  voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+                  isListening={isListening}
+                  isSpeaking={isSpeaking}
+                />
+              </div>
+            )}
           </div>
         </aside>
       </div>
 
       <AnimatePresence>
+        {mobileContextOpen ? (
+          <>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-[rgba(4,8,14,0.76)] backdrop-blur-sm xl:hidden"
+              onClick={() => setMobileContextOpen(false)}
+              aria-label="Fechar resumo da conversa"
+            />
+            <motion.div
+              initial={{ x: -24, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -16, opacity: 0 }}
+              className="fixed inset-y-3 left-3 z-50 w-[88vw] max-w-[358px] overflow-y-auto xl:hidden"
+            >
+              <div className="mb-3 flex justify-start">
+                <button
+                  type="button"
+                  onClick={() => setMobileContextOpen(false)}
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-[rgba(8,13,22,0.92)] px-4 text-sm text-[var(--text-primary)]"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Fechar resumo
+                </button>
+              </div>
+              <ChatContextSidebar
+                collapsed={false}
+                onToggleCollapse={() => setMobileContextOpen(false)}
+                selectedModeId={selectedModeId}
+                onSelectMode={setSelectedMode}
+                warning={statusBanner}
+                mobile
+              />
+            </motion.div>
+          </>
+        ) : null}
+
         {mobilePanelOpen ? (
           <>
             <motion.button

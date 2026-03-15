@@ -10,6 +10,8 @@ type ChatStoreState = {
   conversations: ChatConversation[];
   activeConversationId: string;
   sidebarCollapsed: boolean;
+  chatInfoCollapsed: boolean;
+  chatInspectorCollapsed: boolean;
   voiceReplyEnabled: boolean;
   selectedModeId: AuraChatModeId;
   composerCommand: ComposerCommand | null;
@@ -24,6 +26,8 @@ type ChatStoreState = {
   clearConversation: (conversationId: string) => void;
   togglePinnedMessage: (conversationId: string, messageId: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setChatInfoCollapsed: (collapsed: boolean) => void;
+  setChatInspectorCollapsed: (collapsed: boolean) => void;
   setVoiceReplyEnabled: (enabled: boolean) => void;
   setSelectedMode: (modeId: AuraChatModeId) => void;
   requestComposerCommand: (command: ComposerCommand) => void;
@@ -59,6 +63,8 @@ export const useChatStore = create<ChatStoreState>()(
         conversations: [initialConversation],
         activeConversationId: initialConversation.id,
         sidebarCollapsed: false,
+        chatInfoCollapsed: false,
+        chatInspectorCollapsed: false,
         voiceReplyEnabled: false,
         selectedModeId: DEFAULT_AURA_CHAT_MODE_ID,
         composerCommand: null,
@@ -125,6 +131,8 @@ export const useChatStore = create<ChatStoreState>()(
             }),
           })),
         setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+        setChatInfoCollapsed: (collapsed) => set({ chatInfoCollapsed: collapsed }),
+        setChatInspectorCollapsed: (collapsed) => set({ chatInspectorCollapsed: collapsed }),
         setVoiceReplyEnabled: (enabled) => set({ voiceReplyEnabled: enabled }),
         setSelectedMode: (selectedModeId) => set({ selectedModeId }),
         requestComposerCommand: (command) => set({ composerCommand: command }),
@@ -138,6 +146,8 @@ export const useChatStore = create<ChatStoreState>()(
         conversations: state.conversations,
         activeConversationId: state.activeConversationId || state.conversations[0]?.id || '',
         sidebarCollapsed: state.sidebarCollapsed,
+        chatInfoCollapsed: state.chatInfoCollapsed,
+        chatInspectorCollapsed: state.chatInspectorCollapsed,
         voiceReplyEnabled: state.voiceReplyEnabled,
         selectedModeId: state.selectedModeId,
       }),
