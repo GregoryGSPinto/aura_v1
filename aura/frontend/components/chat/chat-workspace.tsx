@@ -13,6 +13,7 @@ import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { ApiClientError, sendChat } from '@/lib/api';
 import { getAuraChatMode } from '@/lib/chat-modes';
+import { clientEnv } from '@/lib/env';
 import { useChatStore } from '@/lib/chat-store';
 import type { AttachmentPreview, ConversationMessage } from '@/lib/chat-types';
 import { getClientEnvWarnings } from '@/lib/env';
@@ -99,7 +100,7 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
 }
 
 function classifyChatError(error: unknown) {
-  if (error instanceof ApiClientError) {
+    if (error instanceof ApiClientError) {
     if (error.code === 'auth_error' || error.status === 401) {
       return {
         assistantMessage: 'A autenticação local falhou. Confirme se `NEXT_PUBLIC_AURA_TOKEN` está alinhado com `AURA_AUTH_TOKEN`.',
@@ -109,10 +110,11 @@ function classifyChatError(error: unknown) {
     }
 
     if (error.code === 'backend_unreachable' || error.status === 0) {
+      const classifierApiUrlLabel = clientEnv.apiUrl || 'NEXT_PUBLIC_API_URL não está configurada.';
       return {
-        assistantMessage: 'O backend da Aura está offline ou inacessível. Inicie `scripts/run-backend` ou use `scripts/dev-up`.',
-        composerMessage: 'Backend offline em http://localhost:8000.',
-        notificationTitle: 'Backend offline',
+        assistantMessage: 'O front-end de API local está inacessível.',
+        composerMessage: `Front-end de API local indisponível (${classifierApiUrlLabel}). Verifique NEXT_PUBLIC_API_URL e execute scripts/dev-up.`,
+        notificationTitle: 'Front-end de API local',
       };
     }
 
@@ -166,10 +168,15 @@ export function ChatWorkspace() {
   const currentMode = getAuraChatMode(selectedModeId);
   const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant' && message.content.trim());
   const envWarnings = getClientEnvWarnings();
+  const apiUrlLabel = clientEnv.apiUrl || 'NEXT_PUBLIC_API_URL não está configurada.';
+  const backendOfflineMessage = clientEnv.apiUrl
+    ? `Front-end de API local indisponível em ${clientEnv.apiUrl}. Verifique scripts/dev-up ou scripts/run-backend.`
+    : 'NEXT_PUBLIC_API_URL não está configurada. Configure o .env.local e reinicie os serviços.';
+  const statusBannerFallback = backendOfflineMessage;
   const statusBanner =
     envWarnings[0] ||
     (runtimeStatus?.status === 'offline'
-      ? 'Backend offline. Use scripts/dev-up ou scripts/run-backend.'
+      ? statusBannerFallback
       : runtimeStatus?.ollama?.model_available === false
         ? `Modelo local ausente no Ollama: ${runtimeStatus?.ollama?.model}.`
         : null);

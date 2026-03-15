@@ -253,6 +253,75 @@ describe_port_owner() {
   fi
 }
 
+frontend_env_value() {
+  local file="$1"
+  local key="$2"
+  if [[ ! -f "$file" ]]; then
+    return 1
+  fi
+  local line
+  line="$(grep -E "^${key}=" "$file" | tail -n1 || true)"
+  if [[ -z "$line" ]]; then
+    return 1
+  fi
+  local value="${line#*=}"
+  # Trim leading/trailing whitespace
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+ensure_env_key() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local current
+  current="$(frontend_env_value "$file" "$key" || true)"
+  if [[ -n "$current" ]]; then
+    return 0
+  fi
+  log_info "Applying local default ${key}=${value} in $(basename "$file")."
+  python3 - "$file" "$key" "$value" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+key = sys.argv[2]
+value = sys.argv[3]
+text = path.read_text() if path.exists() else ""
+lines = text.splitlines()
+for index, line in enumerate(lines):
+    if line.startswith(f"{key}="):
+        current = line[len(key) + 1 :].strip()
+        if current:
+            raise SystemExit(0)
+        lines[index] = f"{key}={value}"
+        path.write_text("\n".join(lines) + ("\n" if lines else ""))
+        raise SystemExit(0)
+lines.append(f"{key}={value}")
+path.write_text("\n".join(lines) + ("\n" if lines else ""))
+PY
+}
+
+ensure_frontend_env_defaults() {
+  local env_file="${FRONTEND_DIR}/.env.local"
+  local aura_env
+  aura_env="$(frontend_env_value "$env_file" "NEXT_PUBLIC_AURA_ENV" || true)"
+  aura_env="${aura_env,,}"
+  aura_env="${aura_env:-local}"
+  if [[ "$aura_env" != "local" ]]; then
+    return 0
+  fi
+
+  ensure_env_key "$env_file" "NEXT_PUBLIC_API_URL" "${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}"
+
+  local token_value="${NEXT_PUBLIC_AURA_TOKEN:-}"
+  if [[ -z "$token_value" ]]; then
+    token_value="${AURA_AUTH_TOKEN:-change-me}"
+  fi
+  ensure_env_key "$env_file" "NEXT_PUBLIC_AURA_TOKEN" "$token_value"
+}
+
 ollama_url_parts() {
   local url="${OLLAMA_URL:-http://127.0.0.1:11434}"
   local stripped host port

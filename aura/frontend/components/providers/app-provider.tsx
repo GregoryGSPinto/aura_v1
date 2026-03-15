@@ -132,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         jobs: current?.jobs,
         ollama: current?.ollama,
         feature_flags: current?.feature_flags,
-        startup_warnings: current?.startup_warnings ?? ['Backend offline.'],
+        startup_warnings: current?.startup_warnings ?? ['Front-end de API local indisponível.'],
       }));
     }
 
