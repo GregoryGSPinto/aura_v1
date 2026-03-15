@@ -1,7 +1,6 @@
 {
   "framework": "nextjs",
   "buildCommand": "pnpm build",
-  "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "headers": [
     {
@@ -16,12 +15,6 @@
           "value": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 http://127.0.0.1:11434 http://localhost:11434 https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ]
 }

@@ -52,7 +52,7 @@ cd aura/frontend
 
 # Limpar builds anteriores
 echo "   → Limpando builds anteriores..."
-rm -rf dist .next
+rm -rf .next
 
 # Instalar dependências
 echo "   → Instalando dependências..."
@@ -67,13 +67,13 @@ echo "   → Executando build de produção..."
 pnpm build
 
 # Verificar se build foi bem-sucedida
-if [ ! -d "dist" ]; then
-    echo -e "${RED}❌ Build falhou: pasta dist não foi criada${NC}"
+if [ ! -d ".next" ]; then
+    echo -e "${RED}❌ Build falhou: pasta .next não foi criada${NC}"
     exit 1
 fi
 
 # Contar arquivos gerados
-FILE_COUNT=$(find dist -type f | wc -l)
+FILE_COUNT=$(find .next -type f | wc -l)
 echo -e "${GREEN}   ✓ Build local completo (${FILE_COUNT} arquivos gerados)${NC}"
 
 # ============================================
