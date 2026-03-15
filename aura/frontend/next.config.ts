@@ -1,12 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
-  distDir: 'dist',
   images: {
     unoptimized: true,
   },
-  trailingSlash: true,
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/chat',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
