@@ -9,6 +9,7 @@ load_backend_env
 load_frontend_env
 
 require_command curl
+require_command python3
 
 readonly STACK_PIDFILE="$(pidfile_path aura-stack)"
 readonly OLLAMA_PIDFILE="$(pidfile_path aura-ollama)"
@@ -25,9 +26,42 @@ readonly BACKEND_HEALTH_TIMEOUT="${AURA_BACKEND_HEALTH_TIMEOUT:-60}"
 readonly FRONTEND_HEALTH_TIMEOUT="${AURA_FRONTEND_HEALTH_TIMEOUT:-90}"
 
 readonly BACKEND_HOST="${AURA_BACKEND_HOST:-127.0.0.1}"
-readonly BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
+readonly BACKEND_DEFAULT_PORT="${AURA_BACKEND_PORT:-8000}"
 readonly FRONTEND_HOST="${AURA_FRONTEND_HOST:-127.0.0.1}"
-readonly FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+readonly FRONTEND_DEFAULT_PORT="${AURA_FRONTEND_PORT:-3000}"
+
+select_service_port() {
+  local label="$1"
+  local preferred="$2"
+  local owner="$3"
+
+  if ! port_is_listening "$preferred"; then
+    log_info "${label} prefers port ${preferred}."
+    printf '%s' "$preferred"
+    return 0
+  fi
+
+  if service_port_owned_by_aura "$preferred" "$owner"; then
+    log_info "${label} already bound to port ${preferred}."
+    printf '%s' "$preferred"
+    return 0
+  fi
+
+  log_warn "Port ${preferred} is occupied by a non-Aura process; ${label} will find a new port."
+  describe_port_owner "$preferred"
+  local fallback
+  fallback="$(find_free_port)"
+  while port_is_listening "$fallback"; do
+    fallback="$(find_free_port)"
+  done
+  log_info "${label} will bind to port ${fallback}."
+  printf '%s' "$fallback"
+}
+
+BACKEND_PORT="$(select_service_port 'Aura backend' "$BACKEND_DEFAULT_PORT" aura_backend)"
+FRONTEND_PORT="$(select_service_port 'Aura frontend' "$FRONTEND_DEFAULT_PORT" aura_frontend)"
+export AURA_BACKEND_PORT="$BACKEND_PORT"
+export AURA_FRONTEND_PORT="$FRONTEND_PORT"
 readonly FRONTEND_HEALTH_URL="http://${FRONTEND_HOST}:${FRONTEND_PORT}/api/health"
 readonly BACKEND_HEALTH_URL="http://${BACKEND_HOST}:${BACKEND_PORT}/api/v1/healthz"
 
@@ -104,6 +138,7 @@ ensure_backend() {
   cleanup_pidfile_if_stale "$BACKEND_PIDFILE"
 
   if check_http "$BACKEND_HEALTH_URL"; then
+    log_info "Aura backend already healthy at ${BACKEND_HEALTH_URL}."
     return 0
   fi
 
@@ -125,6 +160,7 @@ ensure_frontend() {
   cleanup_pidfile_if_stale "$FRONTEND_PIDFILE"
 
   if check_http "$FRONTEND_HEALTH_URL"; then
+    log_info "Aura frontend already healthy at ${FRONTEND_HEALTH_URL}."
     maybe_open_browser
     return 0
   fi
@@ -179,12 +215,27 @@ write_pidfile "$STACK_PIDFILE" "$$"
 trap shutdown_stack EXIT INT TERM
 
 log_info "Aura stack supervisor started."
+log_info "Verifying local environment for Ollama:${OLLAMA_PORT}, backend:${BACKEND_PORT}, frontend:${FRONTEND_PORT}."
+
+stack_ready=0
 
 while true; do
   if ensure_ollama; then
     if ensure_backend; then
-      ensure_frontend || true
+      if ensure_frontend; then
+        if [[ "$stack_ready" -eq 0 ]]; then
+          log_info "Backend health OK at ${BACKEND_HEALTH_URL}."
+          log_info "Frontend health OK at ${FRONTEND_HEALTH_URL}."
+          log_info "Aura ready:"
+          log_info "  Chat: $(frontend_base_url)"
+          log_info "  API: $(backend_base_url)"
+          stack_ready=1
+        fi
+        sleep "$STACK_HEALTH_INTERVAL"
+        continue
+      fi
     fi
   fi
+  stack_ready=0
   sleep "$STACK_HEALTH_INTERVAL"
 done

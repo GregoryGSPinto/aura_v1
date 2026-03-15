@@ -224,6 +224,35 @@ http_status_code() {
   curl -sS -o /dev/null -w '%{http_code}' --max-time 4 "$url" 2>/dev/null || printf '000'
 }
 
+find_free_port() {
+  python3 - <<'PY'
+import socket
+with socket.socket() as sock:
+    sock.bind(('', 0))
+    print(sock.getsockname()[1])
+PY
+}
+
+describe_port_owner() {
+  local port="$1"
+  local line
+  local found=0
+  while IFS= read -r line; do
+    if [[ -z "$line" ]]; then
+      continue
+    fi
+    if [[ "$found" -eq 0 ]]; then
+      log_warn "Port ${port} is occupied by:"
+    fi
+    log_warn "  ${line}"
+    found=1
+  done < <(listening_process_table "$port")
+
+  if [[ "$found" -eq 0 ]]; then
+    log_warn "Port ${port} is listening but unable to identify the owner."
+  fi
+}
+
 ollama_url_parts() {
   local url="${OLLAMA_URL:-http://127.0.0.1:11434}"
   local stripped host port
