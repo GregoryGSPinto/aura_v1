@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+ensure_local_env_files
+load_backend_env
+load_frontend_env
+
+require_command curl
+require_command python3
+require_command node
+require_command pnpm
+
+BACKEND_URL="$(backend_base_url)"
+FRONTEND_URL="$(frontend_base_url)"
+BACKEND_HEALTH_URL="${BACKEND_URL}/api/v1/healthz"
+BACKEND_STATUS_URL="${BACKEND_URL}/api/v1/status"
+OLLAMA_TAGS_URL="${OLLAMA_URL:-http://localhost:11434}/api/tags"
+
+issues=0
+
+report_ok() {
+  printf '[OK] %s\n' "$*"
+}
+
+report_warn() {
+  printf '[WARN] %s\n' "$*"
+  issues=$((issues + 1))
+}
+
+check_env_value() {
+  local name="$1"
+  local value="${!name:-}"
+  if [[ -n "$value" ]]; then
+    report_ok "Env ${name}=${value}"
+  else
+    report_warn "Env ausente: ${name}"
+  fi
+}
+
+check_env_value "AURA_ENV"
+check_env_value "AURA_MODEL"
+check_env_value "OLLAMA_URL"
+check_env_value "AURA_AUTH_TOKEN"
+check_env_value "NEXT_PUBLIC_API_URL"
+check_env_value "NEXT_PUBLIC_AURA_TOKEN"
+
+if [[ "${AURA_AUTH_TOKEN:-}" == "${NEXT_PUBLIC_AURA_TOKEN:-}" ]]; then
+  report_ok "Token local alinhado entre backend e frontend."
+else
+  report_warn "Tokens desalinhados. Corrija AURA_AUTH_TOKEN e NEXT_PUBLIC_AURA_TOKEN."
+fi
+
+normalized_api_url="${NEXT_PUBLIC_API_URL:-}"
+normalized_api_url="${normalized_api_url/127.0.0.1/localhost}"
+expected_api_url="${BACKEND_URL}/api/v1"
+expected_api_url="${expected_api_url/127.0.0.1/localhost}"
+if [[ "$normalized_api_url" == "$expected_api_url" ]]; then
+  report_ok "NEXT_PUBLIC_API_URL aponta para o backend local esperado."
+else
+  report_warn "NEXT_PUBLIC_API_URL diferente do backend local esperado (${BACKEND_URL}/api/v1)."
+fi
+
+if port_is_listening "${AURA_BACKEND_PORT:-8000}"; then
+  report_ok "Porta backend ${AURA_BACKEND_PORT:-8000} em uso."
+else
+  report_warn "Backend não está ouvindo na porta ${AURA_BACKEND_PORT:-8000}."
+fi
+
+if port_is_listening "${AURA_FRONTEND_PORT:-3000}"; then
+  report_ok "Porta frontend ${AURA_FRONTEND_PORT:-3000} em uso."
+else
+  report_warn "Frontend não está ouvindo na porta ${AURA_FRONTEND_PORT:-3000}."
+fi
+
+backend_health_code="$(http_status_code "$BACKEND_HEALTH_URL")"
+if [[ "$backend_health_code" == "200" ]]; then
+  report_ok "Backend health OK em ${BACKEND_HEALTH_URL}."
+else
+  report_warn "Backend health falhou (${backend_health_code}). Rode scripts/run-backend."
+fi
+
+backend_status_code="$(http_status_code "$BACKEND_STATUS_URL")"
+if [[ "$backend_status_code" == "200" ]]; then
+  report_ok "Backend status OK em ${BACKEND_STATUS_URL}."
+else
+  report_warn "Backend status falhou (${backend_status_code})."
+fi
+
+frontend_code="$(http_status_code "$FRONTEND_URL")"
+if [[ "$frontend_code" == "200" ]]; then
+  report_ok "Frontend acessível em ${FRONTEND_URL}."
+else
+  report_warn "Frontend inacessível (${frontend_code}) em ${FRONTEND_URL}."
+fi
+
+ollama_code="$(http_status_code "$OLLAMA_TAGS_URL")"
+if [[ "$ollama_code" == "200" ]]; then
+  report_ok "Ollama acessível em ${OLLAMA_URL:-http://localhost:11434}."
+else
+  report_warn "Ollama inacessível em ${OLLAMA_URL:-http://localhost:11434}."
+fi
+
+model_check_output="$(
+  python3 - "$OLLAMA_TAGS_URL" "${AURA_MODEL:-qwen3.5:9b}" <<'PY'
+import json
+import sys
+import urllib.request
+
+url = sys.argv[1]
+model = sys.argv[2]
+
+try:
+    with urllib.request.urlopen(url, timeout=4) as response:
+        payload = json.load(response)
+except Exception as exc:
+    print(f"error:{exc}")
+    raise SystemExit(0)
+
+models = [item.get("name", "") for item in payload.get("models", [])]
+print("present" if model in models else "missing")
+PY
+)"
+
+if [[ "$model_check_output" == "present" ]]; then
+  report_ok "Modelo ${AURA_MODEL:-qwen3.5:9b} disponível no Ollama."
+elif [[ "$model_check_output" == missing ]]; then
+  report_warn "Modelo ${AURA_MODEL:-qwen3.5:9b} ausente. Rode: ollama pull ${AURA_MODEL:-qwen3.5:9b}"
+else
+  report_warn "Não foi possível verificar o modelo do Ollama (${model_check_output#error:})."
+fi
+
+if [[ "$backend_status_code" == "200" ]]; then
+  cors_headers="$(curl -sSI -H "Origin: ${FRONTEND_URL}" "$BACKEND_HEALTH_URL" | tr -d '\r')"
+  if grep -qi '^access-control-allow-origin:' <<<"$cors_headers"; then
+    report_ok "CORS básico habilitado para o frontend local."
+  else
+    report_warn "CORS não expôs Access-Control-Allow-Origin para o frontend local."
+  fi
+fi
+
+if (( issues > 0 )); then
+  printf '\nDiagnóstico concluído com %d problema(s).\n' "$issues"
+  exit 1
+fi
+
+printf '\nDiagnóstico concluído sem problemas críticos.\n'

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app import main as main_module
+from app.core.http_security import rate_limiter
 from app.tools.tool_router import ToolRouter
 
 
@@ -8,13 +9,23 @@ AUTH_HEADERS = {"Authorization": "Bearer change-me"}
 
 
 def build_client(monkeypatch):
-    monkeypatch.setattr(main_module.container.job_service, "start", lambda: None)
-    monkeypatch.setattr(main_module.container.job_service, "stop", lambda: None)
+    monkeypatch.setattr(main_module.container, "start_runtime", lambda: None)
+    monkeypatch.setattr(main_module.container, "stop_runtime", lambda: None)
+    rate_limiter._events.clear()
     app = main_module.app
 
     class DummyOllamaService:
         async def check_health(self):
             return "online"
+
+        async def health_details(self):
+            return {
+                "status": "online",
+                "url": "http://localhost:11434",
+                "model": "qwen3.5:9b",
+                "model_available": True,
+                "models": ["qwen3.5:9b"],
+            }
 
     class DummySupabaseService:
         def check_health(self):

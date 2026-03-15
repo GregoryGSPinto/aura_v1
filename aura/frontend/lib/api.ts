@@ -41,8 +41,22 @@ function normalizeUrl(endpoint: string) {
 interface ApiResponse<T> {
   success: boolean;
   data: T;
-  error: { code: string; message: string } | null;
+  error: { code: string; message: string; details?: unknown } | null;
   timestamp: string;
+}
+
+export class ApiClientError extends Error {
+  status: number;
+  code: string;
+  details?: unknown;
+
+  constructor(message: string, status: number, code: string, details?: unknown) {
+    super(message);
+    this.name = 'ApiClientError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
 }
 
 async function fetchApi<T>(
@@ -59,17 +73,32 @@ async function fetchApi<T>(
     headers['Authorization'] = `Bearer ${clientEnv.auraToken}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    cache: 'no-store',
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      cache: 'no-store',
+    });
+  } catch (error) {
+    throw new ApiClientError(
+      'Não foi possível conectar ao backend da Aura. Verifique se o backend está rodando em http://localhost:8000.',
+      0,
+      'backend_unreachable',
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      error: { message: 'Unknown error' },
+    const payload = await response.json().catch(async () => ({
+      error: { message: (await response.text().catch(() => 'Unknown error')).trim() || 'Unknown error' },
     }));
-    throw new Error(error.error?.message || `HTTP ${response.status}`);
+    throw new ApiClientError(
+      payload.error?.message || `HTTP ${response.status}`,
+      response.status,
+      payload.error?.code || 'api_error',
+      payload.error?.details,
+    );
   }
 
   return response.json();

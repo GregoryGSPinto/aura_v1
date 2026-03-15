@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+ensure_local_env_files
+load_backend_env
+load_frontend_env
+
+require_command python3
+require_command node
+require_command pnpm
+require_command curl
+
+BACKEND_URL="$(backend_base_url)"
+FRONTEND_URL="$(frontend_base_url)"
+BACKEND_LOG="${AURA_LOG_DIR}/backend.log"
+FRONTEND_LOG="${AURA_LOG_DIR}/frontend.log"
+BACKEND_PIDFILE="$(pidfile_path aura_backend)"
+FRONTEND_PIDFILE="$(pidfile_path aura_frontend)"
+
+printf 'Aura local bootstrap\n'
+printf 'Backend:  %s\n' "$BACKEND_URL"
+printf 'Frontend: %s\n' "$FRONTEND_URL"
+printf 'Ollama:   %s\n\n' "${OLLAMA_URL:-http://localhost:11434}"
+
+"$SCRIPT_DIR/doctor" || true
+
+if ! service_port_owned_by_aura "${AURA_BACKEND_PORT:-8000}" aura_backend; then
+  if port_is_listening "${AURA_BACKEND_PORT:-8000}"; then
+    log_error "Porta ${AURA_BACKEND_PORT:-8000} ocupada por outro processo."
+    exit 1
+  fi
+  nohup "$SCRIPT_DIR/run-backend" >"$BACKEND_LOG" 2>&1 &
+  write_pidfile "$BACKEND_PIDFILE" "$!"
+  log_info "Backend iniciado em background. Log: $BACKEND_LOG"
+else
+  log_info "Backend Aura já estava em execução."
+fi
+
+if ! service_port_owned_by_aura "${AURA_FRONTEND_PORT:-3000}" aura_frontend; then
+  if port_is_listening "${AURA_FRONTEND_PORT:-3000}"; then
+    log_error "Porta ${AURA_FRONTEND_PORT:-3000} ocupada por outro processo."
+    exit 1
+  fi
+  nohup "$SCRIPT_DIR/run-frontend" >"$FRONTEND_LOG" 2>&1 &
+  write_pidfile "$FRONTEND_PIDFILE" "$!"
+  log_info "Frontend iniciado em background. Log: $FRONTEND_LOG"
+else
+  log_info "Frontend Aura já estava em execução."
+fi
+
+wait_for_http "backend" "${BACKEND_URL}/api/v1/healthz" 30
+wait_for_http "frontend" "$FRONTEND_URL" 45
+
+printf '\nServiços disponíveis\n'
+printf 'Backend health: %s/api/v1/healthz\n' "$BACKEND_URL"
+printf 'Backend status: %s/api/v1/status\n' "$BACKEND_URL"
+printf 'Frontend:       %s\n' "$FRONTEND_URL"
+printf 'Logs backend:   %s\n' "$BACKEND_LOG"
+printf 'Logs frontend:  %s\n' "$FRONTEND_LOG"

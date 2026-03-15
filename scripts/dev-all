@@ -1,6 +1,5 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 set -euo pipefail
-echo "Abra dois terminais:"
-echo "1. scripts/run-backend"
-echo "2. scripts/run-frontend"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/dev-up"

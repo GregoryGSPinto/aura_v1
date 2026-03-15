@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     )
     auth_token: str = Field("change-me", alias="AURA_AUTH_TOKEN")
     require_auth: bool = Field(True, alias="AURA_REQUIRE_AUTH")
+    local_mode: bool = Field(True, alias="AURA_LOCAL_MODE")
+    enable_jobs: bool = Field(True, alias="AURA_ENABLE_JOBS")
+    enable_routines: bool = Field(False, alias="AURA_ENABLE_ROUTINES")
+    enable_voice: bool = Field(True, alias="AURA_ENABLE_VOICE")
+    enable_os_runtime: bool = Field(False, alias="AURA_ENABLE_OS_RUNTIME")
+    enable_research: bool = Field(False, alias="AURA_ENABLE_RESEARCH")
+    enable_cloud_providers: bool = Field(False, alias="AURA_ENABLE_CLOUD_PROVIDERS")
     projects_file: str = Field("./data/json/projects.json", alias="AURA_PROJECTS_FILE")
     settings_file: str = Field("./data/json/settings.json", alias="AURA_SETTINGS_FILE")
     audit_log_file: str = Field("./data/logs/audit.log", alias="AURA_AUDIT_LOG_FILE")
@@ -34,6 +41,8 @@ class Settings(BaseSettings):
     companion_memory_file: str = Field("./data/json/companion_memory.json", alias="AURA_COMPANION_MEMORY_FILE")
     jobs_file: str = Field("./data/json/jobs.json", alias="AURA_JOBS_FILE")
     job_logs_file: str = Field("./data/json/job_logs.json", alias="AURA_JOB_LOGS_FILE")
+    routines_file: str = Field("./data/json/routines.json", alias="AURA_ROUTINES_FILE")
+    routine_executions_file: str = Field("./data/json/routine_executions.json", alias="AURA_ROUTINE_EXECUTIONS_FILE")
     command_timeout: int = Field(30, alias="AURA_COMMAND_TIMEOUT")
     llm_timeout: int = Field(120, alias="AURA_LLM_TIMEOUT")
     http_timeout: int = Field(20, alias="AURA_HTTP_TIMEOUT")
@@ -66,6 +75,18 @@ class Settings(BaseSettings):
         configured = [item.strip() for item in self.allowed_roots_raw.split(",") if item.strip()]
         defaults = [str(Path.cwd().resolve()), str(Path(self.default_projects_root).expanduser().resolve())]
         return list(dict.fromkeys(configured + defaults))
+
+    @property
+    def feature_flags(self) -> dict:
+        return {
+            "local_mode": self.local_mode,
+            "jobs": self.enable_jobs,
+            "routines": self.enable_routines,
+            "voice": self.enable_voice,
+            "os_runtime": self.enable_os_runtime,
+            "research": self.enable_research,
+            "cloud_providers": self.enable_cloud_providers,
+        }
 
 
 @lru_cache

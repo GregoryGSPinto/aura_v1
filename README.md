@@ -56,6 +56,17 @@ Aura está organizada em camadas para separar interface, orquestração, execuç
 └── ROADMAP.md
 ```
 
+## MVP Local-First
+
+O runtime padrão agora prioriza o fluxo local de ponta a ponta:
+
+- frontend Next.js em `http://127.0.0.1:3000`
+- backend FastAPI em `http://127.0.0.1:8000`
+- autenticação por bearer token local
+- chat real com Ollama local
+- persistência mínima em JSON dentro de `aura/backend/data/json`
+- partes avançadas do Aura OS atrás de feature flags, desativadas por padrão no MVP
+
 ## Quick Start
 
 ### Pré-requisitos
@@ -78,13 +89,44 @@ cd aura/frontend
 pnpm install
 ```
 
-### Execução do backend
+### Bootstrap único
+
+```bash
+./scripts/dev-up
+```
+
+O script:
+
+- garante `.env` e `.env.local` a partir dos exemplos
+- valida Python, Node, `pnpm`, backend, frontend e Ollama
+- tenta apontar falta de modelo ou desalinhamento de token
+- sobe backend e frontend em background
+- mostra URLs e logs finais
+
+### Diagnóstico
+
+```bash
+./scripts/doctor
+```
+
+O `doctor` verifica:
+
+- envs obrigatórias
+- token local alinhado entre backend e frontend
+- backend no ar
+- frontend no ar
+- Ollama acessível
+- modelo `AURA_MODEL` disponível
+- CORS básico
+- portas locais em conflito
+
+### Execução isolada do backend
 
 ```bash
 ./scripts/run-backend
 ```
 
-### Execução do frontend
+### Execução isolada do frontend
 
 ```bash
 ./scripts/run-frontend
@@ -107,16 +149,20 @@ Backend:
 
 ```env
 AURA_ENV=development
+AURA_LOCAL_MODE=true
 AURA_MODEL=qwen3.5:9b
 OLLAMA_URL=http://localhost:11434
 AURA_AUTH_TOKEN=change-me
 AURA_REQUIRE_AUTH=true
+AURA_ENABLE_OS_RUNTIME=false
+AURA_ENABLE_RESEARCH=false
+AURA_ENABLE_CLOUD_PROVIDERS=false
 ```
 
 Frontend:
 
 ```env
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_AURA_ENV=local
 NEXT_PUBLIC_AURA_TOKEN=change-me
 ```
@@ -127,6 +173,27 @@ NEXT_PUBLIC_AURA_TOKEN=change-me
 cd aura/backend && python3 -m pytest
 cd aura/frontend && pnpm lint && pnpm typecheck && pnpm build
 ```
+
+### Teste manual do chat
+
+1. Rode `./scripts/dev-up`
+2. Abra `http://127.0.0.1:3000/chat`
+3. Envie uma mensagem simples
+4. Valide resposta do Ollama
+5. Rode `./scripts/doctor` se algo falhar
+
+### Erros comuns
+
+- `Backend offline`
+  Correção: rode `./scripts/run-backend` ou `./scripts/dev-up`
+- `Falha de autenticação`
+  Correção: alinhe `AURA_AUTH_TOKEN` com `NEXT_PUBLIC_AURA_TOKEN`
+- `Ollama indisponível`
+  Correção: inicie o serviço local do Ollama em `http://localhost:11434`
+- `Modelo indisponível`
+  Correção: rode `ollama pull qwen3.5:9b`
+- `Porta em uso`
+  Correção: encerre o processo ocupando `3000` ou `8000`, ou ajuste as envs de porta
 
 ## Operation Modes
 

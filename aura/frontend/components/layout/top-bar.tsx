@@ -59,26 +59,26 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 mb-4 border-b border-white/8 bg-[rgba(5,10,17,0.72)] px-3 py-3 backdrop-blur-2xl sm:px-4 lg:mb-5 lg:rounded-[28px] lg:border lg:bg-[rgba(8,13,22,0.82)] lg:px-5">
+      <header className="shell-panel sticky top-0 z-30 mb-4 rounded-none border-x-0 border-t-0 px-3 py-3 sm:px-4 lg:mb-5 lg:rounded-[2rem] lg:border lg:px-5 lg:py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <button
               type="button"
               onClick={onOpenSidebar}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] text-[var(--text-primary)] lg:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-primary)] lg:hidden"
               aria-label="Abrir sidebar"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="hidden h-11 w-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] lg:flex">
-              <Sparkles className="h-5 w-5 text-[var(--accent-cyan)]" />
+            <div className="hidden h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[var(--border-default)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-primary)_18%,transparent),color-mix(in_srgb,var(--accent-secondary)_10%,transparent))] lg:flex">
+              <Sparkles className="h-5 w-5 text-[var(--fg-primary)]" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--text-subtle)]">{pageMeta.eyebrow}</p>
-              <h1 className="truncate pt-1 text-xl font-semibold tracking-[-0.04em] text-[var(--text-primary)] sm:text-2xl">
+              <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--fg-subtle)]">{pageMeta.eyebrow}</p>
+              <h1 className="truncate pt-1 text-xl font-semibold tracking-[-0.05em] text-[var(--fg-primary)] sm:text-[1.7rem]">
                 {title}
               </h1>
-              <p className="truncate text-sm text-[var(--text-muted)]">{subtitle}</p>
+              <p className="truncate text-sm text-[var(--fg-muted)]">{subtitle}</p>
             </div>
           </div>
 
@@ -104,9 +104,9 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
                     <Button
                       key={action.key}
                       type="button"
-                      variant="ghost"
+                      variant="secondary"
                       size="icon"
-                      className="rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-secondary)]"
+                      className="rounded-full"
                       onClick={() => triggerAction(action.key)}
                       aria-label={action.label}
                     >
@@ -119,7 +119,7 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
             <Link
               href="/settings"
               aria-label="Abrir configuracoes"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
             >
               <Settings2 className="h-4 w-4" />
             </Link>
@@ -129,7 +129,7 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
             <button
               type="button"
               onClick={() => triggerAction('microphone')}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] text-[var(--text-primary)]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-primary)]"
               aria-label="Ativar microfone"
             >
               <Mic className="h-5 w-5" />
@@ -137,7 +137,7 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((open) => !open)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] text-[var(--text-primary)]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-primary)]"
               aria-label="Abrir acoes"
               aria-expanded={mobileMenuOpen}
             >
@@ -154,12 +154,12 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="fixed inset-x-3 top-[5.25rem] z-40 rounded-[24px] border border-white/10 bg-[rgba(8,13,22,0.96)] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.4)] backdrop-blur-2xl lg:hidden"
+            className="shell-panel fixed inset-x-3 top-[5.25rem] z-40 rounded-[1.6rem] p-3 lg:hidden"
           >
             <Button
               type="button"
               variant="secondary"
-              className="mb-2 h-11 w-full justify-start rounded-[18px]"
+              className="mb-2 h-11 w-full justify-start rounded-[1.1rem]"
               onClick={() => {
                 const nextId = createConversation();
                 setActiveConversation(nextId);
@@ -176,14 +176,14 @@ export function TopBar({ pageMeta, onOpenSidebar }: TopBarProps) {
                   key={action.key}
                   type="button"
                   onClick={() => triggerAction(action.key)}
-                  className="flex h-12 w-full items-center gap-3 rounded-[18px] px-3 text-left text-sm text-[var(--text-secondary)] transition hover:bg-white/[0.05] hover:text-[var(--text-primary)]"
+                  className="flex h-12 w-full items-center gap-3 rounded-[1.1rem] px-3 text-left text-sm text-[var(--fg-secondary)] transition hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_96%,transparent)] hover:text-[var(--fg-primary)]"
                 >
                   <Icon className="h-4 w-4" />
                   {action.label}
                 </button>
               );
             })}
-            <Link href="/settings" className="mt-1 flex h-12 items-center gap-3 rounded-[18px] px-3 text-sm text-[var(--text-secondary)] transition hover:bg-white/[0.05] hover:text-[var(--text-primary)]">
+            <Link href="/settings" className="mt-1 flex h-12 items-center gap-3 rounded-[1.1rem] px-3 text-sm text-[var(--fg-secondary)] transition hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_96%,transparent)] hover:text-[var(--fg-primary)]">
               <Settings2 className="h-4 w-4" />
               Configuracoes
             </Link>

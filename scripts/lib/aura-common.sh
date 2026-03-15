@@ -50,6 +50,23 @@ load_frontend_env() {
   load_env_file "${FRONTEND_DIR}/.env.local"
 }
 
+ensure_env_file() {
+  local target_file="$1"
+  local template_file="$2"
+
+  if [[ -f "$target_file" || ! -f "$template_file" ]]; then
+    return 0
+  fi
+
+  cp "$template_file" "$target_file"
+  log_info "Created $(basename "$target_file") from $(basename "$template_file")."
+}
+
+ensure_local_env_files() {
+  ensure_env_file "${BACKEND_DIR}/.env" "${BACKEND_DIR}/.env.example"
+  ensure_env_file "${FRONTEND_DIR}/.env.local" "${FRONTEND_DIR}/.env.example"
+}
+
 require_command() {
   local command_name="$1"
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -202,6 +219,11 @@ check_http() {
   curl -fsS --max-time 2 "$url" >/dev/null 2>&1
 }
 
+http_status_code() {
+  local url="$1"
+  curl -sS -o /dev/null -w '%{http_code}' --max-time 4 "$url" 2>/dev/null || printf '000'
+}
+
 ollama_url_parts() {
   local url="${OLLAMA_URL:-http://127.0.0.1:11434}"
   local stripped host port
@@ -241,4 +263,16 @@ remove_pidfile() {
 
 launch_agent_label() {
   printf 'com.gregory.aura.stack\n'
+}
+
+backend_base_url() {
+  local host="${AURA_BACKEND_HOST:-localhost}"
+  local port="${AURA_BACKEND_PORT:-8000}"
+  printf 'http://%s:%s\n' "$host" "$port"
+}
+
+frontend_base_url() {
+  local host="${AURA_FRONTEND_HOST:-localhost}"
+  local port="${AURA_FRONTEND_PORT:-3000}"
+  printf 'http://%s:%s\n' "$host" "$port"
 }

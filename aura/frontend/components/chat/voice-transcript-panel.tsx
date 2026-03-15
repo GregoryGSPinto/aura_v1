@@ -24,10 +24,10 @@ export function VoiceTranscriptPanel({
   }
 
   return (
-    <div className="rounded-[24px] border border-[var(--border-strong)]/60 bg-[linear-gradient(180deg,rgba(15,22,34,0.96),rgba(10,15,24,0.9))] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+    <div className="shell-card rounded-[1.5rem] border-[color:color-mix(in_srgb,var(--accent-primary)_24%,var(--border-default))] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--fg-secondary)]">
             {isProcessingVoice ? (
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
             ) : isListening ? (
@@ -37,7 +37,7 @@ export function VoiceTranscriptPanel({
             )}
             {isProcessingVoice ? 'Processando voz' : isListening ? 'Escutando agora' : 'Transcricao capturada'}
           </div>
-          <p className="mt-3 text-sm leading-7 text-[var(--text-primary)]">
+          <p className="mt-3 text-sm leading-7 text-[var(--fg-primary)]">
             {transcript || 'Aguardando fala...'}
           </p>
         </div>
@@ -47,7 +47,7 @@ export function VoiceTranscriptPanel({
             type="button"
             onClick={onClear}
             className={cn(
-              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-secondary)] transition hover:bg-white/[0.08] hover:text-[var(--text-primary)]',
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-secondary)] transition hover:text-[var(--fg-primary)]',
               isListening && 'pointer-events-none opacity-50',
             )}
             aria-label="Limpar transcricao de voz"

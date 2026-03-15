@@ -10,7 +10,7 @@ load_frontend_env
 require_command pnpm
 require_command node
 
-FRONTEND_HOST="${AURA_FRONTEND_HOST:-127.0.0.1}"
+FRONTEND_HOST="${AURA_FRONTEND_HOST:-localhost}"
 FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
 FRONTEND_MODE="${AURA_FRONTEND_MODE:-dev}"
 

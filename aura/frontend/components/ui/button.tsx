@@ -6,25 +6,25 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-2xl font-medium transition-[background,border-color,color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--accent-primary)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        gold: 'bg-gradient-to-r from-[var(--gold)] to-[var(--gold-light)] text-black hover:shadow-[0_0_30px_rgba(212,175,55,0.4)] active:scale-95',
-        cyan: 'border border-[var(--cyan)] bg-transparent text-[var(--cyan)] hover:bg-[var(--cyan)]/10 hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] active:scale-95',
-        ghost: 'hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-        outline: 'border border-white/10 bg-transparent hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-        secondary: 'bg-white/5 text-[var(--text-secondary)] hover:bg-white/10',
+        gold: 'border border-[color:color-mix(in_srgb,var(--accent-primary)_18%,transparent)] bg-[linear-gradient(135deg,var(--accent-primary-strong),var(--accent-secondary))] text-white shadow-[0_12px_30px_rgba(88,118,196,0.25)] hover:brightness-105 active:scale-[0.99]',
+        cyan: 'border border-[var(--border-strong)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_86%,transparent)] text-[var(--fg-primary)] hover:bg-[color:color-mix(in_srgb,var(--bg-accent-soft)_60%,var(--bg-surface-soft))] hover:border-[color:color-mix(in_srgb,var(--accent-secondary)_38%,transparent)]',
+        ghost: 'bg-transparent text-[var(--fg-muted)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_90%,transparent)] hover:text-[var(--fg-primary)]',
+        outline: 'border border-[var(--border-default)] bg-transparent text-[var(--fg-secondary)] hover:border-[var(--border-strong)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_90%,transparent)] hover:text-[var(--fg-primary)]',
+        secondary: 'border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-secondary)] hover:border-[var(--border-default)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_100%,transparent)] hover:text-[var(--fg-primary)]',
       },
       size: {
-        default: 'h-11 px-6 py-2 text-sm',
-        sm: 'h-9 px-4 text-xs',
-        lg: 'h-12 px-8 text-base',
-        icon: 'h-11 w-11',
+        default: 'h-11 px-5 py-2 text-sm',
+        sm: 'h-9 px-3.5 text-xs',
+        lg: 'h-12 px-6 text-base',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {
-      variant: 'gold',
+      variant: 'secondary',
       size: 'default',
     },
   }

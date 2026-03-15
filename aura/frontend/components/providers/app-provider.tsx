@@ -111,22 +111,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshRuntime = useCallback(async () => {
     try {
-      const [statusResponse, voiceResponse] = await Promise.all([fetchStatus(), fetchVoiceStatus()]);
+      const statusResponse = await fetchStatus();
       setRuntimeStatus(statusResponse.data);
+    } catch {
+      setRuntimeStatus((current) => ({
+        status: 'offline',
+        name: current?.name ?? 'Aura',
+        version: current?.version ?? 'unknown',
+        uptime_seconds: current?.uptime_seconds ?? 0,
+        timestamp: new Date().toISOString(),
+        services: {
+          api: 'offline',
+          llm: current?.services.llm ?? 'unknown',
+          filesystem: current?.services.filesystem ?? 'unknown',
+          supabase: current?.services.supabase ?? 'unknown',
+        },
+        model: current?.model ?? 'indisponivel',
+        persistence: current?.persistence ?? { mode: 'unknown' },
+        auth_mode: current?.auth_mode ?? 'unknown',
+        jobs: current?.jobs,
+        ollama: current?.ollama,
+        feature_flags: current?.feature_flags,
+        startup_warnings: current?.startup_warnings ?? ['Backend offline.'],
+      }));
+    }
+
+    try {
+      const voiceResponse = await fetchVoiceStatus();
       setVoiceStatus(voiceResponse.data);
     } catch {
-      setRuntimeStatus((current) =>
-        current
-          ? {
-              ...current,
-              status: 'offline',
-              services: {
-                ...current.services,
-                api: 'offline',
-              },
-            }
-          : null,
-      );
       setVoiceStatus((current) =>
         current
           ? {

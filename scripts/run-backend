@@ -9,7 +9,7 @@ load_backend_env
 
 require_command python3
 
-BACKEND_HOST="${AURA_BACKEND_HOST:-127.0.0.1}"
+BACKEND_HOST="${AURA_BACKEND_HOST:-localhost}"
 BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
 BACKEND_RELOAD="${AURA_BACKEND_RELOAD:-}"
 

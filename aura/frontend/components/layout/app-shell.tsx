@@ -25,12 +25,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <CommandPalette />
       <div className="relative z-10 min-h-screen overflow-x-hidden">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1680px] gap-4 px-0 pb-0 pt-0 sm:px-3 sm:py-3 lg:px-4 lg:py-4">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1760px] gap-4 px-0 pb-0 pt-0 sm:px-4 sm:py-4 lg:gap-5 lg:px-5 lg:py-5">
           <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
 
-          <div className="flex min-h-screen min-w-0 flex-1 flex-col px-0 sm:px-0">
+          <div className="flex min-h-screen min-w-0 flex-1 flex-col">
             <TopBar pageMeta={pageMeta} onOpenSidebar={() => setMobileSidebarOpen(true)} />
-            <main className="min-w-0 flex-1 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:px-1 lg:px-0 lg:pb-4">
+            <main className="min-w-0 flex-1 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:px-1 lg:px-0 lg:pb-5">
               {children}
             </main>
           </div>

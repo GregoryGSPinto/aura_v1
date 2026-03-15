@@ -15,6 +15,16 @@ export interface StatusPayload {
     mode: string;
   };
   auth_mode: string;
+  ollama?: {
+    status: string;
+    url: string;
+    model: string;
+    model_available: boolean;
+    models: string[];
+    error?: string;
+  };
+  feature_flags?: Record<string, boolean>;
+  startup_warnings?: string[];
   jobs?: {
     total: number;
     queued: number;

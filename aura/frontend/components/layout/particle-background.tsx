@@ -44,15 +44,15 @@ export function ParticleBackground() {
     window.addEventListener('resize', resize);
 
     // Initialize particles
-    const particleCount = window.innerWidth < 768 ? 18 : 34;
+    const particleCount = window.innerWidth < 768 ? 12 : 24;
     particlesRef.current = Array.from({ length: particleCount }, () => ({
       x: window.innerWidth * (0.45 + Math.random() * 0.22),
       y: window.innerHeight * (0.12 + Math.random() * 0.55),
       vx: (Math.random() - 0.5) * 0.2,
       vy: (Math.random() - 0.5) * 0.2,
       size: Math.random() * 2 + 0.5,
-      color: Math.random() > 0.6 ? '#D4AF37' : '#00D4FF',
-      alpha: Math.random() * 0.5 + 0.2,
+      color: Math.random() > 0.6 ? '#8eb6ff' : '#9ad7ff',
+      alpha: Math.random() * 0.28 + 0.08,
     }));
 
     const handlePointerMove = (event: MouseEvent) => {
@@ -121,12 +121,12 @@ export function ParticleBackground() {
               const dy = particle.y - other.y;
               const distance = Math.sqrt(dx * dx + dy * dy);
 
-              if (distance < 120) {
+              if (distance < 96) {
                 ctx.beginPath();
                 ctx.moveTo(particle.x, particle.y);
                 ctx.lineTo(other.x, other.y);
                 ctx.strokeStyle = particle.color;
-                ctx.globalAlpha = 0.08 * (1 - distance / 120);
+                ctx.globalAlpha = 0.04 * (1 - distance / 96);
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
               }
@@ -161,7 +161,7 @@ export function ParticleBackground() {
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
-          opacity: resolvedTheme === 'dark' ? 0.38 : 0.28,
+          opacity: resolvedTheme === 'dark' ? 0.18 : 0.1,
         }}
       />
       <div
@@ -169,8 +169,8 @@ export function ParticleBackground() {
         className="pointer-events-none fixed inset-0 -z-20 opacity-90 will-change-transform transition-transform duration-300 ease-out"
         style={{
           background: resolvedTheme === 'dark'
-            ? 'radial-gradient(circle at 52% 38%, rgba(0,212,255,0.22) 0%, rgba(0,212,255,0.08) 16%, transparent 36%), radial-gradient(circle at 46% 42%, rgba(212,175,55,0.22) 0%, rgba(212,175,55,0.09) 18%, transparent 40%), radial-gradient(circle at 50% 52%, rgba(255,255,255,0.12) 0%, transparent 28%)'
-            : 'radial-gradient(circle at 52% 38%, rgba(0,212,255,0.12) 0%, rgba(0,212,255,0.05) 16%, transparent 36%), radial-gradient(circle at 46% 42%, rgba(212,175,55,0.14) 0%, rgba(212,175,55,0.06) 18%, transparent 40%), radial-gradient(circle at 50% 52%, rgba(255,255,255,0.08) 0%, transparent 28%)',
+            ? 'radial-gradient(circle at 52% 38%, rgba(142,182,255,0.16) 0%, rgba(142,182,255,0.06) 16%, transparent 34%), radial-gradient(circle at 46% 42%, rgba(154,215,255,0.14) 0%, rgba(154,215,255,0.05) 18%, transparent 38%)'
+            : 'radial-gradient(circle at 52% 38%, rgba(95,119,196,0.1) 0%, rgba(95,119,196,0.04) 16%, transparent 34%), radial-gradient(circle at 46% 42%, rgba(90,147,207,0.08) 0%, rgba(90,147,207,0.03) 18%, transparent 38%)',
         }}
       />
       <canvas
@@ -181,8 +181,8 @@ export function ParticleBackground() {
       <div
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 18%, transparent 82%, rgba(255,255,255,0.02) 100%), repeating-linear-gradient(180deg, rgba(255,255,255,0.028) 0px, rgba(255,255,255,0.028) 1px, transparent 1px, transparent 4px)',
-          opacity: resolvedTheme === 'dark' ? 0.18 : 0.08,
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 18%, transparent 82%, rgba(255,255,255,0.02) 100%), repeating-linear-gradient(180deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 6px)',
+          opacity: resolvedTheme === 'dark' ? 0.1 : 0.05,
           mixBlendMode: 'screen',
         }}
       />
@@ -190,8 +190,8 @@ export function ParticleBackground() {
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           background: resolvedTheme === 'dark'
-            ? 'linear-gradient(180deg, rgba(4,8,18,0.78) 0%, rgba(7,11,22,0.64) 28%, rgba(10,10,15,0.72) 100%)'
-            : 'linear-gradient(180deg, rgba(246,249,255,0.52) 0%, rgba(241,245,255,0.34) 24%, rgba(229,235,245,0.58) 100%)',
+            ? 'linear-gradient(180deg, rgba(8,13,23,0.56) 0%, rgba(9,15,27,0.32) 28%, rgba(8,13,22,0.52) 100%)'
+            : 'linear-gradient(180deg, rgba(247,249,252,0.42) 0%, rgba(245,248,252,0.2) 24%, rgba(237,243,251,0.38) 100%)',
         }}
       />
       <div

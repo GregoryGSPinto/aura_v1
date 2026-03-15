@@ -33,8 +33,8 @@ export function ChatModeSelector({
     <div className="space-y-3">
       {!compact ? (
         <div>
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-subtle)]">Modos da Aura</p>
-          <p className="mt-2 text-sm text-[var(--text-muted)]">{selectedMode.description}</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--fg-subtle)]">Modo da conversa</p>
+          <p className="mt-2 text-sm text-[var(--fg-muted)]">{selectedMode.description}</p>
         </div>
       ) : null}
 
@@ -48,10 +48,10 @@ export function ChatModeSelector({
               type="button"
               onClick={() => onSelectMode(mode.id)}
               className={cn(
-                'inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-sm transition',
+                'inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-sm transition-[background,border-color,color,box-shadow] duration-200',
                 isActive
-                  ? 'border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(131,205,255,0.16),rgba(119,128,255,0.14))] text-[var(--text-primary)] shadow-[0_12px_32px_rgba(36,86,154,0.18)]'
-                  : 'border-white/10 bg-white/[0.03] text-[var(--text-secondary)] hover:border-white/20 hover:bg-white/[0.06] hover:text-[var(--text-primary)]',
+                  ? 'border-[var(--border-strong)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-primary)_14%,transparent),color-mix(in_srgb,var(--accent-secondary)_12%,transparent))] text-[var(--fg-primary)] shadow-[0_12px_24px_rgba(54,86,144,0.14)]'
+                  : 'border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_90%,transparent)] text-[var(--fg-secondary)] hover:border-[var(--border-default)] hover:text-[var(--fg-primary)]',
                 compact && 'min-h-9 px-3 py-1.5 text-xs',
               )}
               aria-pressed={isActive}

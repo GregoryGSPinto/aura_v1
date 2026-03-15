@@ -48,7 +48,7 @@ export function ChatStatusBadges({ compact = false }: { compact?: boolean }) {
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <Badge key={item.key} variant={item.variant} className={cn('h-8 rounded-full px-3 text-[11px]', compact && 'h-7 px-2.5')}>
+          <Badge key={item.key} variant={item.variant} className={cn('h-8 rounded-full px-3', compact && 'h-7 px-2.5')}>
             <Icon className="mr-1.5 h-3.5 w-3.5" />
             {item.label}
           </Badge>

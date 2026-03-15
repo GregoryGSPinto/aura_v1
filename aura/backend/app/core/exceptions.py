@@ -21,3 +21,19 @@ class ExternalServiceError(AuraError):
     def __init__(self, message: str = "Serviço externo indisponível", details=None):
         super().__init__("external_service_error", message, details=details, status_code=503)
 
+
+class ConfigurationError(AuraError):
+    def __init__(self, message: str = "Configuração inválida", details=None):
+        super().__init__("configuration_error", message, details=details, status_code=500)
+
+
+class OllamaUnavailableError(ExternalServiceError):
+    def __init__(self, message: str = "Ollama indisponível", details=None):
+        super().__init__(message, details=details)
+        self.code = "ollama_unavailable"
+
+
+class ModelUnavailableError(ExternalServiceError):
+    def __init__(self, message: str = "Modelo local indisponível", details=None):
+        super().__init__(message, details=details)
+        self.code = "model_unavailable"

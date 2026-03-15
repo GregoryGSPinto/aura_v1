@@ -9,12 +9,14 @@ import { ChatControlPanel } from '@/components/chat/chat-control-panel';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
 import { MessageList } from '@/components/chat/message-list';
 import { ChatModeSelector } from '@/components/chat/mode-selector';
+import { ChatStatusBadges } from '@/components/chat/status-badges';
 import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
 import { useAuraPreferences } from '@/components/providers/app-provider';
-import { sendChat } from '@/lib/api';
+import { ApiClientError, sendChat } from '@/lib/api';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { useChatStore } from '@/lib/chat-store';
 import type { AttachmentPreview, ConversationMessage } from '@/lib/chat-types';
+import { getClientEnvWarnings } from '@/lib/env';
 import { notifyError, notifyInfo } from '@/lib/notifications';
 
 type BrowserRecognitionAlternative = {
@@ -97,8 +99,50 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   return (window.SpeechRecognition || window.webkitSpeechRecognition || null) as SpeechRecognitionConstructor | null;
 }
 
+function classifyChatError(error: unknown) {
+  if (error instanceof ApiClientError) {
+    if (error.code === 'auth_error' || error.status === 401) {
+      return {
+        assistantMessage: 'A autenticação local falhou. Confirme se `NEXT_PUBLIC_AURA_TOKEN` está alinhado com `AURA_AUTH_TOKEN`.',
+        composerMessage: 'Token inválido. Alinhe `NEXT_PUBLIC_AURA_TOKEN` com `AURA_AUTH_TOKEN`.',
+        notificationTitle: 'Falha de autenticação',
+      };
+    }
+
+    if (error.code === 'backend_unreachable' || error.status === 0) {
+      return {
+        assistantMessage: 'O backend da Aura está offline ou inacessível. Inicie `scripts/run-backend` ou use `scripts/dev-up`.',
+        composerMessage: 'Backend offline em http://localhost:8000.',
+        notificationTitle: 'Backend offline',
+      };
+    }
+
+    if (error.code === 'ollama_unavailable') {
+      return {
+        assistantMessage: 'O backend respondeu, mas o Ollama não está acessível. Inicie o Ollama local em http://localhost:11434.',
+        composerMessage: 'Ollama offline ou sem resposta em http://localhost:11434.',
+        notificationTitle: 'Ollama indisponível',
+      };
+    }
+
+    if (error.code === 'model_unavailable') {
+      return {
+        assistantMessage: 'O modelo configurado não existe no Ollama local. Verifique se `qwen3.5:9b` foi baixado.',
+        composerMessage: "Modelo local indisponível. Rode `ollama pull qwen3.5:9b`.",
+        notificationTitle: 'Modelo indisponível',
+      };
+    }
+  }
+
+  return {
+    assistantMessage: 'Nao consegui completar esta resposta agora. Verifique backend, token e Ollama local.',
+    composerMessage: error instanceof Error ? error.message : 'Falha operacional desconhecida.',
+    notificationTitle: 'Aura indisponivel',
+  };
+}
+
 export function ChatWorkspace() {
-  const { refreshRuntime } = useAuraPreferences();
+  const { refreshRuntime, runtimeStatus } = useAuraPreferences();
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
   const appendMessage = useChatStore((state) => state.appendMessage);
@@ -118,6 +162,14 @@ export function ChatWorkspace() {
   const messages = activeConversation?.messages ?? [];
   const currentMode = getAuraChatMode(selectedModeId);
   const lastAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant' && message.content.trim());
+  const envWarnings = getClientEnvWarnings();
+  const statusBanner =
+    envWarnings[0] ||
+    (runtimeStatus?.status === 'offline'
+      ? 'Backend offline. Use scripts/dev-up ou scripts/run-backend.'
+      : runtimeStatus?.ollama?.model_available === false
+        ? `Modelo local ausente no Ollama: ${runtimeStatus?.ollama?.model}.`
+        : null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -325,17 +377,16 @@ export function ChatWorkspace() {
           setShouldReplyWithVoice(false);
         }
       } catch (requestError) {
-        const description =
-          requestError instanceof Error ? requestError.message : 'Nao foi possivel completar a resposta.';
+        const failure = classifyChatError(requestError);
         updateMessage(activeConversation.id, assistantMessage.id, {
-          content: 'Nao consegui completar esta resposta agora. Verifique se a API da Aura e o modelo local estao acessiveis.',
+          content: failure.assistantMessage,
           status: 'error',
           meta: 'Falha operacional',
           modeLabel: currentMode.label,
         });
-        setError(description);
+        setError(failure.composerMessage);
         setShouldReplyWithVoice(false);
-        notifyError('Aura indisponivel', description);
+        notifyError(failure.notificationTitle, failure.composerMessage);
       } finally {
         setIsLoading(false);
         setIsProcessingVoice(false);
@@ -545,18 +596,40 @@ export function ChatWorkspace() {
         }}
       />
 
-      <div className="mx-auto flex w-full max-w-[1480px] flex-1 gap-6 xl:gap-8">
+      <div className="mx-auto flex w-full max-w-[1540px] flex-1 gap-6 xl:gap-8">
         <div className="min-w-0 flex-1">
-          <div className="mx-auto flex h-full max-w-[56rem] flex-col">
+          <div className="mx-auto flex h-full max-w-[60rem] flex-col">
+            <div className="shell-panel mb-4 rounded-[2rem] px-4 py-4 sm:px-5 sm:py-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-[var(--fg-subtle)]">Conversation Runtime</p>
+                    <h2 className="pt-1 text-[1.9rem] font-semibold tracking-[-0.06em] text-[var(--fg-primary)]">
+                      Conversa com foco, contexto e acabamento premium.
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--fg-muted)]">
+                      A Aura centraliza leitura, estados operacionais e composer em uma superficie calma, clara e pronta para uso diario.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <ChatStatusBadges />
+                  <div className="hidden xl:block">
+                    <ChatModeSelector selectedModeId={selectedModeId} onSelectMode={setSelectedMode} compact />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="mb-4 flex items-center justify-between gap-3 xl:hidden">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-subtle)]">Aura</p>
-                <p className="truncate pt-1 text-sm text-[var(--text-muted)]">{currentMode.label}</p>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--fg-subtle)]">Aura</p>
+                <p className="truncate pt-1 text-sm text-[var(--fg-muted)]">{currentMode.label}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setMobilePanelOpen(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm text-[var(--text-primary)]"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-4 text-sm text-[var(--fg-primary)]"
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Painel
@@ -568,11 +641,16 @@ export function ChatWorkspace() {
             </div>
 
             <div className="mb-4 flex-1">
+              {statusBanner ? (
+                <div className="surface-alert mb-4 rounded-[1.35rem] px-4 py-3 text-sm">
+                  {statusBanner}
+                </div>
+              ) : null}
               {messages.length ? (
                 <motion.div
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mx-auto w-full space-y-4 pb-8 pt-2"
+                  className="mx-auto w-full space-y-5 pb-8 pt-2"
                 >
                   <MessageList
                     messages={messages}
