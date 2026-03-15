@@ -16,6 +16,8 @@ require_command pnpm
 require_command curl
 
 BACKEND_URL="$(backend_base_url)"
+FRONTEND_PORT="$(resolve_frontend_port "${AURA_FRONTEND_PORT:-3000}")"
+export AURA_FRONTEND_PORT="$FRONTEND_PORT"
 FRONTEND_URL="$(frontend_base_url)"
 BACKEND_LOG="${AURA_LOG_DIR}/backend.log"
 FRONTEND_LOG="${AURA_LOG_DIR}/frontend.log"
@@ -41,14 +43,14 @@ else
   log_info "Backend Aura já estava em execução."
 fi
 
-if ! service_port_owned_by_aura "${AURA_FRONTEND_PORT:-3000}" aura_frontend; then
-  if port_is_listening "${AURA_FRONTEND_PORT:-3000}"; then
-    log_error "Porta ${AURA_FRONTEND_PORT:-3000} ocupada por outro processo."
+if ! service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
+  if port_is_listening "$FRONTEND_PORT"; then
+    log_error "Porta $FRONTEND_PORT ocupada por outro processo."
     exit 1
   fi
   nohup "$SCRIPT_DIR/run-frontend" >"$FRONTEND_LOG" 2>&1 &
   write_pidfile "$FRONTEND_PIDFILE" "$!"
-  log_info "Frontend iniciado em background. Log: $FRONTEND_LOG"
+  log_info "Frontend iniciado em background na porta $FRONTEND_PORT. Log: $FRONTEND_LOG"
 else
   log_info "Frontend Aura já estava em execução."
 fi

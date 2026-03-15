@@ -322,6 +322,29 @@ ensure_frontend_env_defaults() {
   ensure_env_key "$env_file" "NEXT_PUBLIC_AURA_TOKEN" "$token_value"
 }
 
+resolve_frontend_port() {
+  local preferred="$1"
+  if ! port_is_listening "$preferred"; then
+    printf '%s' "$preferred"
+    return 0
+  fi
+
+  if service_port_owned_by_aura "$preferred" aura_frontend; then
+    printf '%s' "$preferred"
+    return 0
+  fi
+
+  log_warn "Port ${preferred} is occupied by another process; Aura frontend will move."
+  describe_port_owner "$preferred"
+  local fallback
+  fallback="$(find_free_port)"
+  while port_is_listening "$fallback"; do
+    fallback="$(find_free_port)"
+  done
+  log_info "Aura frontend will bind to port ${fallback}."
+  printf '%s' "$fallback"
+}
+
 ollama_url_parts() {
   local url="${OLLAMA_URL:-http://127.0.0.1:11434}"
   local stripped host port

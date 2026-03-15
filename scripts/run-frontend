@@ -15,13 +15,16 @@ require_command pnpm
 require_command node
 
 FRONTEND_HOST="${AURA_FRONTEND_HOST:-localhost}"
-FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+BASE_FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
 FRONTEND_MODE="${AURA_FRONTEND_MODE:-dev}"
 
-if service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
-  log_info "Aura frontend already listening on port $FRONTEND_PORT."
+if service_port_owned_by_aura "$BASE_FRONTEND_PORT" aura_frontend; then
+  log_info "Aura frontend already listening on port $BASE_FRONTEND_PORT."
   exit 0
 fi
+
+FRONTEND_PORT="$(resolve_frontend_port "$BASE_FRONTEND_PORT")"
+export AURA_FRONTEND_PORT="$FRONTEND_PORT"
 
 if port_is_listening "$FRONTEND_PORT"; then
   log_error "Port $FRONTEND_PORT is already in use by a non-Aura process."
