@@ -6,34 +6,40 @@ import type { ReactNode } from "react";
 
 import { CommandPalette } from "@/components/layout/command-palette";
 import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/top-bar";
-import { auraPageMeta } from "@/lib/design-system/tokens";
+import { AppHeader } from "@/components/layout/top-bar";
+import { StatusBar } from "@/components/layout/status-bar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const pageMeta =
-    auraPageMeta[pathname] ??
-    ({
-      eyebrow: "Aura",
-      title: "Aura",
-      description: "Assistente operacional pessoal",
-      accent: "core",
-    } as const);
+  const isChatRoute = pathname === "/chat" || pathname === "/";
 
   return (
     <>
       <CommandPalette />
-      <div className="relative z-10 min-h-screen overflow-x-hidden">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1760px] gap-4 px-0 pb-0 pt-0 sm:px-4 sm:py-4 lg:gap-5 lg:px-5 lg:py-5">
-          <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
+      <div className="flex h-dvh flex-col overflow-hidden bg-[var(--aura-bg-primary)]">
+        <AppHeader onOpenSidebar={() => setMobileSidebarOpen(true)} />
 
-          <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-            <TopBar pageMeta={pageMeta} onOpenSidebar={() => setMobileSidebarOpen(true)} />
-            <main className="min-w-0 flex-1 px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] sm:px-1 lg:px-0 lg:pb-5">
-              {children}
-            </main>
-          </div>
+        <div className="flex min-h-0 flex-1">
+          <Sidebar
+            mobileOpen={mobileSidebarOpen}
+            onCloseMobile={() => setMobileSidebarOpen(false)}
+          />
+
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {isChatRoute ? (
+              <>
+                <div className="flex-1 overflow-hidden">
+                  {children}
+                </div>
+                <StatusBar />
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                {children}
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </>

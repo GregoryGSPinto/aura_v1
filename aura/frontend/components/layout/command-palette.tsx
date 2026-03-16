@@ -4,16 +4,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  Bot, 
-  Monitor, 
-  FolderOpen, 
-  Activity, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Bot,
+  Monitor,
+  FolderOpen,
+  Activity,
   Settings,
   Search,
-  Command as CommandIcon,
   ArrowRight,
   Terminal,
   GitBranch,
@@ -25,11 +24,11 @@ import { notifyError, notifyInfo, notifySuccess } from '@/lib/notifications';
 const navigationCommands = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', shortcut: '⌘1' },
   { id: 'chat', label: 'Chat', icon: MessageSquare, href: '/chat', shortcut: '⌘2' },
-  { id: 'swarm', label: 'Agent Swarm', icon: Bot, href: '/swarm', shortcut: '⌘3' },
-  { id: 'remote', label: 'Controle Remoto', icon: Monitor, href: '/remote', shortcut: '⌘4' },
+  { id: 'swarm', label: 'Rotinas', icon: Bot, href: '/swarm', shortcut: '⌘3' },
+  { id: 'remote', label: 'Ferramentas', icon: Monitor, href: '/remote', shortcut: '⌘4' },
   { id: 'projects', label: 'Projetos', icon: FolderOpen, href: '/projects', shortcut: '⌘5' },
   { id: 'system', label: 'Sistema', icon: Activity, href: '/system', shortcut: '⌘6' },
-  { id: 'settings', label: 'Configurações', icon: Settings, href: '/settings', shortcut: '⌘7' },
+  { id: 'settings', label: 'Configuracoes', icon: Settings, href: '/settings', shortcut: '⌘7' },
 ];
 
 const quickActions = [
@@ -46,25 +45,18 @@ export function CommandPalette() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const isTypingTarget =
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target?.isContentEditable;
+      const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable;
 
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((o) => !o);
         return;
       }
-
-      if (isTypingTarget) return;
-
+      if (isTyping) return;
       if ((e.metaKey || e.ctrlKey) && /^[1-7]$/.test(e.key)) {
         e.preventDefault();
-        const match = navigationCommands.find((item) => item.shortcut === `⌘${e.key}`);
-        if (match) {
-          router.push(match.href);
-        }
+        const match = navigationCommands.find((c) => c.shortcut === `⌘${e.key}`);
+        if (match) router.push(match.href);
       }
     };
     document.addEventListener('keydown', down);
@@ -81,30 +73,26 @@ export function CommandPalette() {
   const handleQuickAction = async (command: string, label: string) => {
     setOpen(false);
     setSearch('');
-
     try {
       if (command === 'show_logs') {
-        const response = await executeCommand(command);
-        notifyInfo(label, response.data.stdout?.slice(0, 220) || response.data.message || 'Logs carregados.');
+        const r = await executeCommand(command);
+        notifyInfo(label, r.data.stdout?.slice(0, 220) || r.data.message || 'Logs carregados.');
         return;
       }
-
       if (command === 'git_status') {
-        const response = await executeCommand(command);
-        notifySuccess(label, response.data.stdout || response.data.message || 'Status do git carregado.');
+        const r = await executeCommand(command);
+        notifySuccess(label, r.data.stdout || r.data.message || 'Status carregado.');
         return;
       }
-
       if (command === 'open_vscode') {
         await executeCommand(command);
-        notifySuccess(label, 'VS Code solicitado ao backend local.');
+        notifySuccess(label, 'VS Code solicitado.');
         return;
       }
-
       const status = await fetchStatus();
-      notifyInfo(label, `Aura ${status.data.status} · modelo ${status.data.model}`);
-    } catch (error) {
-      notifyError(label, error instanceof Error ? error.message : 'Falha ao executar a ação.');
+      notifyInfo(label, `Aura ${status.data.status} · ${status.data.model}`);
+    } catch (err) {
+      notifyError(label, err instanceof Error ? err.message : 'Falha ao executar.');
     }
   };
 
@@ -112,104 +100,66 @@ export function CommandPalette() {
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          
-          {/* Command Palette */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            initial={{ opacity: 0, scale: 0.96, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-x-0 top-[20vh] z-50 mx-auto w-full max-w-2xl px-4"
+            exit={{ opacity: 0, scale: 0.96, y: -10 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-x-0 top-[20vh] z-50 mx-auto w-full max-w-lg px-4"
           >
-            <div className="overflow-hidden rounded-2xl glass-strong border border-[var(--border-default)] shadow-2xl">
-              <Command className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-muted)]">
-                {/* Search Input */}
-                <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4 py-4">
-                  <Search className="w-5 h-5 text-[var(--text-muted)]" />
+            <div className="overflow-hidden rounded-xl border border-white/5 bg-zinc-900 shadow-2xl">
+              <Command className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-zinc-600">
+                <div className="flex items-center gap-2 border-b border-white/5 px-3 py-3">
+                  <Search className="h-4 w-4 text-zinc-500" />
                   <Command.Input
                     value={search}
                     onValueChange={setSearch}
-                    placeholder="Digite um comando ou busque..."
-                    className="flex-1 bg-transparent outline-none text-lg placeholder:text-[var(--text-muted)] text-[var(--text-primary)]"
+                    placeholder="Buscar comando..."
+                    className="flex-1 bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
                   />
-                  <kbd className="px-2 py-1 text-xs rounded-lg bg-white/5 text-[var(--text-muted)] border border-white/10">
-                    ESC
-                  </kbd>
+                  <kbd className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-zinc-600">ESC</kbd>
                 </div>
 
-                {/* Results */}
-                <Command.List className="max-h-[400px] overflow-y-auto py-2">
-                  <Command.Empty className="p-8 text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-white/5 flex items-center justify-center">
-                      <Search className="w-6 h-6 text-[var(--text-muted)]" />
-                    </div>
-                    <p className="text-[var(--text-muted)]">Nenhum comando encontrado</p>
+                <Command.List className="max-h-80 overflow-y-auto py-1">
+                  <Command.Empty className="px-3 py-6 text-center text-sm text-zinc-600">
+                    Nenhum resultado
                   </Command.Empty>
-                  
-                  {/* Navigation Section */}
-                  <Command.Group heading="Navegação" className="px-2">
+
+                  <Command.Group heading="Navegacao" className="px-1">
                     {navigationCommands.map((cmd) => (
                       <Command.Item
                         key={cmd.id}
                         onSelect={() => handleSelect(cmd.href)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-white/5 data-[selected=true]:bg-white/10 group"
+                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm text-zinc-400 data-[selected=true]:bg-white/5 data-[selected=true]:text-zinc-200"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-[var(--gold)]/10 transition-colors">
-                          <cmd.icon className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--gold)] transition-colors" />
-                        </div>
-                        <span className="flex-1 text-[var(--text-secondary)]">{cmd.label}</span>
-                        <kbd className="px-2 py-1 text-xs rounded bg-white/5 text-[var(--text-muted)] border border-white/5">
-                          {cmd.shortcut}
-                        </kbd>
-                        <ArrowRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <cmd.icon className="h-4 w-4 text-zinc-600" />
+                        <span className="flex-1">{cmd.label}</span>
+                        <kbd className="text-[10px] text-zinc-700">{cmd.shortcut}</kbd>
                       </Command.Item>
                     ))}
                   </Command.Group>
 
-                  {/* Quick Actions Section */}
-                  <Command.Group heading="Ações Rápidas" className="px-2 mt-2">
+                  <Command.Group heading="Acoes" className="px-1">
                     {quickActions.map((action) => (
                       <Command.Item
                         key={action.id}
                         onSelect={() => void handleQuickAction(action.command, action.label)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-white/5 data-[selected=true]:bg-white/10 group"
+                        className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm text-zinc-400 data-[selected=true]:bg-white/5 data-[selected=true]:text-zinc-200"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-[var(--cyan)]/10 transition-colors">
-                          <action.icon className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--cyan)] transition-colors" />
-                        </div>
-                        <span className="flex-1 text-[var(--text-secondary)]">{action.label}</span>
-                        <ArrowRight className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <action.icon className="h-4 w-4 text-zinc-600" />
+                        <span className="flex-1">{action.label}</span>
+                        <ArrowRight className="h-3 w-3 text-zinc-700" />
                       </Command.Item>
                     ))}
                   </Command.Group>
                 </Command.List>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between px-4 py-3 text-xs text-[var(--text-muted)] border-t border-[var(--border-subtle)] bg-white/[0.02]">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5">↑</kbd>
-                      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5">↓</kbd>
-                      <span className="ml-1">navegar</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5">↵</kbd>
-                      <span className="ml-1">selecionar</span>
-                    </span>
-                  </div>
-                  <span className="flex items-center gap-1">
-                    <CommandIcon className="w-3 h-3" />
-                    <span>+ K para abrir</span>
-                  </span>
-                </div>
               </Command>
             </div>
           </motion.div>

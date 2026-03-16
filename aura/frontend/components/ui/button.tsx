@@ -6,21 +6,21 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-2xl font-medium transition-[background,border-color,color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:color-mix(in_srgb,var(--accent-primary)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        gold: 'border border-[color:color-mix(in_srgb,var(--accent-primary)_18%,transparent)] bg-[linear-gradient(135deg,var(--accent-primary-strong),var(--accent-secondary))] text-white shadow-[0_12px_30px_rgba(88,118,196,0.25)] hover:brightness-105 active:scale-[0.99]',
-        cyan: 'border border-[var(--border-strong)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_86%,transparent)] text-[var(--fg-primary)] hover:bg-[color:color-mix(in_srgb,var(--bg-accent-soft)_60%,var(--bg-surface-soft))] hover:border-[color:color-mix(in_srgb,var(--accent-secondary)_38%,transparent)]',
-        ghost: 'bg-transparent text-[var(--fg-muted)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_90%,transparent)] hover:text-[var(--fg-primary)]',
-        outline: 'border border-[var(--border-default)] bg-transparent text-[var(--fg-secondary)] hover:border-[var(--border-strong)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_90%,transparent)] hover:text-[var(--fg-primary)]',
-        secondary: 'border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] text-[var(--fg-secondary)] hover:border-[var(--border-default)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_100%,transparent)] hover:text-[var(--fg-primary)]',
+        gold: 'bg-blue-600 text-white hover:bg-blue-500 active:bg-blue-700',
+        cyan: 'border border-white/10 bg-zinc-800 text-zinc-200 hover:bg-zinc-700',
+        ghost: 'bg-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
+        outline: 'border border-white/10 bg-transparent text-zinc-400 hover:border-white/20 hover:text-zinc-200',
+        secondary: 'border border-white/5 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
       },
       size: {
-        default: 'h-11 px-5 py-2 text-sm',
-        sm: 'h-9 px-3.5 text-xs',
-        lg: 'h-12 px-6 text-base',
-        icon: 'h-10 w-10',
+        default: 'h-10 px-4 py-2 text-sm',
+        sm: 'h-8 px-3 text-xs',
+        lg: 'h-11 px-5 text-sm',
+        icon: 'h-9 w-9',
       },
     },
     defaultVariants: {

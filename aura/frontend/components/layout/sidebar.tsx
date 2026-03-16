@@ -8,129 +8,167 @@ import {
   ChevronRight,
   FolderKanban,
   MessageSquareText,
+  Plus,
   Settings2,
-  Sparkles,
   Wrench,
   BrainCircuit,
+  Trash2,
 } from 'lucide-react';
 
 import { useAuraPreferences } from '@/components/providers/app-provider';
-import { Button } from '@/components/ui/button';
+import { ChatModeSelector } from '@/components/chat/mode-selector';
 import { useChatStore } from '@/lib/chat-store';
-import { clientEnv } from '@/lib/env';
 import { getRelativeTime, cn } from '@/lib/utils';
 
-const shortcutItems = [
+const navItems = [
   { href: '/chat', label: 'Chat', icon: MessageSquareText },
   { href: '/projects', label: 'Projetos', icon: FolderKanban },
   { href: '/remote', label: 'Ferramentas', icon: Wrench },
   { href: '/memory', label: 'Memoria', icon: BrainCircuit },
-  { href: '/settings', label: 'Configuracoes', icon: Settings2 },
+  { href: '/settings', label: 'Config', icon: Settings2 },
 ];
 
-function inferConnectionMode(apiUrl?: string) {
-  if (!apiUrl) return 'desconhecido';
-  return apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1') ? 'local' : 'remoto';
-}
-
-type SidebarContentProps = {
+function SidebarContent({
+  collapsed,
+  onToggleCollapse,
+  onCloseMobile,
+  isMobile = false,
+}: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onCloseMobile?: () => void;
-};
-
-function SidebarContent({ collapsed, onToggleCollapse, onCloseMobile }: SidebarContentProps) {
+  isMobile?: boolean;
+}) {
   const pathname = usePathname() ?? '/chat';
   const { runtimeStatus } = useAuraPreferences();
   const conversations = useChatStore((state) => state.conversations);
   const activeConversationId = useChatStore((state) => state.activeConversationId);
+  const selectedModeId = useChatStore((state) => state.selectedModeId);
+  const setSelectedMode = useChatStore((state) => state.setSelectedMode);
   const createConversation = useChatStore((state) => state.createConversation);
   const setActiveConversation = useChatStore((state) => state.setActiveConversation);
+  const deleteConversation = useChatStore((state) => state.clearConversation);
 
-  const connectionMode = inferConnectionMode(clientEnv.apiUrl);
-  const environmentName = clientEnv.auraEnv ?? 'local';
+  const isOnline = runtimeStatus?.services.api === 'online' && runtimeStatus?.status !== 'offline';
+  const modelName = runtimeStatus?.model ?? 'qwen3.5:9b';
+
+  const handleNewChat = () => {
+    const nextId = createConversation();
+    setActiveConversation(nextId);
+    onCloseMobile?.();
+  };
 
   return (
-    <div className="shell-panel flex h-full flex-col rounded-[2rem] p-3.5">
-      <div className="shell-card flex items-center justify-between gap-3 rounded-[1.6rem] px-3.5 py-3.5">
-        <Link href="/chat" className="flex min-w-0 items-center gap-3" onClick={onCloseMobile}>
-          <div className="flex h-11 w-11 items-center justify-center rounded-[1.1rem] border border-[var(--border-default)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-primary)_28%,transparent),color-mix(in_srgb,var(--accent-secondary)_18%,transparent))] shadow-[0_14px_30px_rgba(56,90,152,0.2)]">
-            <Sparkles className="h-5 w-5 text-[var(--fg-primary)]" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--fg-subtle)]">Aura</p>
-              <p className="truncate text-sm font-medium text-[var(--fg-primary)]">Assistant Runtime</p>
-            </div>
-          )}
-        </Link>
-
+    <div className="flex h-full flex-col bg-zinc-950 border-r border-white/5">
+      {/* New Chat Button */}
+      <div className="p-3">
         <button
           type="button"
-          onClick={onToggleCollapse}
-          className="hidden rounded-2xl border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] p-2 text-[var(--fg-muted)] transition hover:border-[var(--border-default)] hover:text-[var(--fg-primary)] lg:inline-flex"
-          aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          onClick={handleNewChat}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-lg border border-white/5 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100',
+            collapsed && !isMobile && 'justify-center px-0',
+          )}
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <Plus className="h-4 w-4 shrink-0" />
+          {(!collapsed || isMobile) && <span>Novo chat</span>}
         </button>
       </div>
 
-      <Button
-        type="button"
-        variant="gold"
-        className={cn('mt-3 h-12 w-full justify-start rounded-[1.35rem] px-4', collapsed && 'justify-center px-0')}
-        onClick={() => {
-          const nextId = createConversation();
-          setActiveConversation(nextId);
-          onCloseMobile?.();
-        }}
-      >
-        <span className="text-lg">+</span>
-        {!collapsed && <span>Novo chat</span>}
-      </Button>
+      {/* Chat History */}
+      {(!collapsed || isMobile) && (
+        <div className="flex-1 overflow-y-auto px-2">
+          <p className="px-2 pb-1.5 pt-3 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+            Recentes
+          </p>
+          <div className="space-y-0.5">
+            {conversations.slice(0, 15).map((conversation) => {
+              const isActive = pathname === '/chat' && conversation.id === activeConversationId;
+              return (
+                <div key={conversation.id} className="group relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveConversation(conversation.id);
+                      onCloseMobile?.();
+                    }}
+                    className={cn(
+                      'w-full rounded-md px-2.5 py-2 text-left transition',
+                      isActive
+                        ? 'bg-white/5 text-zinc-200'
+                        : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300',
+                    )}
+                  >
+                    <p className="truncate text-sm">{conversation.title}</p>
+                    <p className="mt-0.5 text-[11px] text-zinc-600">
+                      {getRelativeTime(conversation.updatedAt)}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteConversation(conversation.id)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-600 opacity-0 transition hover:bg-white/5 hover:text-zinc-400 group-hover:opacity-100"
+                    aria-label="Limpar conversa"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      <div className="mt-4">
-        {!collapsed && <p className="px-2 text-[11px] uppercase tracking-[0.24em] text-[var(--fg-subtle)]">Historico</p>}
-        <div className="mt-2 space-y-1.5">
-          {conversations.slice(0, 10).map((conversation) => {
+      {/* Collapsed: just icons */}
+      {collapsed && !isMobile && (
+        <div className="flex-1 overflow-y-auto px-2 pt-2">
+          {conversations.slice(0, 8).map((conversation) => {
             const isActive = pathname === '/chat' && conversation.id === activeConversationId;
             return (
               <button
                 key={conversation.id}
                 type="button"
-                onClick={() => {
-                  setActiveConversation(conversation.id);
-                  onCloseMobile?.();
-                }}
+                onClick={() => setActiveConversation(conversation.id)}
                 className={cn(
-                  'w-full rounded-[1.2rem] border px-3.5 py-3 text-left transition-[background,border-color,color,transform] duration-200',
-                  isActive
-                    ? 'border-[var(--border-strong)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-primary)_14%,transparent),color-mix(in_srgb,var(--accent-secondary)_10%,transparent))]'
-                    : 'border-transparent bg-transparent hover:border-[var(--border-subtle)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_96%,transparent)]',
+                  'mb-1 flex w-full items-center justify-center rounded-md p-2 transition',
+                  isActive ? 'bg-white/5 text-zinc-300' : 'text-zinc-600 hover:bg-white/[0.03] hover:text-zinc-400',
                 )}
+                title={conversation.title}
               >
-                {collapsed ? (
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)]">
-                    <MessageSquareText className="h-4 w-4 text-[var(--fg-secondary)]" />
-                  </div>
-                ) : (
-                  <>
-                    <p className="truncate text-sm font-medium text-[var(--fg-primary)]">{conversation.title}</p>
-                    <p className="mt-1 text-xs text-[var(--fg-muted)]">
-                      {conversation.messages.length} mensagens · {getRelativeTime(conversation.updatedAt)}
-                    </p>
-                  </>
-                )}
+                <MessageSquareText className="h-4 w-4" />
               </button>
             );
           })}
         </div>
-      </div>
+      )}
 
-      <div className="mt-4 border-t border-[var(--border-subtle)] pt-4">
-        {!collapsed && <p className="px-2 text-[11px] uppercase tracking-[0.24em] text-[var(--fg-subtle)]">Navegacao</p>}
-        <nav className="mt-2 space-y-1.5">
-          {shortcutItems.map((item) => {
+      {/* Mobile: Mode Selector */}
+      {isMobile && (
+        <div className="border-t border-white/5 px-3 py-3">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">Modo</p>
+          <ChatModeSelector selectedModeId={selectedModeId} onSelectMode={setSelectedMode} compact />
+        </div>
+      )}
+
+      {/* Mobile: Mini status */}
+      {isMobile && (
+        <div className="border-t border-white/5 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className={cn('h-2 w-2 rounded-full', isOnline ? 'bg-green-500' : 'bg-red-500')} />
+            <span className="text-xs text-zinc-500">{modelName}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="border-t border-white/5 p-2">
+        {(!collapsed || isMobile) && (
+          <p className="px-2 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+            Navegacao
+          </p>
+        )}
+        <nav className="space-y-0.5">
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -139,36 +177,34 @@ function SidebarContent({ collapsed, onToggleCollapse, onCloseMobile }: SidebarC
                 href={item.href}
                 onClick={onCloseMobile}
                 className={cn(
-                  'flex items-center gap-3 rounded-[1.2rem] px-3.5 py-3 transition-[background,border-color,color] duration-200',
+                  'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition',
                   isActive
-                    ? 'bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_100%,transparent)] text-[var(--fg-primary)]'
-                    : 'text-[var(--fg-muted)] hover:bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)] hover:text-[var(--fg-primary)]',
-                  collapsed && 'justify-center',
+                    ? 'bg-white/5 text-zinc-200'
+                    : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300',
+                  collapsed && !isMobile && 'justify-center px-2',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="text-sm">{item.label}</span>}
+                {(!collapsed || isMobile) && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
       </div>
 
-      <div className="shell-card mt-auto rounded-[1.4rem] px-3 py-3">
-        <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
-          <span className={cn('h-2.5 w-2.5 rounded-full', runtimeStatus?.status === 'healthy' ? 'bg-emerald-400' : 'bg-amber-400')} />
-          {!collapsed && (
-            <div>
-              <p className="text-xs font-medium text-[var(--fg-primary)]">
-                {runtimeStatus?.services.api === 'online' ? 'Conectado ao backend' : 'Backend indisponivel'}
-              </p>
-              <p className="text-[11px] text-[var(--fg-muted)]">
-                {connectionMode} · {environmentName}
-              </p>
-            </div>
-          )}
+      {/* Collapse Toggle (desktop only) */}
+      {!isMobile && (
+        <div className="border-t border-white/5 p-2">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex w-full items-center justify-center rounded-md p-2 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
+            aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -185,15 +221,20 @@ export function Sidebar({
 
   return (
     <>
-      <aside className={cn('hidden lg:block', collapsed ? 'w-[98px]' : 'w-[318px]')}>
-        <div className="sticky top-5 h-[calc(100vh-2.5rem)]">
-          <SidebarContent
-            collapsed={collapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!collapsed)}
-          />
-        </div>
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          'hidden shrink-0 transition-[width] duration-200 ease-out lg:block',
+          collapsed ? 'w-14' : 'w-60',
+        )}
+      >
+        <SidebarContent
+          collapsed={collapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!collapsed)}
+        />
       </aside>
 
+      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -201,18 +242,23 @@ export function Sidebar({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-[rgba(8,14,24,0.44)] backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
               onClick={onCloseMobile}
-              aria-label="Fechar menu lateral"
+              aria-label="Fechar menu"
             />
             <motion.div
-              initial={{ x: -30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-y-0 left-0 z-50 w-[88vw] max-w-[348px] p-3 lg:hidden"
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-y-0 left-0 z-50 w-[280px] lg:hidden"
             >
-              <SidebarContent collapsed={false} onToggleCollapse={onCloseMobile} onCloseMobile={onCloseMobile} />
+              <SidebarContent
+                collapsed={false}
+                onToggleCollapse={onCloseMobile}
+                onCloseMobile={onCloseMobile}
+                isMobile
+              />
             </motion.div>
           </>
         )}

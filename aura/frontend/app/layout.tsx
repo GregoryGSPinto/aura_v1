@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
-import { ParticleBackground } from '@/components/layout/particle-background';
 import { AppProvider } from '@/components/providers/app-provider';
 import { AppShell } from '@/components/layout/app-shell';
 
@@ -25,8 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Aura | Assistente Operacional Pessoal',
-  description: 'Assistente operacional pessoal com backend local, Ollama e automação controlada.',
+  title: 'Aura | Assistente Pessoal',
+  description: 'Assistente pessoal com IA local, chat centralizado e automação controlada.',
   keywords: ['AI', 'assistant', 'automation', 'macOS', 'local-first'],
   authors: [{ name: 'Aura' }],
   manifest: '/site.webmanifest',
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f1728',
+  themeColor: '#09090b',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -52,22 +51,18 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} app-noise font-sans antialiased`}
+        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <AppProvider>
-          <ParticleBackground />
           <AppShell>{children}</AppShell>
-
           <Toaster
             position="bottom-right"
             toastOptions={{
               style: {
-                background: 'color-mix(in srgb, var(--bg-surface-strong) 92%, transparent)',
-                border: '1px solid var(--border-default)',
-                color: 'var(--fg-primary)',
-                borderRadius: '1.1rem',
-                boxShadow: 'var(--shadow-soft)',
-                backdropFilter: 'blur(18px)',
+                background: '#18181b',
+                border: '1px solid rgba(255,255,255,0.05)',
+                color: '#fafafa',
+                borderRadius: '0.75rem',
               },
             }}
           />

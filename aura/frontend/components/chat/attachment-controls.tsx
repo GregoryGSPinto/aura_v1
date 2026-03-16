@@ -19,30 +19,30 @@ export function AttachmentControls({
       {attachments.map((attachment) => (
         <div
           key={attachment.id}
-          className="shell-card flex min-w-[180px] max-w-full items-center gap-3 rounded-[1.2rem] px-3 py-3"
+          className="flex items-center gap-2 rounded-lg border border-white/5 bg-zinc-800 px-3 py-2"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,transparent)]">
+          <div className="shrink-0">
             {attachment.status === 'uploading' ? (
-              <LoaderCircle className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
+              <LoaderCircle className="h-4 w-4 animate-spin text-blue-400" />
             ) : attachment.status === 'error' ? (
-              <TriangleAlert className="h-4 w-4 text-[var(--error)]" />
+              <TriangleAlert className="h-4 w-4 text-red-400" />
             ) : (
-              <FileText className="h-4 w-4 text-[var(--accent-cyan)]" />
+              <FileText className="h-4 w-4 text-zinc-400" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-[var(--fg-primary)]">{attachment.name}</p>
-            <p className="text-xs text-[var(--fg-muted)]">
-              {attachment.status === 'ready' ? formatBytes(attachment.size) : attachment.error || 'Preparando anexo'}
+          <div className="min-w-0">
+            <p className="truncate text-sm text-zinc-300">{attachment.name}</p>
+            <p className="text-[11px] text-zinc-600">
+              {attachment.status === 'ready' ? formatBytes(attachment.size) : attachment.error || 'Preparando...'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => onRemove(attachment.id)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-muted)] transition hover:text-[var(--fg-primary)]"
+            className="rounded p-0.5 text-zinc-600 transition hover:text-zinc-400"
             aria-label={`Remover ${attachment.name}`}
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       ))}
@@ -50,16 +50,12 @@ export function AttachmentControls({
   );
 }
 
-export function AttachmentButton({
-  onClick,
-}: {
-  onClick: () => void;
-}) {
+export function AttachmentButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-[0.95rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
       aria-label="Adicionar arquivo"
     >
       <Paperclip className="h-4 w-4" />

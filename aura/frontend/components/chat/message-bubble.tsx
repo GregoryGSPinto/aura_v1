@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Copy, Pin, RotateCcw, Volume2 } from 'lucide-react';
 
 import type { ConversationMessage } from '@/lib/chat-types';
@@ -23,96 +24,143 @@ export function MessageBubble({
   onTogglePin: (messageId: string) => void;
 }) {
   const isAssistant = message.role === 'assistant';
+  const [showActions, setShowActions] = useState(false);
 
   return (
-    <article className={cn('flex w-full', isAssistant ? 'justify-start' : 'justify-end')}>
-      <div className={cn('message-shell max-w-[46rem] px-4 py-4 sm:px-5', isAssistant ? 'message-assistant' : 'message-user')}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--fg-subtle)]">
-              {isAssistant ? 'Aura' : 'Voce'}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--fg-muted)]">
-              <span>{getRelativeTime(message.createdAt)}</span>
-              {message.inputSource === 'voice' ? (
-                <span className="rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--fg-secondary)]">
-                  Voz
-                </span>
-              ) : null}
-              {message.modeLabel ? (
-                <span className="rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--fg-secondary)]">
-                  {message.modeLabel}
-                </span>
-              ) : null}
-            </div>
+    <article
+      className={cn('flex w-full animate-message-in', isAssistant ? 'justify-start' : 'justify-end')}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      <div className="group relative max-w-[85%] md:max-w-2xl">
+        {/* Avatar for assistant (desktop only) */}
+        {isAssistant && (
+          <div className="absolute -left-8 top-3 hidden h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-zinc-400 lg:flex">
+            A
           </div>
+        )}
+
+        <div
+          className={cn(
+            'rounded-2xl px-4 py-3',
+            isAssistant
+              ? 'rounded-bl-md bg-zinc-900 text-zinc-100'
+              : 'rounded-br-md bg-blue-600/90 text-white',
+          )}
+        >
+          {/* Attachments */}
+          {message.attachments?.length ? (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {message.attachments.map((attachment) => (
+                <span
+                  key={attachment.id}
+                  className="inline-block rounded-md bg-white/10 px-2 py-0.5 text-xs"
+                >
+                  {attachment.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {/* Content */}
+          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+            {message.content || (message.status === 'pending' ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
+              </span>
+            ) : '')}
+          </div>
+
+          {/* Pinned indicator */}
           {message.pinned && (
-            <span className="rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-[var(--fg-secondary)]">
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500">
+              <Pin className="h-3 w-3" />
               Fixada
-            </span>
+            </div>
           )}
         </div>
 
-        {message.attachments?.length ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {message.attachments.map((attachment) => (
-              <div key={attachment.id} className="rounded-[18px] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 py-2 text-xs text-[var(--fg-secondary)]">
-                {attachment.name}
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[var(--fg-primary)] sm:text-[15px]">
-          {message.content || (message.status === 'pending' ? 'Aura esta pensando...' : '')}
+        {/* Timestamp — hidden by default, shown on hover */}
+        <div
+          className={cn(
+            'mt-1 flex items-center gap-2 text-[11px] text-zinc-600 transition-opacity',
+            showActions ? 'opacity-100' : 'opacity-0',
+            isAssistant ? 'justify-start pl-1' : 'justify-end pr-1',
+          )}
+        >
+          <span>{getRelativeTime(message.createdAt)}</span>
+          {message.modeLabel && isAssistant && (
+            <span className="text-zinc-700">{message.modeLabel}</span>
+          )}
         </div>
 
-        {message.meta ? <p className="mt-3 text-xs text-[var(--fg-muted)]">{message.meta}</p> : null}
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+        {/* Action buttons — appear on hover */}
+        <div
+          className={cn(
+            'mt-1 flex items-center gap-1 transition-opacity',
+            showActions ? 'opacity-100' : 'opacity-0',
+            isAssistant ? 'justify-start' : 'justify-end',
+          )}
+        >
+          <ActionButton
+            icon={Copy}
+            label="Copiar"
             onClick={() => onCopy(message)}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-xs text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            Copiar
-          </button>
-          {isAssistant ? (
+          />
+          {isAssistant && (
             <>
-              <button
-                type="button"
+              <ActionButton
+                icon={Volume2}
+                label="Ouvir"
                 onClick={() => onRead(message)}
-                className={cn(
-                  'inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs transition-[background,border-color,color] duration-200',
-                  isSpeaking
-                    ? 'border-[var(--accent-cyan)]/30 bg-[var(--accent-cyan)]/10 text-[var(--fg-primary)]'
-                    : 'border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] text-[var(--fg-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]',
-                )}
-              >
-                <Volume2 className="h-3.5 w-3.5" />
-                Ouvir
-              </button>
-              <button
-                type="button"
+                active={isSpeaking}
+              />
+              <ActionButton
+                icon={RotateCcw}
+                label="Regenerar"
                 onClick={() => onRegenerate(message, previousUserContent)}
-                className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-xs text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Regenerar
-              </button>
+              />
             </>
-          ) : null}
-          <button
-            type="button"
+          )}
+          <ActionButton
+            icon={Pin}
+            label={message.pinned ? 'Desafixar' : 'Fixar'}
             onClick={() => onTogglePin(message.id)}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_94%,transparent)] px-3 text-xs text-[var(--fg-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--fg-primary)]"
-          >
-            <Pin className="h-3.5 w-3.5" />
-            {message.pinned ? 'Desafixar' : 'Fixar'}
-          </button>
+            active={message.pinned}
+          />
         </div>
       </div>
     </article>
+  );
+}
+
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  active,
+}: {
+  icon: typeof Copy;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] transition',
+        active
+          ? 'bg-white/10 text-zinc-300'
+          : 'text-zinc-600 hover:bg-white/5 hover:text-zinc-400',
+      )}
+      aria-label={label}
+    >
+      <Icon className="h-3 w-3" />
+      <span className="hidden sm:inline">{label}</span>
+    </button>
   );
 }
