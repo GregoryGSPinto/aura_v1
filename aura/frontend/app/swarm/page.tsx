@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cancelAgentJob, createAgentJob, fetchAgentJob, fetchAgentJobs, startAgentJob } from '@/lib/api';
 import { notifyError, notifySuccess } from '@/lib/notifications';
-import { getRelativeTime } from '@/lib/utils';
+import { cn, getRelativeTime } from '@/lib/utils';
 import type { AgentJobDetail, AgentJobSummary } from '@/lib/types';
 
 const orbitPositions = [
@@ -137,7 +137,7 @@ export default function SwarmPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--gold)] to-[var(--cyan)]">
               <Bot className="h-5 w-5 text-black" />
             </div>
-            <h1 className="text-2xl font-bold text-gradient-aura sm:text-3xl">Swarm operacional</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">Swarm operacional</h1>
           </div>
           <p className="text-[var(--text-muted)]">
             Visualizacao estavel dos jobs reais do Agent Mode, executando no backend local da Aura.
@@ -399,6 +399,3 @@ function getBadgeVariant(status: string): 'green' | 'red' | 'yellow' | 'cyan' | 
   return 'default';
 }
 
-function cn(...classes: (string | undefined | false | null)[]) {
-  return classes.filter(Boolean).join(' ');
-}

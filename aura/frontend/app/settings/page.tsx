@@ -66,12 +66,12 @@ export default function SettingsPage() {
     <div className="space-y-4 overflow-x-hidden">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="aura-orb-sm">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 sm:h-12 sm:w-12">
             <Settings className="h-6 w-6 text-white" />
           </div>
           <div className="min-w-0">
             <h1 className="text-xl font-bold sm:text-2xl">Configuracoes</h1>
-            <p className="text-sm text-[var(--text-muted)]">Preferencias pessoais, apresentacao visual e ambiente operacional.</p>
+            <p className="text-sm text-zinc-500">Preferencias pessoais, apresentacao visual e ambiente operacional.</p>
           </div>
         </div>
         <Button className="self-start sm:self-auto" onClick={saveFeedback}>
@@ -82,38 +82,36 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-1">
-          <Card className="lg:sticky lg:top-24 aura-panel px-2 py-2">
-            <CardContent className="p-2">
-              <nav className="flex gap-1 overflow-x-auto lg:block lg:space-y-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      'flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors lg:w-full',
-                      activeTab === tab.id
-                        ? 'bg-[var(--gold)]/10 text-[var(--gold)]'
-                        : 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-primary)]'
-                    )}
-                  >
-                    <tab.icon className="h-5 w-5" />
-                    <span className="font-medium">{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </CardContent>
-          </Card>
+          <div className="lg:sticky lg:top-24 rounded-xl border border-white/5 bg-zinc-900 p-2">
+            <nav className="flex gap-1 overflow-x-auto lg:block lg:space-y-0.5">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors lg:w-full',
+                    activeTab === tab.id
+                      ? 'bg-white/5 text-zinc-200'
+                      : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300'
+                  )}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="font-medium">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
         </motion.div>
 
         <motion.div key={activeTab} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-3">
           {activeTab === 'general' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Estado local</CardTitle>
                   <CardDescription>Informacoes reais da sessao e do backend configurado.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <InfoTile label="Tema resolvido" value={resolvedTheme} />
                   <InfoTile label="API" value={clientEnv.apiUrl || 'Nao configurada'} />
                   <InfoTile label="Modelo LLM" value={status?.model ?? 'Aguardando backend'} />
@@ -126,7 +124,7 @@ export default function SettingsPage() {
                   <CardTitle>Fluxo operacional</CardTitle>
                   <CardDescription>Indicadores uteis para o uso diario da Aura.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <InfoTile label="Persistencia" value={status?.persistence.mode ?? '--'} />
                   <InfoTile label="Jobs em execucao" value={String(status?.jobs?.running ?? 0)} />
                   <InfoTile label="Supabase" value={status?.services.supabase ?? 'desconhecido'} />
@@ -136,14 +134,14 @@ export default function SettingsPage() {
           )}
 
           {activeTab === 'appearance' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Aparencia</CardTitle>
                   <CardDescription>Modo claro, escuro ou automatico aplicado em toda a interface.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {[
                       { id: 'light', label: 'Claro', icon: Sun },
                       { id: 'dark', label: 'Escuro', icon: Moon },
@@ -153,22 +151,22 @@ export default function SettingsPage() {
                         key={option.id}
                         onClick={() => setThemeMode(option.id as 'light' | 'dark' | 'system')}
                         className={cn(
-                          'rounded-2xl border p-4 text-left transition-colors',
+                          'rounded-xl border p-4 text-left transition-colors',
                           themeMode === option.id
-                            ? 'border-[var(--gold)] bg-[var(--gold)]/10'
-                            : 'border-white/10 bg-white/5 hover:border-white/20'
+                            ? 'border-blue-500/30 bg-blue-500/10'
+                            : 'border-white/5 bg-white/[0.02] hover:border-white/10'
                         )}
                       >
-                        <option.icon className="h-6 w-6" />
-                        <p className="mt-3 font-medium">{option.label}</p>
-                        <p className="mt-1 text-sm text-[var(--text-muted)]">
+                        <option.icon className="h-5 w-5" />
+                        <p className="mt-3 font-medium text-sm">{option.label}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
                           {option.id === 'system' ? `Segue o sistema, hoje em ${resolvedTheme}.` : `Forca o tema ${option.label.toLowerCase()}.`}
                         </p>
                       </button>
                     ))}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <ToggleRow
                       label="Particulas de fundo"
                       description="Mantem a Aura com energia visual e movimento controlado."
@@ -199,7 +197,7 @@ export default function SettingsPage() {
                 <CardTitle>Notificacoes</CardTitle>
                 <CardDescription>Conectadas aos fluxos reais de chat, remote, dashboard e system.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 <ToggleRow
                   label="Notificacoes push"
                   description="Feedback visual imediato via toast na interface."
@@ -234,14 +232,14 @@ export default function SettingsPage() {
                 <CardTitle>Atalhos ativos</CardTitle>
                 <CardDescription>Disponiveis globalmente pelo frontend atual.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 {shortcuts.map((item) => (
-                  <div key={item.shortcut} className="flex items-center justify-between gap-4 rounded-xl bg-white/5 p-4">
+                  <div key={item.shortcut} className="flex items-center justify-between gap-4 rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
                     <div>
-                      <p className="font-medium">{item.action}</p>
-                      <p className="text-sm text-[var(--text-muted)]">{item.description}</p>
+                      <p className="text-sm font-medium">{item.action}</p>
+                      <p className="text-xs text-zinc-500">{item.description}</p>
                     </div>
-                    <kbd className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-mono">
+                    <kbd className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-mono">
                       {item.shortcut}
                     </kbd>
                   </div>
@@ -256,7 +254,7 @@ export default function SettingsPage() {
                 <CardTitle>Integracoes</CardTitle>
                 <CardDescription>Reflexo real do estado da stack e do ambiente atual.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 <IntegrationRow name="Backend Aura" description="API principal usada pelo frontend" status={status?.services.api === 'online' ? 'Conectado' : 'Desconectado'} tone={status?.services.api === 'online' ? 'green' : 'red'} />
                 <IntegrationRow name="Ollama / Qwen" description="Motor local de linguagem" status={status?.services.llm === 'online' ? 'Conectado' : 'Degradado'} tone={status?.services.llm === 'online' ? 'cyan' : 'red'} />
                 <IntegrationRow name="Supabase" description="Persistencia cloud e auth futura" status={clientEnv.supabaseUrl ? status?.services.supabase === 'online' ? 'Conectado' : 'Pendente' : 'Nao configurado'} tone={clientEnv.supabaseUrl ? (status?.services.supabase === 'online' ? 'green' : 'yellow') : 'default'} />
@@ -286,14 +284,14 @@ function ToggleRow({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center justify-between gap-4 rounded-xl bg-white/5 p-4 text-left transition-colors hover:bg-white/[0.07]"
+      className="flex w-full items-center justify-between gap-4 rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
     >
       <div>
-        <p className="font-medium">{label}</p>
-        <p className="text-sm text-[var(--text-muted)]">{description}</p>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-zinc-500">{description}</p>
       </div>
-      <div className={cn('relative h-6 w-12 rounded-full transition-colors', enabled ? 'bg-[var(--gold)]' : 'bg-white/20')}>
-        <div className={cn('absolute top-1 h-4 w-4 rounded-full bg-white transition-transform', enabled ? 'left-7' : 'left-1')} />
+      <div className={cn('relative h-6 w-11 rounded-full transition-colors', enabled ? 'bg-blue-500' : 'bg-white/20')}>
+        <div className={cn('absolute top-1 h-4 w-4 rounded-full bg-white transition-transform', enabled ? 'left-6' : 'left-1')} />
       </div>
     </button>
   );
@@ -301,9 +299,9 @@ function ToggleRow({
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white/5 p-4">
-      <p className="text-sm text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 break-words font-medium">{value}</p>
+    <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="mt-1.5 break-words text-sm font-medium">{value}</p>
     </div>
   );
 }
@@ -320,10 +318,10 @@ function IntegrationRow({
   tone: 'green' | 'red' | 'yellow' | 'cyan' | 'default';
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl bg-white/5 p-4">
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
       <div>
-        <p className="font-medium">{name}</p>
-        <p className="text-sm text-[var(--text-muted)]">{description}</p>
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-zinc-500">{description}</p>
       </div>
       <Badge variant={tone}>{status}</Badge>
     </div>

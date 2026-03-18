@@ -63,6 +63,7 @@ export default function RootLayout({
                 border: '1px solid rgba(255,255,255,0.05)',
                 color: '#fafafa',
                 borderRadius: '0.75rem',
+                fontSize: '0.875rem',
               },
             }}
           />

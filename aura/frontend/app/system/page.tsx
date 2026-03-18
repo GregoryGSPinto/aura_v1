@@ -290,12 +290,12 @@ export default function SystemPage() {
             {alerts.map((alert, index) => (
               <div
                 key={`${alert.title}-${index}`}
-                className={`rounded-2xl border p-4 ${
+                className={`rounded-xl border p-4 ${
                   alert.severity === 'critical'
                     ? 'border-red-500/25 bg-red-500/10'
                     : alert.severity === 'warning'
                       ? 'border-yellow-500/20 bg-yellow-500/10'
-                      : 'border-[var(--cyan)]/20 bg-[var(--cyan)]/10'
+                      : 'border-blue-400/20 bg-blue-400/10'
                 }`}
               >
                 <p className="font-medium">{alert.title}</p>

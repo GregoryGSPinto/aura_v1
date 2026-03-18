@@ -100,49 +100,19 @@
 }
 
 @layer components {
-  /* Backward-compatible panel classes for non-chat pages */
-  .shell-panel {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: #18181b;
-    border-radius: 0.75rem;
-  }
-
-  .shell-card {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: #27272a;
-    border-radius: 0.75rem;
-  }
-
-  .shell-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(255, 255, 255, 0.03);
-    color: #a1a1aa;
-    padding: 0.5rem 0.85rem;
-    font-size: 0.875rem;
-  }
-
   .glass-strong {
     background: rgba(24, 24, 27, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
 
-  .surface-alert {
-    border: 1px solid rgba(234, 179, 8, 0.2);
-    background: rgba(234, 179, 8, 0.05);
-    border-radius: 0.75rem;
-  }
-
-  /* Legacy CSS variable aliases for non-chat pages */
+  /* Semantic CSS variable aliases */
   :root {
     --bg-surface-soft: rgba(255, 255, 255, 0.03);
     --bg-elevated: #27272a;
     --bg-surface: #18181b;
     --bg-surface-strong: #1c1c1f;
+    --bg-primary: #09090b;
     --fg-primary: #fafafa;
     --fg-secondary: #a1a1aa;
     --fg-muted: #71717a;
@@ -166,6 +136,7 @@
     --gold-light: #93c5fd;
     --gold-dark: #1d4ed8;
     --cyan: #60a5fa;
+    --purple: #8b5cf6;
   }
 
   /* Message animations */

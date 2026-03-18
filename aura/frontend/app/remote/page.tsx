@@ -187,7 +187,7 @@ export default function RemotePage() {
             <Monitor className="h-6 w-6 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-gradient-cyan sm:text-2xl">Controle remoto</h1>
+            <h1 className="text-xl font-bold sm:text-2xl">Controle remoto</h1>
             <p className="text-sm text-[var(--text-muted)]">Somente acoes seguras da whitelist da Aura.</p>
           </div>
         </div>
