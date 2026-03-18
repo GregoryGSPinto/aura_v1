@@ -63,27 +63,27 @@ function StatusDot() {
 
 export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950/80 px-4 backdrop-blur-xl">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950/80 px-4 backdrop-blur-xl">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 lg:hidden"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 lg:hidden"
           aria-label="Abrir menu"
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold tracking-tight text-zinc-100">Aura</span>
+        <span className="text-base font-semibold tracking-tight text-zinc-100">Aura</span>
       </div>
 
       <div className="flex items-center gap-3">
         <StatusDot />
         <Link
           href="/settings"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
           aria-label="Configuracoes"
         >
-          <Settings2 className="h-4 w-4" />
+          <Settings2 className="h-5 w-5" />
         </Link>
       </div>
     </header>
