@@ -18,6 +18,8 @@ class MemoryService:
         companion_memory_file: str,
         jobs_file: str,
         job_logs_file: str,
+        routines_file: str = "./data/json/routines.json",
+        routine_executions_file: str = "./data/json/routine_executions.json",
     ):
         self.settings_path = Path(settings_file)
         self.projects_path = Path(projects_file)
@@ -27,6 +29,8 @@ class MemoryService:
         self.companion_memory_path = Path(companion_memory_file)
         self.jobs_path = Path(jobs_file)
         self.job_logs_path = Path(job_logs_file)
+        self.routines_path = Path(routines_file)
+        self.routine_executions_path = Path(routine_executions_file)
 
     def _read_json(self, path: Path, fallback: Any):
         if not path.exists():
@@ -155,3 +159,18 @@ class MemoryService:
     def list_job_logs(self, job_id: str) -> List[Dict[str, Any]]:
         logs = self._read_json(self.job_logs_path, [])
         return [log for log in logs if log.get("job_id") == job_id]
+
+    # Routines
+    def get_routines(self) -> List[Dict[str, Any]]:
+        return self._read_json(self.routines_path, [])
+
+    def save_routines(self, routines: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        self._write_json(self.routines_path, routines)
+        return routines
+
+    def get_routine_executions(self) -> List[Dict[str, Any]]:
+        return self._read_json(self.routine_executions_path, [])
+
+    def save_routine_executions(self, executions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        self._write_json(self.routine_executions_path, executions)
+        return executions

@@ -24,3 +24,5 @@ aura/backend/.env
 aura/frontend/.env.local
 aura/backend/.venv/
 data/
+.vercel
+.env*.local
