@@ -21,6 +21,7 @@ export interface ConversationMessage {
   status?: 'pending' | 'streaming' | 'complete' | 'error';
   pinned?: boolean;
   model?: string;
+  provider?: string;
   inputSource?: 'text' | 'voice';
   modeLabel?: string;
 }

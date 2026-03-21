@@ -42,11 +42,13 @@ from app.services.command_service import CommandService
 from app.services.context_service import ContextService
 from app.services.job_service import JobService
 from app.services.memory_service import MemoryService
+from app.services.ollama_engine_service import OllamaEngineService
 from app.services.ollama_service import OllamaService
 from app.services.persistence_service import PersistenceService
 from app.services.project_service import ProjectService
 from app.services.routine_service import RoutineService
 from app.services.supabase_service import SupabaseService
+from app.services.token_budget_service import TokenBudgetService
 from app.tools import BrowserTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
 
 
@@ -160,6 +162,28 @@ class Container:
         self.job_service = JobService(self.settings, self.memory_service, self.agent_step_executor, self.logger)
         self.agent_job_manager = AgentJobManager(self.agent_planner, self.job_service, self.project_service)
         self.routine_service = RoutineService(self.settings, self.memory_service)
+        self.token_budget_service = TokenBudgetService(
+            daily_limit_usd=self.settings.token_budget_daily_usd,
+            monthly_limit_usd=self.settings.token_budget_monthly_usd,
+        )
+
+        self.ollama_engine_service = OllamaEngineService(
+            ollama_url=self.settings.ollama_url,
+            model_name=self.settings.model_name,
+        )
+
+        self.ollama_provider = OllamaProvider(self.ollama_service, self.settings.model_name)
+        self.openai_provider = (
+            OpenAIProvider(api_key=self.settings.openai_api_key, model_name="gpt-4o-mini")
+            if self.settings.openai_api_key
+            else OpenAIProvider()
+        )
+        self.anthropic_provider = (
+            AnthropicProvider(api_key=self.settings.anthropic_api_key, model_name="claude-sonnet-4-20250514")
+            if self.settings.anthropic_api_key
+            else AnthropicProvider()
+        )
+        self.provider_override = "auto"
 
         self.voice_pipeline = self._build_voice_pipeline()
         self.research_tool = self._build_research_tool()
@@ -205,12 +229,18 @@ class Container:
             planner_adapter = PlannerAdapter(self.agent_planner)
             tool_executor = ToolExecutor(self.command_service)
             agent_router = AgentRouter()
-            model_router = ModelRouter(self.settings.model_name, aura_os_settings.model_routing())
             scheduler = WorkflowScheduler()
-            ollama_provider = OllamaProvider(self.ollama_service, self.settings.model_name)
-            openai_provider = OpenAIProvider(model_name="gpt-4o-mini") if self.settings.enable_cloud_providers else OpenAIProvider()
-            anthropic_provider = (
-                AnthropicProvider(model_name="claude-3-5-sonnet") if self.settings.enable_cloud_providers else AnthropicProvider()
+            ollama_provider = self.ollama_provider
+            openai_provider = self.openai_provider
+            anthropic_provider = self.anthropic_provider
+            model_router = ModelRouter(
+                self.settings.model_name,
+                aura_os_settings.model_routing(),
+                providers={
+                    "ollama": ollama_provider,
+                    "openai": openai_provider,
+                    "anthropic": anthropic_provider,
+                },
             )
             aura_os = AuraOperatingSystem(
                 settings=aura_os_settings,
@@ -314,6 +344,14 @@ def create_app() -> FastAPI:
     app.state.voice_pipeline = app_container.voice_pipeline
     app.state.research_tool = app_container.research_tool
     app.state.routine_service = app_container.routine_service
+    app.state.token_budget_service = app_container.token_budget_service
+    app.state.ollama_engine_service = app_container.ollama_engine_service
+    app.state.provider_override = app_container.provider_override
+    app.state.chat_providers = {
+        "ollama": app_container.ollama_provider,
+        "anthropic": app_container.anthropic_provider,
+        "openai": app_container.openai_provider,
+    }
     app.state.startup_warnings = app_container.startup_warnings
     app.state.feature_flags = app_container.feature_flags
 

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================
+# AURA — Atalho rapido
+#
+# Uso de qualquer lugar:
+#   sudo ln -sf /path/to/aura_v1/scripts/aura /usr/local/bin/aura
+#   Depois: aura open
+# ============================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+load_backend_env
+load_frontend_env
+
+FRONTEND_PORT="${AURA_FRONTEND_PORT:-3000}"
+
+case "${1:-open}" in
+  start|stop|status|restart)
+    "$SCRIPT_DIR/aura-start" "$1"
+    ;;
+  open)
+    "$SCRIPT_DIR/aura-start" start
+    sleep 2
+    if command -v open >/dev/null 2>&1; then
+      open "http://localhost:${FRONTEND_PORT}"
+    else
+      log_info "Acesse: http://localhost:${FRONTEND_PORT}"
+    fi
+    ;;
+  install)
+    "$SCRIPT_DIR/aura-install-autostart"
+    ;;
+  *)
+    printf 'Uso: aura {start|stop|status|restart|open|install}\n'
+    printf '\n'
+    printf '  start   — inicia backend + frontend\n'
+    printf '  stop    — para tudo (inclusive Ollama)\n'
+    printf '  status  — mostra status dos servicos\n'
+    printf '  restart — reinicia tudo\n'
+    printf '  open    — inicia e abre no browser\n'
+    printf '  install — instala auto-start no login do Mac\n'
+    printf '\n'
+    printf 'Dica: crie um atalho global:\n'
+    printf '  sudo ln -sf %s/scripts/aura /usr/local/bin/aura\n' "$REPO_ROOT"
+    printf '  Depois e so digitar: aura open\n'
+    ;;
+esac

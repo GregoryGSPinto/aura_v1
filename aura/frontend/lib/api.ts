@@ -22,7 +22,11 @@ import type {
   RoutineCreateRequest,
   RoutineUpdateRequest,
   VoiceProcessPayload,
-  VoiceStatusPayload
+  VoiceStatusPayload,
+  ProvidersPayload,
+  ProviderOverrideResponse,
+  ProviderName,
+  EngineStatusPayload,
 } from './types';
 
 const API_URL = clientEnv.apiUrl || 'http://localhost:8000';
@@ -243,6 +247,18 @@ export async function createTask(
   });
 }
 
+// Providers
+export async function fetchProviders(): Promise<ApiResponse<ProvidersPayload>> {
+  return fetchApi('/api/v1/system/providers');
+}
+
+export async function setProviderOverride(provider: ProviderName): Promise<ApiResponse<ProviderOverrideResponse>> {
+  return fetchApi('/api/v1/system/provider/override', {
+    method: 'POST',
+    body: JSON.stringify({ provider }),
+  });
+}
+
 // System
 export async function fetchSystemMetrics(): Promise<ApiResponse<SystemMetrics>> {
   return fetchApi('/api/v1/system/metrics');
@@ -349,4 +365,17 @@ export async function triggerAppOpenRoutines(): Promise<ApiResponse<{ triggered_
 
 export async function fetchExecution(executionId: string): Promise<ApiResponse<RoutineExecution>> {
   return fetchApi(`/api/v1/executions/${executionId}`);
+}
+
+// Engine (Ollama lifecycle)
+export async function fetchEngineStatus(): Promise<ApiResponse<EngineStatusPayload>> {
+  return fetchApi('/api/v1/system/engine/status');
+}
+
+export async function startEngine(): Promise<ApiResponse<EngineStatusPayload>> {
+  return fetchApi('/api/v1/system/engine/start', { method: 'POST' });
+}
+
+export async function stopEngine(): Promise<ApiResponse<EngineStatusPayload>> {
+  return fetchApi('/api/v1/system/engine/stop', { method: 'POST' });
 }

@@ -73,6 +73,19 @@ export function MessageBubble({
             ) : '')}
           </div>
 
+          {/* Provider badge */}
+          {isAssistant && message.provider && message.provider !== 'ollama' && (
+            <div className="mt-2 flex items-center gap-1">
+              <span className={cn(
+                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                message.provider === 'anthropic' && 'bg-amber-900/30 text-amber-500',
+                message.provider === 'openai' && 'bg-blue-900/30 text-blue-400',
+              )}>
+                via {message.provider === 'anthropic' ? 'Claude' : message.provider === 'openai' ? 'GPT' : message.provider}
+              </span>
+            </div>
+          )}
+
           {/* Pinned indicator */}
           {message.pinned && (
             <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500">

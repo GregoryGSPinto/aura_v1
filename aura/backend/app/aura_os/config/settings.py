@@ -19,12 +19,12 @@ class AuraOSSettings:
                 "url": self.settings.ollama_url,
             },
             "openai": {
-                "configured": False,
-                "model": "",
+                "configured": bool(self.settings.openai_api_key),
+                "model": "gpt-4o-mini" if self.settings.openai_api_key else "",
             },
             "anthropic": {
-                "configured": False,
-                "model": "",
+                "configured": bool(self.settings.anthropic_api_key),
+                "model": "claude-sonnet-4-20250514" if self.settings.anthropic_api_key else "",
             },
         }
 

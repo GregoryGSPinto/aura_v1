@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================
+# AURA START — Inicia backend + frontend
+# O Ollama NAO inicia aqui — e controlado
+# pelo botao de ignicao na interface.
+# ============================================
+#
+# Uso:
+#   ./scripts/aura-start            -> inicia tudo
+#   ./scripts/aura-start stop       -> para tudo
+#   ./scripts/aura-start status     -> mostra status
+#   ./scripts/aura-start restart    -> reinicia tudo
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+ensure_local_env_files
+load_backend_env
+load_frontend_env
+
+BACKEND_PORT="${AURA_BACKEND_PORT:-8000}"
+FRONTEND_PORT="$(resolve_frontend_port "${AURA_FRONTEND_PORT:-3000}")"
+export AURA_FRONTEND_PORT="$FRONTEND_PORT"
+
+BACKEND_PIDFILE="$(pidfile_path aura_backend)"
+FRONTEND_PIDFILE="$(pidfile_path aura_frontend)"
+BACKEND_LOGFILE="${AURA_LOG_DIR}/backend.log"
+FRONTEND_LOGFILE="${AURA_LOG_DIR}/frontend.log"
+
+BACKEND_HEALTH_URL="http://localhost:${BACKEND_PORT}/api/v1/healthz"
+
+start_backend() {
+  local pid
+  pid="$(read_pidfile "$BACKEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    log_info "Backend ja esta rodando (PID ${pid}, porta ${BACKEND_PORT})."
+    return 0
+  fi
+
+  if port_is_listening "$BACKEND_PORT"; then
+    if service_port_owned_by_aura "$BACKEND_PORT" aura_backend; then
+      log_info "Backend ja esta rodando na porta ${BACKEND_PORT}."
+      return 0
+    fi
+    log_error "Porta ${BACKEND_PORT} ocupada por outro processo."
+    return 1
+  fi
+
+  log_info "Iniciando backend FastAPI..."
+  nohup env AURA_BACKEND_RELOAD=0 AURA_BACKEND_HOST=localhost AURA_BACKEND_PORT="$BACKEND_PORT" \
+    "$SCRIPT_DIR/run-backend" >>"$BACKEND_LOGFILE" 2>&1 &
+  write_pidfile "$BACKEND_PIDFILE" "$!"
+  log_info "Backend iniciado (PID $!, porta ${BACKEND_PORT})."
+}
+
+start_frontend() {
+  local pid
+  pid="$(read_pidfile "$FRONTEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    log_info "Frontend ja esta rodando (PID ${pid}, porta ${FRONTEND_PORT})."
+    return 0
+  fi
+
+  if port_is_listening "$FRONTEND_PORT"; then
+    if service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
+      log_info "Frontend ja esta rodando na porta ${FRONTEND_PORT}."
+      return 0
+    fi
+    log_error "Porta ${FRONTEND_PORT} ocupada por outro processo."
+    return 1
+  fi
+
+  log_info "Iniciando frontend Next.js..."
+  nohup env AURA_FRONTEND_HOST=localhost AURA_FRONTEND_PORT="$FRONTEND_PORT" \
+    "$SCRIPT_DIR/run-frontend" >>"$FRONTEND_LOGFILE" 2>&1 &
+  write_pidfile "$FRONTEND_PIDFILE" "$!"
+  log_info "Frontend iniciado (PID $!, porta ${FRONTEND_PORT})."
+}
+
+stop_all() {
+  log_info "Parando Aura..."
+
+  # Para Ollama se estiver rodando
+  if pgrep -f "ollama serve" >/dev/null 2>&1; then
+    log_info "  Parando Ollama..."
+    ollama stop "${AURA_MODEL:-qwen3.5:9b}" 2>/dev/null || true
+    pkill -f "ollama serve" 2>/dev/null || true
+    log_info "  Ollama parado."
+  fi
+
+  # Para backend
+  local pid
+  pid="$(read_pidfile "$BACKEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    kill_pid_gracefully "$pid"
+    log_info "  Backend parado."
+  fi
+  remove_pidfile "$BACKEND_PIDFILE"
+
+  # Para frontend
+  pid="$(read_pidfile "$FRONTEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    kill_pid_gracefully "$pid"
+    log_info "  Frontend parado."
+  fi
+  remove_pidfile "$FRONTEND_PIDFILE"
+
+  log_info "Aura desligada."
+}
+
+show_status() {
+  printf '=== AURA STATUS ===\n'
+
+  local pid
+  pid="$(read_pidfile "$BACKEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    printf 'Backend:  rodando (PID %s, porta %s)\n' "$pid" "$BACKEND_PORT"
+  elif port_is_listening "$BACKEND_PORT" && service_port_owned_by_aura "$BACKEND_PORT" aura_backend; then
+    printf 'Backend:  rodando (porta %s)\n' "$BACKEND_PORT"
+  else
+    printf 'Backend:  parado\n'
+  fi
+
+  pid="$(read_pidfile "$FRONTEND_PIDFILE" || true)"
+  if [[ -n "$pid" ]] && is_running_pid "$pid"; then
+    printf 'Frontend: rodando (PID %s, porta %s)\n' "$pid" "$FRONTEND_PORT"
+  elif port_is_listening "$FRONTEND_PORT" && service_port_owned_by_aura "$FRONTEND_PORT" aura_frontend; then
+    printf 'Frontend: rodando (porta %s)\n' "$FRONTEND_PORT"
+  else
+    printf 'Frontend: parado\n'
+  fi
+
+  if pgrep -f "ollama serve" >/dev/null 2>&1; then
+    printf 'Ollama:   rodando (controlado pelo botao de ignicao)\n'
+  else
+    printf 'Ollama:   desligado (ligue pelo botao na interface)\n'
+  fi
+}
+
+case "${1:-start}" in
+  start)
+    printf '============================================\n'
+    printf '  AURA — Iniciando sistema base\n'
+    printf '  Ollama sera ligado pelo botao na interface\n'
+    printf '============================================\n'
+    start_backend
+    start_frontend
+    wait_for_http "backend" "$BACKEND_HEALTH_URL" 30 || true
+    printf '\nAcesse: http://localhost:%s\n' "$FRONTEND_PORT"
+    printf 'Use o botao de ignicao na interface pra ligar o Qwen\n'
+    ;;
+  stop)
+    stop_all
+    ;;
+  status)
+    show_status
+    ;;
+  restart)
+    stop_all
+    sleep 2
+    exec "$0" start
+    ;;
+  *)
+    printf 'Uso: %s {start|stop|status|restart}\n' "$0"
+    exit 1
+    ;;
+esac

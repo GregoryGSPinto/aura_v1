@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Menu, Settings2 } from 'lucide-react';
 
+import { BrainSelector } from '@/components/chat/brain-selector';
+import { EngineToggle } from '@/components/chat/engine-toggle';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +79,8 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
+        <EngineToggle />
+        <BrainSelector />
         <StatusDot />
         <Link
           href="/settings"

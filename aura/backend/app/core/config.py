@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     supabase_anon_key: str = Field("", alias="SUPABASE_ANON_KEY")
     supabase_service_role_key: str = Field("", alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_db_password: str = Field("", alias="SUPABASE_DB_PASSWORD")
+    anthropic_api_key: str = Field("", alias="ANTHROPIC_API_KEY")
+    openai_api_key: str = Field("", alias="OPENAI_API_KEY")
+    token_budget_daily_usd: float = Field(5.0, alias="TOKEN_BUDGET_DAILY_USD")
+    token_budget_monthly_usd: float = Field(100.0, alias="TOKEN_BUDGET_MONTHLY_USD")
 
     @property
     def allowed_origins(self) -> List[str]:

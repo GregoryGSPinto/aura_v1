@@ -1,3 +1,4 @@
+import hashlib
 import time
 from typing import Optional
 
@@ -106,6 +107,7 @@ async def chat(request_body: ChatRequest, request: Request):
     action_preview: Optional[dict] = None
     response: str
     elapsed_ms: int
+    used_provider: str = "ollama"
 
     if tool_analysis.status == "allowed" and tool_route:
         preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
@@ -164,17 +166,50 @@ async def chat(request_body: ChatRequest, request: Request):
         response = build_operational_response(tool_analysis)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
     else:
-        response, elapsed_ms = await request.app.state.ollama_service.generate_response(
-            message=request_body.message,
-            history=request_body.context.history,
-            temperature=request_body.options.temperature,
-            think=request_body.options.think,
-            system_prompt=request.app.state.behavior_service.build_chat_prompt(
-                runtime_context["context_summary"],
-                runtime_context["memory_prompt_points"],
-                runtime_context["behavior_mode"],
-            ),
-        )
+        override = getattr(request.app.state, "provider_override", "auto")
+        used_provider = "ollama"
+        if override not in {"auto", "ollama"}:
+            cloud_provider = request.app.state.chat_providers.get(override)
+            if cloud_provider and getattr(cloud_provider, "api_key", ""):
+                chat_system_prompt = request.app.state.behavior_service.build_chat_prompt(
+                    runtime_context["context_summary"],
+                    runtime_context["memory_prompt_points"],
+                    runtime_context["behavior_mode"],
+                )
+                prompt_parts = [chat_system_prompt]
+                for item in request_body.context.history:
+                    prompt_parts.append(f"{item.role.upper()}: {item.content}")
+                prompt_parts.append(f"USER: {request_body.message}")
+                prompt_parts.append("ASSISTANT:")
+                full_prompt = "\n".join(prompt_parts)
+                started_gen = time.perf_counter()
+                response = await cloud_provider.generate(full_prompt, "conversation")
+                elapsed_ms = int((time.perf_counter() - started) * 1000)
+                used_provider = override
+            else:
+                response, elapsed_ms = await request.app.state.ollama_service.generate_response(
+                    message=request_body.message,
+                    history=request_body.context.history,
+                    temperature=request_body.options.temperature,
+                    think=request_body.options.think,
+                    system_prompt=request.app.state.behavior_service.build_chat_prompt(
+                        runtime_context["context_summary"],
+                        runtime_context["memory_prompt_points"],
+                        runtime_context["behavior_mode"],
+                    ),
+                )
+        else:
+            response, elapsed_ms = await request.app.state.ollama_service.generate_response(
+                message=request_body.message,
+                history=request_body.context.history,
+                temperature=request_body.options.temperature,
+                think=request_body.options.think,
+                system_prompt=request.app.state.behavior_service.build_chat_prompt(
+                    runtime_context["context_summary"],
+                    runtime_context["memory_prompt_points"],
+                    runtime_context["behavior_mode"],
+                ),
+            )
 
     request.app.state.persistence_service.upsert_chat_session(
         ChatSessionRecord(
@@ -183,23 +218,6 @@ async def chat(request_body: ChatRequest, request: Request):
             project_id=request_body.context.project_id,
             metadata={"source": "api.chat"},
         )
-    )
-    request.app.state.persistence_service.append_chat_messages(
-        [
-            ChatMessageRecord(
-                session_id=request_body.context.session_id,
-                role="user",
-                content=request_body.message,
-                metadata={"history_size": len(request_body.context.history)},
-            ),
-            ChatMessageRecord(
-                session_id=request_body.context.session_id,
-                role="assistant",
-                content=response,
-                model=request.app.state.settings.model_name,
-                intent=intent,
-            ),
-        ]
     )
     request.app.state.context_service.remember_exchange(
         session_id=request_body.context.session_id,
@@ -216,6 +234,46 @@ async def chat(request_body: ChatRequest, request: Request):
         voice_status=request.app.state.voice_pipeline.status().model_dump(),
         audit_logs=request.app.state.persistence_service.get_recent_audit_logs(limit=6),
     )
+    system_prompt_text = request.app.state.behavior_service.build_chat_prompt(
+        runtime_context["context_summary"],
+        runtime_context["memory_prompt_points"],
+        runtime_context["behavior_mode"],
+    )
+    system_prompt_hash = hashlib.sha256(system_prompt_text[:200].encode()).hexdigest()
+    assistant_metadata = {
+        "response_time_ms": elapsed_ms,
+        "behavior_mode": runtime_context.get("behavior_mode"),
+        "provider": used_provider,
+        "tokens_used": None,
+        "user_satisfaction": None,
+        "system_prompt_hash": system_prompt_hash,
+    }
+    if action_taken:
+        assistant_metadata["action_taken"] = action_taken
+        if action_preview:
+            assistant_metadata["risk_score"] = action_preview.get("risk_score")
+    if runtime_context.get("memory_signals"):
+        assistant_metadata["memory_signals"] = runtime_context["memory_signals"][:5]
+    if trust_snapshot.get("signals"):
+        assistant_metadata["trust_signals"] = trust_snapshot["signals"][:3]
+    request.app.state.persistence_service.append_chat_messages(
+        [
+            ChatMessageRecord(
+                session_id=request_body.context.session_id,
+                role="user",
+                content=request_body.message,
+                metadata={"history_size": len(request_body.context.history)},
+            ),
+            ChatMessageRecord(
+                session_id=request_body.context.session_id,
+                role="assistant",
+                content=response,
+                model=request.app.state.settings.model_name,
+                intent=intent,
+                metadata=assistant_metadata,
+            ),
+        ]
+    )
     data = ChatResponseData(
         response=response,
         intent=intent,  # type: ignore[arg-type]
@@ -229,6 +287,7 @@ async def chat(request_body: ChatRequest, request: Request):
         session_id=request_body.context.session_id,
         processing_time_ms=elapsed_ms,
         model=request.app.state.settings.model_name,
+        provider=used_provider,
         persistence_mode=request.app.state.persistence_service.get_state().mode,
     )
     return ApiResponse(data=data)

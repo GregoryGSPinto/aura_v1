@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================
+# Instala a Aura pra iniciar automaticamente
+# no login do Mac (backend + frontend apenas).
+# Ollama e controlado pelo botao na interface.
+# ============================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/aura-common.sh"
+
+aura_init_environment
+
+require_command launchctl
+
+LABEL="$(launch_agent_label)"
+UID_VALUE="$(id -u)"
+SOURCE_PLIST="${REPO_ROOT}/infra/macos/${LABEL}.plist"
+TARGET_PLIST="${AURA_LAUNCH_AGENTS_DIR}/${LABEL}.plist"
+
+if [[ ! -f "$SOURCE_PLIST" ]]; then
+  log_error "Plist template nao encontrado: ${SOURCE_PLIST}"
+  exit 1
+fi
+
+mkdir -p "$AURA_LAUNCH_AGENTS_DIR"
+
+# Substitui placeholders pelo path real
+sed \
+  -e "s|__AURA_REPO_ROOT__|${REPO_ROOT}|g" \
+  -e "s|__AURA_LOG_DIR__|${AURA_LOG_DIR}|g" \
+  "$SOURCE_PLIST" >"$TARGET_PLIST"
+
+# Descarrega se ja existir
+launchctl bootout "gui/${UID_VALUE}" "$TARGET_PLIST" >/dev/null 2>&1 || true
+launchctl enable "gui/${UID_VALUE}/${LABEL}" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/${UID_VALUE}" "$TARGET_PLIST"
+
+log_info "Aura instalada pra auto-start."
+log_info "  Backend + Frontend iniciam no login."
+log_info "  Ollama e controlado pelo botao na interface."
+log_info ""
+log_info "  LaunchAgent: ${TARGET_PLIST}"
+log_info "  Logs: ${AURA_LOG_DIR}"
+log_info ""
+log_info "  Pra remover:"
+log_info "    launchctl bootout gui/${UID_VALUE} ${TARGET_PLIST}"
+log_info "    rm ${TARGET_PLIST}"

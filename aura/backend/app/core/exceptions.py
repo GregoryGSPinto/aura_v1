@@ -37,3 +37,20 @@ class ModelUnavailableError(ExternalServiceError):
     def __init__(self, message: str = "Modelo local indisponível", details=None):
         super().__init__(message, details=details)
         self.code = "model_unavailable"
+
+
+class ProviderUnavailableError(ExternalServiceError):
+    def __init__(self, message: str = "Provider indisponível", details=None):
+        super().__init__(message, details=details)
+        self.code = "provider_unavailable"
+
+
+class ProviderAuthError(AuraError):
+    def __init__(self, message: str = "Credencial do provider inválida", details=None):
+        super().__init__("provider_auth_error", message, details=details, status_code=401)
+
+
+class ProviderRateLimitError(ExternalServiceError):
+    def __init__(self, message: str = "Rate limit do provider excedido", details=None):
+        super().__init__(message, details=details)
+        self.code = "provider_rate_limit"

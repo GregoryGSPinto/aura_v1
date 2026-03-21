@@ -70,6 +70,7 @@ export interface ChatResponse {
   session_id: string;
   processing_time_ms: number;
   model?: string;
+  provider?: string;
   persistence_mode?: string;
   suggested_action?: {
     command: string;
@@ -366,6 +367,40 @@ export interface RoutineCreateRequest {
   trigger_type: RoutineTriggerType;
   schedule?: string | null;
   actions: RoutineAction[];
+}
+
+export type ProviderName = 'auto' | 'ollama' | 'anthropic' | 'openai';
+
+export interface ProviderInfo {
+  status: 'online' | 'offline' | 'error';
+  model: string | null;
+  configured: boolean;
+  details?: Record<string, unknown>;
+  error?: string;
+}
+
+export interface ProvidersPayload {
+  providers: Record<string, ProviderInfo>;
+  override: string | null;
+  mode: 'auto' | 'manual';
+  active_provider: string;
+}
+
+export interface ProviderOverrideResponse {
+  success: boolean;
+  active_provider: string;
+  mode: 'auto' | 'manual';
+}
+
+export interface EngineStatusPayload {
+  status: 'running' | 'starting' | 'stopped' | 'stopping' | 'error';
+  model: string;
+  url: string;
+  memory: {
+    rss_mb?: number;
+    vms_mb?: number;
+  };
+  message?: string;
 }
 
 export interface RoutineUpdateRequest {

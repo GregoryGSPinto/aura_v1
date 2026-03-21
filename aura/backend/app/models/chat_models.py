@@ -48,4 +48,5 @@ class ChatResponseData(BaseModel):
     session_id: str
     processing_time_ms: int
     model: str
+    provider: Optional[str] = None
     persistence_mode: Optional[str] = None

@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { DEFAULT_AURA_CHAT_MODE_ID, type AuraChatModeId } from '@/lib/chat-modes';
 import type { ChatConversation, ComposerCommand, ConversationMessage } from '@/lib/chat-types';
+import type { EngineStatusPayload, ProviderInfo, ProviderName } from '@/lib/types';
 
 type ChatStoreState = {
   conversations: ChatConversation[];
@@ -15,6 +16,12 @@ type ChatStoreState = {
   voiceReplyEnabled: boolean;
   selectedModeId: AuraChatModeId;
   composerCommand: ComposerCommand | null;
+  activeProvider: ProviderName;
+  providerStatuses: Record<string, ProviderInfo>;
+  engineStatus: EngineStatusPayload | null;
+  setActiveProvider: (provider: ProviderName) => void;
+  setProviderStatuses: (statuses: Record<string, ProviderInfo>) => void;
+  setEngineStatus: (status: EngineStatusPayload | null) => void;
   createConversation: () => string;
   setActiveConversation: (id: string) => void;
   appendMessage: (conversationId: string, message: ConversationMessage) => void;
@@ -68,6 +75,12 @@ export const useChatStore = create<ChatStoreState>()(
         voiceReplyEnabled: false,
         selectedModeId: DEFAULT_AURA_CHAT_MODE_ID,
         composerCommand: null,
+        activeProvider: 'auto' as ProviderName,
+        providerStatuses: {} as Record<string, ProviderInfo>,
+        engineStatus: null as EngineStatusPayload | null,
+        setActiveProvider: (provider) => set({ activeProvider: provider }),
+        setProviderStatuses: (statuses) => set({ providerStatuses: statuses }),
+        setEngineStatus: (status) => set({ engineStatus: status }),
         createConversation: () => {
           const conversation = createConversation();
           set((state) => ({

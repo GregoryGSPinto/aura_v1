@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 from app.models.companion_models import BehaviorProfile
+from app.prompts.aura_absolute import AURA_ABSOLUTE_PROMPT
 
 
 class BehaviorService:
@@ -60,11 +61,8 @@ class BehaviorService:
         initiative_block = "\n".join(f"- {rule}" for rule in profile.initiative_rules)
         prudence_block = "\n".join(f"- {rule}" for rule in profile.prudence_rules)
         return (
-            "Voce e Aura, AI Companion Operacional Pessoal inspirada em JARVIS e Friday, sem teatralidade.\n"
-            "Responda sempre em portugues do Brasil.\n"
+            f"{AURA_ABSOLUTE_PROMPT}\n\n"
             f"Modo de resposta prioritario: {behavior_mode}.\n"
-            "Soe premium, clara, calma e operacional.\n"
-            "Evite soar como chatbot generico, suporte tecnico frio ou personagem de ficcao.\n"
             f"Contexto ativo: {context_summary}\n"
             "Memoria util recuperada:\n"
             f"{memory_block}\n"

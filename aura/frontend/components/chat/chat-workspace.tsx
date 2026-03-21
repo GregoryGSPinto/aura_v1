@@ -243,6 +243,7 @@ export function ChatWorkspace() {
         const payload = response.data;
         const meta = [payload.intent, currentMode.label, payload.model, payload.context_summary].filter(Boolean).join(' · ');
         await runStreaming(assistantMsg.id, payload.response, meta, payload.model);
+        if (payload.provider) updateMessage(activeConversation.id, assistantMsg.id, { provider: payload.provider });
         await refreshRuntime();
         if (replyWithVoice) speakMessage({ ...assistantMsg, content: payload.response, status: 'complete', modeLabel: currentMode.label });
         else setShouldReplyWithVoice(false);

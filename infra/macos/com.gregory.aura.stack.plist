@@ -4,22 +4,33 @@
 <dict>
   <key>Label</key>
   <string>com.gregory.aura.stack</string>
+
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>__AURA_REPO_ROOT__/scripts/run-aura-stack</string>
+    <string>__AURA_REPO_ROOT__/scripts/aura-start</string>
+    <string>start</string>
   </array>
+
   <key>RunAtLoad</key>
   <true/>
+
   <key>KeepAlive</key>
-  <true/>
-  <key>ThrottleInterval</key>
-  <integer>10</integer>
+  <false/>
+
   <key>WorkingDirectory</key>
   <string>__AURA_REPO_ROOT__</string>
+
   <key>StandardOutPath</key>
   <string>__AURA_LOG_DIR__/launchd.stack.stdout.log</string>
+
   <key>StandardErrorPath</key>
   <string>__AURA_LOG_DIR__/launchd.stack.stderr.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
 </dict>
 </plist>
