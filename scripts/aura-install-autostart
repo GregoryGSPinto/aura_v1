@@ -30,6 +30,7 @@ mkdir -p "$AURA_LAUNCH_AGENTS_DIR"
 sed \
   -e "s|__AURA_REPO_ROOT__|${REPO_ROOT}|g" \
   -e "s|__AURA_LOG_DIR__|${AURA_LOG_DIR}|g" \
+  -e "s|__USER_HOME__|${HOME}|g" \
   "$SOURCE_PLIST" >"$TARGET_PLIST"
 
 # Descarrega se ja existir
@@ -38,8 +39,8 @@ launchctl enable "gui/${UID_VALUE}/${LABEL}" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/${UID_VALUE}" "$TARGET_PLIST"
 
 log_info "Aura instalada pra auto-start."
-log_info "  Backend + Frontend iniciam no login."
-log_info "  Ollama e controlado pelo botao na interface."
+log_info "  Backend + Frontend + Tunel iniciam no login."
+log_info "  Ollama fica DESLIGADO ate voce clicar no botao."
 log_info ""
 log_info "  LaunchAgent: ${TARGET_PLIST}"
 log_info "  Logs: ${AURA_LOG_DIR}"

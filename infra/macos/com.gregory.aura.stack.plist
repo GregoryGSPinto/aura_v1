@@ -31,6 +31,11 @@
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>__USER_HOME__</string>
   </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
 </dict>
 </plist>
