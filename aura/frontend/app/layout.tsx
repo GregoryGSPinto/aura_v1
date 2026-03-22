@@ -37,7 +37,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#09090b',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#09090b' },
+  ],
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -59,9 +62,9 @@ export default function RootLayout({
             position="bottom-right"
             toastOptions={{
               style: {
-                background: '#18181b',
-                border: '1px solid rgba(255,255,255,0.05)',
-                color: '#fafafa',
+                background: 'var(--aura-bg-secondary)',
+                border: '1px solid var(--aura-border)',
+                color: 'var(--aura-text-primary)',
                 borderRadius: '0.75rem',
                 fontSize: '0.875rem',
               },

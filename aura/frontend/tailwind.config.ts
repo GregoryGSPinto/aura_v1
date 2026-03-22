@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  darkMode: "class",
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -9,9 +10,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "rgba(255, 255, 255, 0.05)",
-        background: "#09090b",
-        foreground: "#fafafa",
+        border: "var(--aura-border)",
+        background: "var(--bg-primary)",
+        foreground: "var(--fg-primary)",
+        zinc: {
+          50: "var(--zinc-50)",
+          100: "var(--zinc-100)",
+          200: "var(--zinc-200)",
+          300: "var(--zinc-300)",
+          400: "var(--zinc-400)",
+          500: "var(--zinc-500)",
+          600: "var(--zinc-600)",
+          700: "var(--zinc-700)",
+          800: "var(--zinc-800)",
+          900: "var(--zinc-900)",
+          950: "var(--zinc-950)",
+        },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
