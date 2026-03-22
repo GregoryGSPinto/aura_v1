@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     openai_api_key: str = Field("", alias="OPENAI_API_KEY")
     token_budget_daily_usd: float = Field(5.0, alias="TOKEN_BUDGET_DAILY_USD")
     token_budget_monthly_usd: float = Field(100.0, alias="TOKEN_BUDGET_MONTHLY_USD")
+    github_token: str = Field("", alias="GITHUB_TOKEN")
+    github_username: str = Field("", alias="GITHUB_USERNAME")
+    google_calendar_api_key: str = Field("", alias="GOOGLE_CALENDAR_API_KEY")
+    google_calendar_id: str = Field("primary", alias="GOOGLE_CALENDAR_ID")
+    gmail_address: str = Field("", alias="GMAIL_ADDRESS")
+    gmail_app_password: str = Field("", alias="GMAIL_APP_PASSWORD")
+    aura_admin_username: str = Field("admin", alias="AURA_ADMIN_USERNAME")
+    aura_admin_password: str = Field("", alias="AURA_ADMIN_PASSWORD")
 
     @property
     def allowed_origins(self) -> List[str]:

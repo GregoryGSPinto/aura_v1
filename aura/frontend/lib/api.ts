@@ -1,5 +1,6 @@
 import { clientEnv } from './env';
-import type { 
+import { useAuthStore } from './auth-store';
+import type {
   StatusPayload, 
   Project, 
   ChatResponse, 
@@ -73,8 +74,10 @@ async function fetchApi<T>(
     ...((options?.headers as Record<string, string>) || {}),
   };
 
-  if (clientEnv.auraToken) {
-    headers['Authorization'] = `Bearer ${clientEnv.auraToken}`;
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   let response: Response;
@@ -91,6 +94,13 @@ async function fetchApi<T>(
       'backend_unreachable',
       error instanceof Error ? error.message : String(error),
     );
+  }
+
+  if (response.status === 401) {
+    const { isAuthenticated, logout } = useAuthStore.getState();
+    if (isAuthenticated) {
+      logout();
+    }
   }
 
   if (!response.ok) {
@@ -153,6 +163,62 @@ export async function sendChat(
       options: { stream: false, temperature: metadata?.temperature ?? 0.7, think: metadata?.think ?? false },
     }),
   });
+}
+
+// Streaming Chat (SSE)
+export async function chatStream(
+  message: string,
+  context: { history: { role: string; content: string }[]; session_id: string },
+  onToken: (token: string) => void,
+  onIntent: (intent: string) => void,
+  onToolCall: (toolCall: unknown) => void,
+  onToolResult: (result: unknown) => void,
+  onDone: (data: { full_response: string; elapsed_ms: number; provider: string }) => void,
+  onError: (error: string) => void,
+): Promise<void> {
+  const url = normalizeUrl('/api/v1/chat/stream');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const streamToken = useAuthStore.getState().token || clientEnv.auraToken;
+  if (streamToken) headers['Authorization'] = `Bearer ${streamToken}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message, context }),
+  });
+
+  if (!response.ok) {
+    onError(`HTTP ${response.status}`);
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder();
+  if (!reader) { onError('No reader available'); return; }
+
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          switch (data.type) {
+            case 'token': onToken(data.content); break;
+            case 'intent': onIntent(data.content); break;
+            case 'tool_call': onToolCall(data.content); break;
+            case 'tool_result': onToolResult(data.content); break;
+            case 'done': onDone(data.content); break;
+            case 'error': onError(data.content.message); break;
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+  }
 }
 
 export async function fetchVoiceStatus(): Promise<ApiResponse<VoiceStatusPayload>> {

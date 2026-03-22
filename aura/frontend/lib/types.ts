@@ -82,6 +82,9 @@ export interface ChatResponse {
   trust_signals?: TrustSignal[];
   behavioral_mode?: string | null;
   tokens_used?: number;
+  route?: 'chat' | 'agent' | 'agent_fallback';
+  actions_taken?: unknown[];
+  plan?: Record<string, unknown>;
 }
 
 export interface VoiceStatusPayload {

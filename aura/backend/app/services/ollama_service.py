@@ -1,5 +1,6 @@
+import json
 import time
-from typing import Iterable, Optional
+from typing import AsyncGenerator, Iterable, Optional
 
 import httpx
 
@@ -71,9 +72,10 @@ class OllamaService:
             "model": self.settings.model_name,
             "prompt": prompt,
             "stream": False,
-            "think": think,
+            "think": False,
             "options": {
                 "temperature": temperature,
+                "num_predict": 512,
             },
         }
 
@@ -123,3 +125,42 @@ class OllamaService:
 
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         return data.get("response", "").strip(), elapsed_ms
+
+    async def generate_stream(
+        self,
+        message: str,
+        history: Iterable,
+        system_prompt: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream tokens from Ollama using /api/chat with stream=True."""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        for item in history:
+            if hasattr(item, "role"):
+                messages.append({"role": item.role, "content": item.content})
+            elif isinstance(item, dict):
+                messages.append({"role": item.get("role", "user"), "content": item.get("content", "")})
+        messages.append({"role": "user", "content": message})
+
+        payload = {
+            "model": self.settings.model_name,
+            "messages": messages,
+            "stream": True,
+            "options": {"num_predict": 512, "temperature": 0.2},
+        }
+
+        timeout = httpx.Timeout(timeout=float(self.settings.llm_timeout), connect=5.0, read=float(self.settings.llm_timeout))
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            async with client.stream("POST", f"{self.settings.ollama_url}/api/chat", json=payload) as response:
+                async for line in response.aiter_lines():
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            content = data.get("message", {}).get("content", "")
+                            if content:
+                                yield content
+                            if data.get("done"):
+                                break
+                        except json.JSONDecodeError:
+                            continue

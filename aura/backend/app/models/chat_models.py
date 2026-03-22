@@ -50,3 +50,6 @@ class ChatResponseData(BaseModel):
     model: str
     provider: Optional[str] = None
     persistence_mode: Optional[str] = None
+    route: Optional[str] = None
+    actions_taken: Optional[list] = None
+    plan: Optional[dict] = None

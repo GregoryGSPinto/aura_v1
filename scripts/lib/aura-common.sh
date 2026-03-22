@@ -307,7 +307,7 @@ ensure_frontend_env_defaults() {
   local env_file="${FRONTEND_DIR}/.env.local"
   local aura_env
   aura_env="$(frontend_env_value "$env_file" "NEXT_PUBLIC_AURA_ENV" || true)"
-  aura_env="${aura_env,,}"
+  aura_env="$(printf '%s' "$aura_env" | tr '[:upper:]' '[:lower:]')"
   aura_env="${aura_env:-local}"
   if [[ "$aura_env" != "local" ]]; then
     return 0

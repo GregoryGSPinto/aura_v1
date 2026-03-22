@@ -49,6 +49,15 @@ from app.services.project_service import ProjectService
 from app.services.routine_service import RoutineService
 from app.services.supabase_service import SupabaseService
 from app.services.token_budget_service import TokenBudgetService
+from app.services.chat_router_service import ChatRouterService
+from app.services.tool_schema_service import ToolSchemaService
+from app.services.tool_call_parser import ToolCallParser
+from app.services.tool_executor_service import ToolExecutorService
+from app.services.knowledge_extractor import KnowledgeExtractor
+from app.services.proactive_service import ProactiveService
+from app.aura_os.connectors.github_connector import GitHubConnector
+from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
+from app.aura_os.connectors.gmail_connector import GmailConnector
 from app.tools import BrowserTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
 
 
@@ -188,6 +197,64 @@ class Container:
         self.voice_pipeline = self._build_voice_pipeline()
         self.research_tool = self._build_research_tool()
         self.aura_os = self._build_aura_os()
+
+        # Sprint 1+2: Chat Router with Tool Calling
+        self.tool_schema_service = ToolSchemaService(self.tool_router, self.action_governance_service)
+        self.tool_call_parser = ToolCallParser()
+        self.tool_executor_service = ToolExecutorService(
+            tools={
+                "terminal": self.terminal_tool,
+                "filesystem": self.filesystem_tool,
+                "browser": self.browser_tool,
+                "vscode": self.vscode_tool,
+                "project": self.project_tool,
+                "system": self.system_tool,
+                "research": self.research_tool,
+            },
+            governance=self.action_governance_service,
+            persistence=self.persistence_service,
+        )
+        self.chat_router_service = ChatRouterService(
+            ollama_service=self.ollama_service,
+            aura_os=self.aura_os,
+            behavior_service=self.behavior_service,
+            action_governance=self.action_governance_service,
+            tool_schema=self.tool_schema_service,
+            tool_parser=self.tool_call_parser,
+            tool_executor=self.tool_executor_service,
+        )
+
+        # Sprint 4: Knowledge Extractor
+        self.knowledge_extractor = KnowledgeExtractor(
+            memory_service=self.memory_service,
+            ollama_service=self.ollama_service,
+            budget_service=self.token_budget_service,
+        )
+
+        # Sprint 5: Connectors
+        self.github_connector = GitHubConnector(
+            token=self.settings.github_token,
+            username=self.settings.github_username,
+        )
+        self.calendar_connector = GoogleCalendarConnector(
+            api_key=self.settings.google_calendar_api_key,
+            calendar_id=self.settings.google_calendar_id,
+        )
+        self.gmail_connector = GmailConnector(
+            address=self.settings.gmail_address,
+            app_password=self.settings.gmail_app_password,
+        )
+
+        # Sprint 4: Proactive Service
+        self.proactive_service = ProactiveService(
+            scheduler=None,
+            ollama_service=self.ollama_service,
+            memory_service=self.memory_service,
+            persistence=self.persistence_service,
+            github=self.github_connector,
+            calendar=self.calendar_connector,
+            gmail=self.gmail_connector,
+        )
 
     def _warn(self, message: str) -> None:
         self.startup_warnings.append(message)
@@ -354,6 +421,15 @@ def create_app() -> FastAPI:
     }
     app.state.startup_warnings = app_container.startup_warnings
     app.state.feature_flags = app_container.feature_flags
+    app.state.chat_router_service = app_container.chat_router_service
+    app.state.tool_schema_service = app_container.tool_schema_service
+    app.state.tool_call_parser = app_container.tool_call_parser
+    app.state.tool_executor_service = app_container.tool_executor_service
+    app.state.knowledge_extractor = app_container.knowledge_extractor
+    app.state.proactive_service = app_container.proactive_service
+    app.state.github_connector = app_container.github_connector
+    app.state.calendar_connector = app_container.calendar_connector
+    app.state.gmail_connector = app_container.gmail_connector
 
     app.add_middleware(
         CORSMiddleware,

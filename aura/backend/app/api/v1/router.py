@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, auth, chat, command, companion, dataset, jobs, os_runtime, projects, routines, status, system, tools
+from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, connectors, dataset, jobs, os_runtime, projects, routines, status, system, tools
 
 
 api_router = APIRouter()
@@ -17,3 +17,5 @@ api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(os_runtime.router)
 api_router.include_router(routines.router, tags=["routines"])
 api_router.include_router(dataset.router)
+api_router.include_router(chat_stream.router, tags=["chat-stream"])
+api_router.include_router(connectors.router)

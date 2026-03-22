@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderKanban,
+  LogOut,
   MessageSquareText,
   Plus,
   Settings2,
@@ -17,6 +18,7 @@ import {
 
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { ChatModeSelector } from '@/components/chat/mode-selector';
+import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
 import { getRelativeTime, cn } from '@/lib/utils';
 
@@ -192,9 +194,22 @@ function SidebarContent({
         </nav>
       </div>
 
-      {/* Collapse Toggle (desktop only) */}
-      {!isMobile && (
-        <div className="border-t border-white/5 p-2">
+      {/* Logout + Collapse Toggle */}
+      <div className="border-t border-white/5 p-2 space-y-0.5">
+        <button
+          type="button"
+          onClick={() => useAuthStore.getState().logout()}
+          className={cn(
+            'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400',
+            collapsed && !isMobile && 'justify-center px-2',
+          )}
+          aria-label="Sair"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {(!collapsed || isMobile) && <span>Sair</span>}
+        </button>
+
+        {!isMobile && (
           <button
             type="button"
             onClick={onToggleCollapse}
@@ -203,8 +218,8 @@ function SidebarContent({
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -108,6 +108,9 @@ async def chat(request_body: ChatRequest, request: Request):
     response: str
     elapsed_ms: int
     used_provider: str = "ollama"
+    route: Optional[str] = None
+    actions_taken: Optional[list] = None
+    plan: Optional[dict] = None
 
     if tool_analysis.status == "allowed" and tool_route:
         preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
@@ -166,26 +169,66 @@ async def chat(request_body: ChatRequest, request: Request):
         response = build_operational_response(tool_analysis)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
     else:
-        override = getattr(request.app.state, "provider_override", "auto")
-        used_provider = "ollama"
-        if override not in {"auto", "ollama"}:
-            cloud_provider = request.app.state.chat_providers.get(override)
-            if cloud_provider and getattr(cloud_provider, "api_key", ""):
-                chat_system_prompt = request.app.state.behavior_service.build_chat_prompt(
-                    runtime_context["context_summary"],
-                    runtime_context["memory_prompt_points"],
-                    runtime_context["behavior_mode"],
+        # Try ChatRouterService first (handles agent routing + tool calling)
+        chat_router = getattr(request.app.state, "chat_router_service", None)
+        router_result = None
+        if chat_router:
+            try:
+                router_result = await chat_router.process(
+                    message=request_body.message,
+                    context={
+                        "context_summary": runtime_context["context_summary"],
+                        "memory_prompt_points": runtime_context["memory_prompt_points"],
+                        "behavior_mode": runtime_context["behavior_mode"],
+                        "history": request_body.context.history,
+                    },
                 )
-                prompt_parts = [chat_system_prompt]
-                for item in request_body.context.history:
-                    prompt_parts.append(f"{item.role.upper()}: {item.content}")
-                prompt_parts.append(f"USER: {request_body.message}")
-                prompt_parts.append("ASSISTANT:")
-                full_prompt = "\n".join(prompt_parts)
-                started_gen = time.perf_counter()
-                response = await cloud_provider.generate(full_prompt, "conversation")
-                elapsed_ms = int((time.perf_counter() - started) * 1000)
-                used_provider = override
+            except Exception:
+                router_result = None
+
+        if router_result:
+            response = router_result.get("response", "")
+            elapsed_ms = router_result.get("elapsed_ms", int((time.perf_counter() - started) * 1000))
+            used_provider = router_result.get("provider", "ollama")
+            route = router_result.get("route")
+            actions_taken = router_result.get("actions_taken")
+            plan = router_result.get("plan")
+        else:
+            # Fallback: direct provider call (original logic)
+            route = None
+            actions_taken = None
+            plan = None
+            override = getattr(request.app.state, "provider_override", "auto")
+            used_provider = "ollama"
+            if override not in {"auto", "ollama"}:
+                cloud_provider = request.app.state.chat_providers.get(override)
+                if cloud_provider and getattr(cloud_provider, "api_key", ""):
+                    chat_system_prompt = request.app.state.behavior_service.build_chat_prompt(
+                        runtime_context["context_summary"],
+                        runtime_context["memory_prompt_points"],
+                        runtime_context["behavior_mode"],
+                    )
+                    prompt_parts = [chat_system_prompt]
+                    for item in request_body.context.history:
+                        prompt_parts.append(f"{item.role.upper()}: {item.content}")
+                    prompt_parts.append(f"USER: {request_body.message}")
+                    prompt_parts.append("ASSISTANT:")
+                    full_prompt = "\n".join(prompt_parts)
+                    response = await cloud_provider.generate(full_prompt, "conversation")
+                    elapsed_ms = int((time.perf_counter() - started) * 1000)
+                    used_provider = override
+                else:
+                    response, elapsed_ms = await request.app.state.ollama_service.generate_response(
+                        message=request_body.message,
+                        history=request_body.context.history,
+                        temperature=request_body.options.temperature,
+                        think=request_body.options.think,
+                        system_prompt=request.app.state.behavior_service.build_chat_prompt(
+                            runtime_context["context_summary"],
+                            runtime_context["memory_prompt_points"],
+                            runtime_context["behavior_mode"],
+                        ),
+                    )
             else:
                 response, elapsed_ms = await request.app.state.ollama_service.generate_response(
                     message=request_body.message,
@@ -198,18 +241,6 @@ async def chat(request_body: ChatRequest, request: Request):
                         runtime_context["behavior_mode"],
                     ),
                 )
-        else:
-            response, elapsed_ms = await request.app.state.ollama_service.generate_response(
-                message=request_body.message,
-                history=request_body.context.history,
-                temperature=request_body.options.temperature,
-                think=request_body.options.think,
-                system_prompt=request.app.state.behavior_service.build_chat_prompt(
-                    runtime_context["context_summary"],
-                    runtime_context["memory_prompt_points"],
-                    runtime_context["behavior_mode"],
-                ),
-            )
 
     request.app.state.persistence_service.upsert_chat_session(
         ChatSessionRecord(
@@ -289,5 +320,8 @@ async def chat(request_body: ChatRequest, request: Request):
         model=request.app.state.settings.model_name,
         provider=used_provider,
         persistence_mode=request.app.state.persistence_service.get_state().mode,
+        route=route,
+        actions_taken=actions_taken,
+        plan=plan,
     )
     return ApiResponse(data=data)

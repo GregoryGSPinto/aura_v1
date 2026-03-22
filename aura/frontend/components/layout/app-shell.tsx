@@ -13,6 +13,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isChatRoute = pathname === "/chat" || pathname === "/";
+  const isLoginRoute = pathname === "/login";
+
+  if (isLoginRoute) return <>{children}</>;
 
   return (
     <>

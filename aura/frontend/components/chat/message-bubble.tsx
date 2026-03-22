@@ -71,18 +71,27 @@ export function MessageBubble({
                 <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
               </span>
             ) : '')}
+            {message.status === 'streaming' && (
+              <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-zinc-400" />
+            )}
           </div>
 
-          {/* Provider badge */}
-          {isAssistant && message.provider && message.provider !== 'ollama' && (
+          {/* Provider / Route badge */}
+          {isAssistant && (message.provider || message.route) && (
             <div className="mt-2 flex items-center gap-1">
-              <span className={cn(
-                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
-                message.provider === 'anthropic' && 'bg-amber-900/30 text-amber-500',
-                message.provider === 'openai' && 'bg-blue-900/30 text-blue-400',
-              )}>
-                via {message.provider === 'anthropic' ? 'Claude' : message.provider === 'openai' ? 'GPT' : message.provider}
-              </span>
+              {message.route === 'agent' || message.route === 'agent_fallback' ? (
+                <span className="inline-flex items-center gap-1 rounded bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
+                  via Agent
+                </span>
+              ) : message.provider && message.provider !== 'ollama' ? (
+                <span className={cn(
+                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                  message.provider === 'anthropic' && 'bg-amber-900/30 text-amber-500',
+                  message.provider === 'openai' && 'bg-blue-900/30 text-blue-400',
+                )}>
+                  via {message.provider === 'anthropic' ? 'Claude' : message.provider === 'openai' ? 'GPT' : message.provider}
+                </span>
+              ) : null}
             </div>
           )}
 
