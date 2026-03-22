@@ -8,7 +8,7 @@ from app.models.project_models import Project
 from app.tools.tool_router import ToolRouter
 
 
-AUTH_HEADERS = {"Authorization": "Bearer change-me"}
+AUTH_HEADERS = {"Authorization": f"Bearer {main_module.container.settings.auth_token}"}
 
 
 class DummyProjectService:

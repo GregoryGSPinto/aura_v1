@@ -434,9 +434,10 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=app_container.settings.allowed_origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        allow_origin_regex=r"https://.*\.(vercel\.app|trycloudflare\.com)",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     @app.middleware("http")
@@ -449,7 +450,7 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response

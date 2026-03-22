@@ -31,17 +31,31 @@ case "${1:-open}" in
       log_info "Acesse: http://localhost:${FRONTEND_PORT}"
     fi
     ;;
+  tunnel)
+    "$SCRIPT_DIR/aura-tunnel" "${2:-start}"
+    ;;
+  remote)
+    "$SCRIPT_DIR/aura-start" start
+    sleep 3
+    "$SCRIPT_DIR/aura-tunnel" start
+    ;;
+  sync)
+    "$SCRIPT_DIR/aura-vercel-sync"
+    ;;
   install)
     "$SCRIPT_DIR/aura-install-autostart"
     ;;
   *)
-    printf 'Uso: aura {start|stop|status|restart|open|install}\n'
+    printf 'Uso: aura {start|stop|status|restart|open|tunnel|remote|sync|install}\n'
     printf '\n'
     printf '  start   — inicia backend + frontend\n'
     printf '  stop    — para tudo (inclusive Ollama)\n'
     printf '  status  — mostra status dos servicos\n'
     printf '  restart — reinicia tudo\n'
     printf '  open    — inicia e abre no browser\n'
+    printf '  tunnel  — gerencia tunel (start|stop|url|restart)\n'
+    printf '  remote  — inicia tudo + tunel (acesso remoto)\n'
+    printf '  sync    — atualiza URL do tunel no frontend\n'
     printf '  install — instala auto-start no login do Mac\n'
     printf '\n'
     printf 'Dica: crie um atalho global:\n'

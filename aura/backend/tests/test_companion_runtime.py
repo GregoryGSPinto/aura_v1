@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from app import main as main_module
 
 
-AUTH_HEADERS = {"Authorization": "Bearer change-me"}
+def _auth_headers():
+    return {"Authorization": f"Bearer {main_module.container.settings.auth_token}"}
 
 
 def build_client(monkeypatch):
@@ -27,7 +28,7 @@ def build_client(monkeypatch):
 def test_companion_overview_exposes_founder_cockpit(monkeypatch):
     client = build_client(monkeypatch)
 
-    response = client.get("/api/v1/companion/overview", headers=AUTH_HEADERS)
+    response = client.get("/api/v1/companion/overview", headers=_auth_headers())
 
     assert response.status_code == 200
     payload = response.json()["data"]
@@ -39,7 +40,7 @@ def test_companion_overview_exposes_founder_cockpit(monkeypatch):
 def test_companion_trust_exposes_policy_state(monkeypatch):
     client = build_client(monkeypatch)
 
-    response = client.get("/api/v1/companion/trust", headers=AUTH_HEADERS)
+    response = client.get("/api/v1/companion/trust", headers=_auth_headers())
 
     assert response.status_code == 200
     payload = response.json()["data"]

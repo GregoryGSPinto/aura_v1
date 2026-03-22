@@ -1,0 +1,19 @@
+# Cloudflare Tunnel config (para uso com dominio proprio)
+# Se usar quick tunnel (sem dominio), este arquivo nao e necessario.
+#
+# Para configurar com dominio:
+#   1. cloudflared tunnel login
+#   2. cloudflared tunnel create aura
+#   3. Copie o TUNNEL_ID e preencha abaixo
+#   4. cloudflared tunnel route dns aura aura-api.seudominio.com
+#   5. cloudflared tunnel --config infra/cloudflare/config.yml run
+
+tunnel: TUNNEL_ID_AQUI
+credentials-file: /Users/user_pc/.cloudflared/TUNNEL_ID_AQUI.json
+
+ingress:
+  - hostname: aura-api.seudominio.com
+    service: http://localhost:8000
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404

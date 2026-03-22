@@ -5,7 +5,7 @@ from app.core.http_security import rate_limiter
 from app.tools.tool_router import ToolRouter
 
 
-AUTH_HEADERS = {"Authorization": "Bearer change-me"}
+AUTH_HEADERS = {"Authorization": f"Bearer {main_module.container.settings.auth_token}"}
 
 
 def build_client(monkeypatch):

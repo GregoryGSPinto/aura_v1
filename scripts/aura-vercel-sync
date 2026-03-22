@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ============================================
+# AURA VERCEL SYNC — Atualiza URL do tunel no frontend
+# ============================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TUNNEL_URL_FILE="$REPO_ROOT/data/logs/tunnel_url.txt"
+FRONTEND_ENV="$REPO_ROOT/aura/frontend/.env.local"
+
+if [ ! -f "$TUNNEL_URL_FILE" ]; then
+    printf '❌ Tunel nao esta ativo. Rode: aura tunnel start\n'
+    exit 1
+fi
+
+TUNNEL_URL=$(cat "$TUNNEL_URL_FILE")
+printf '🌐 URL do tunel: %s\n' "$TUNNEL_URL"
+
+# Atualiza .env.local do frontend
+if [ -f "$FRONTEND_ENV" ] && grep -q "NEXT_PUBLIC_API_URL" "$FRONTEND_ENV" 2>/dev/null; then
+    sed -i '' "s|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=$TUNNEL_URL|" "$FRONTEND_ENV"
+else
+    echo "NEXT_PUBLIC_API_URL=$TUNNEL_URL" >> "$FRONTEND_ENV"
+fi
+
+printf '✅ .env.local atualizado\n'
+printf '\n'
+printf 'Agora faca deploy no Vercel:\n'
+printf '  cd aura/frontend && vercel deploy --prod --force --yes\n'
+printf '\n'
+printf 'Ou configure manualmente em:\n'
+printf '  https://vercel.com → Settings → Environment Variables\n'
+printf '  NEXT_PUBLIC_API_URL = %s\n' "$TUNNEL_URL"
