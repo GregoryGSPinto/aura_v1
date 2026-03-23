@@ -56,6 +56,7 @@ from app.services.tool_executor_service import ToolExecutorService
 from app.services.knowledge_extractor import KnowledgeExtractor
 from app.services.proactive_service import ProactiveService
 from app.services.push_service import PushService
+from app.services.workflow_engine import WorkflowEngine
 from app.aura_os.connectors.github_connector import GitHubConnector
 from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
 from app.aura_os.connectors.gmail_connector import GmailConnector
@@ -255,6 +256,9 @@ class Container:
             vapid_email=self.settings.vapid_email,
         )
 
+        # Workflow Engine
+        self.workflow_engine = WorkflowEngine(push_service=self.push_service)
+
         # Sprint 4: Proactive Service
         self.proactive_service = ProactiveService(
             scheduler=None,
@@ -439,6 +443,7 @@ def create_app() -> FastAPI:
     app.state.tool_executor_service = app_container.tool_executor_service
     app.state.knowledge_extractor = app_container.knowledge_extractor
     app.state.push_service = app_container.push_service
+    app.state.workflow_engine = app_container.workflow_engine
     app.state.proactive_service = app_container.proactive_service
     app.state.github_connector = app_container.github_connector
     app.state.calendar_connector = app_container.calendar_connector

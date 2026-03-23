@@ -13,6 +13,7 @@ import {
   Plus,
   Settings2,
   Wrench,
+  Zap,
   BrainCircuit,
   Trash2,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projetos', icon: FolderKanban },
   { href: '/remote', label: 'Ferramentas', icon: Wrench },
+  { href: '/workflows', label: 'Automacoes', icon: Zap },
   { href: '/memory', label: 'Memoria', icon: BrainCircuit },
   { href: '/settings', label: 'Config', icon: Settings2 },
 ];
