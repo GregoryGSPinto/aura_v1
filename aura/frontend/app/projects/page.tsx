@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   FolderOpen,
@@ -13,7 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { fetchProjects, openProject } from '@/lib/api';
+import { discoverProjects, setActiveProject } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/lib/types';
 
@@ -40,6 +41,7 @@ const frameworkIcons: Record<string, string> = {
 };
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'archived'>('all');
@@ -48,7 +50,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const response = await fetchProjects();
+        const response = await discoverProjects();
         setProjects(response.data.projects);
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -62,7 +64,8 @@ export default function ProjectsPage() {
 
   const handleOpenProject = async (name: string) => {
     try {
-      await openProject(name);
+      await setActiveProject(name);
+      router.push('/chat');
     } catch (error) {
       console.error('Failed to open project:', error);
     }
@@ -169,6 +172,13 @@ export default function ProjectsPage() {
                   {project.description || project.path}
                 </p>
 
+                {(project.language || project.size_mb) && (
+                  <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    {project.language && <Badge variant="default" className="text-xs">{project.language}</Badge>}
+                    {project.size_mb != null && <span>{project.size_mb.toFixed(1)} MB</span>}
+                  </div>
+                )}
+
                 {project.git?.has_repo && (
                   <div className="flex items-center gap-2 text-sm">
                     <GitBranch className="w-4 h-4 text-[var(--gold)]" />
@@ -192,7 +202,8 @@ export default function ProjectsPage() {
                       size="sm"
                       onClick={() => handleOpenProject(project.name)}
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Abrir IDE
                     </Button>
                   </div>
                 </div>

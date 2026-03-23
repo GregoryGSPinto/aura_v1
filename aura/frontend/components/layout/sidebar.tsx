@@ -20,6 +20,7 @@ import {
 
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { ChatModeSelector } from '@/components/chat/mode-selector';
+import { ProjectSwitcher } from '@/components/layout/project-switcher';
 import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
 import { getRelativeTime, cn } from '@/lib/utils';
@@ -66,6 +67,9 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-zinc-950 border-r border-white/5">
+      {/* Project Switcher */}
+      <ProjectSwitcher collapsed={collapsed && !isMobile} />
+
       {/* New Chat Button */}
       <div className="p-3">
         <button

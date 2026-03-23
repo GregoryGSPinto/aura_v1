@@ -49,6 +49,10 @@ export interface Project {
     branch: string | null;
     uncommitted_changes: number;
   };
+  language?: string;
+  size_mb?: number;
+  has_package_json?: boolean;
+  has_requirements_txt?: boolean;
 }
 
 export interface ChatMessage {

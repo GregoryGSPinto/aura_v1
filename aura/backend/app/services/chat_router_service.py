@@ -94,6 +94,17 @@ class ChatRouterService:
     def _should_use_agent(self, intent: str) -> bool:
         return intent in ("action", "research", "automation", "system")
 
+    def _inject_active_project(self, system_prompt: str, context: dict) -> str:
+        """Append active project context to system prompt if available."""
+        active_project = context.get("active_project")
+        if active_project:
+            name = active_project.get("name", "unknown")
+            language = active_project.get("language", "unknown")
+            path = active_project.get("path", "")
+            branch = active_project.get("branch", "")
+            system_prompt += f"\n\nProjeto ativo: {name} ({language})\nPath: {path}\nBranch: {branch}"
+        return system_prompt
+
     async def _route_to_chat(self, message: str, context: dict, intent: str) -> dict:
         logger.info("[ChatRouter] Route: CHAT (intent=%s)", intent)
 
@@ -102,6 +113,8 @@ class ChatRouterService:
             context.get("memory_prompt_points", []),
             context.get("behavior_mode", "companion"),
         )
+
+        system_prompt = self._inject_active_project(system_prompt, context)
 
         # Inject tools block if available
         if self.tool_schema:
@@ -139,6 +152,18 @@ class ChatRouterService:
 
     async def _route_to_agent(self, message: str, context: dict, intent: str) -> dict:
         logger.info("[ChatRouter] Route: AGENT (intent=%s)", intent)
+
+        # Inject active project into agent context
+        active_project = context.get("active_project")
+        if active_project:
+            name = active_project.get("name", "unknown")
+            language = active_project.get("language", "unknown")
+            path = active_project.get("path", "")
+            branch = active_project.get("branch", "")
+            project_context = f"\n\nProjeto ativo: {name} ({language})\nPath: {path}\nBranch: {branch}"
+            logger.info("[ChatRouter] Agent context enriched with active project: %s", name)
+            # Store enriched context for downstream usage
+            context["_active_project_prompt"] = project_context
 
         if self.governance:
             preview = self.governance.preview(message)

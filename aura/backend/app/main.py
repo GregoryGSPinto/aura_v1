@@ -444,6 +444,7 @@ def create_app() -> FastAPI:
     app.state.knowledge_extractor = app_container.knowledge_extractor
     app.state.push_service = app_container.push_service
     app.state.workflow_engine = app_container.workflow_engine
+    app.state.active_project = None
     app.state.proactive_service = app_container.proactive_service
     app.state.github_connector = app_container.github_connector
     app.state.calendar_connector = app_container.calendar_connector

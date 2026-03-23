@@ -136,6 +136,21 @@ export async function openProject(name: string): Promise<ApiResponse<{ message: 
   });
 }
 
+export async function discoverProjects(): Promise<ApiResponse<{ projects: Project[] }>> {
+  return fetchApi('/api/v1/projects/discover');
+}
+
+export async function getActiveProject(): Promise<ApiResponse<{ project: Project | null }>> {
+  return fetchApi('/api/v1/projects/active');
+}
+
+export async function setActiveProject(projectName: string): Promise<ApiResponse<{ project: Project }>> {
+  return fetchApi('/api/v1/projects/active', {
+    method: 'POST',
+    body: JSON.stringify({ project: projectName }),
+  });
+}
+
 // Chat
 export async function sendChat(
   message: string,
