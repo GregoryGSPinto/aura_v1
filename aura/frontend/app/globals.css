@@ -352,3 +352,40 @@ html.light * {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ── Desktop Workspace Engine ──────────────────────── */
+
+/* Workspace panel transitions */
+.workspace-panel {
+  transition: flex 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease-out,
+              transform 200ms ease-out;
+}
+
+/* Command palette animations */
+.command-palette-backdrop {
+  animation: backdrop-in 150ms ease-out;
+}
+
+.command-palette-modal {
+  animation: cp-scale-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes cp-scale-in {
+  from { transform: scale(0.95) translateY(-10px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Context sidebar */
+.context-sidebar {
+  transition: width 200ms ease-out;
+}
+
+.context-content {
+  animation: fade-slide-in 200ms ease-out;
+}
+
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}

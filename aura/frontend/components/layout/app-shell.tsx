@@ -12,24 +12,36 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/top-bar";
 import { StatusBar } from "@/components/layout/status-bar";
 import { useDevice } from "@/hooks/use-device";
+import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useWorkspaceStore } from "@/lib/workspace-store";
+import { useChatStore } from "@/lib/chat-store";
 
-export function AppShell({ children }: { children: ReactNode }) {
+function DesktopShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isChatRoute = pathname === "/chat" || pathname === "/";
-  const isLoginRoute = pathname === "/login";
-  const { isMobile } = useDevice();
+  const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
+  const sidebarCollapsed = useChatStore((s) => s.sidebarCollapsed);
 
-  // Auto-subscribe to push after login
+  // Global keyboard shortcuts
+  useGlobalShortcuts();
+
+  // Sync sidebar collapsed state from workspace preset
+  const setSidebarCollapsed = useChatStore((s) => s.setSidebarCollapsed);
+  const preset = useWorkspaceStore((s) => s.getActivePreset());
   useEffect(() => {
-    if (!isLoginRoute) {
-      subscribeToPush().catch(() => {});
+    if (isChatRoute) {
+      if (preset.layout.leftSidebar === 'hidden') {
+        setSidebarCollapsed(true);
+      } else if (preset.layout.leftSidebar === 'collapsed') {
+        setSidebarCollapsed(true);
+      } else {
+        setSidebarCollapsed(false);
+      }
     }
-  }, [isLoginRoute]);
+  }, [activeWorkspace, isChatRoute, preset.layout.leftSidebar, setSidebarCollapsed]);
 
-  if (isLoginRoute) return <>{children}</>;
-
-  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+  const hideSidebar = isChatRoute && preset.layout.leftSidebar === 'hidden';
 
   return (
     <>
@@ -38,10 +50,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <AppHeader onOpenSidebar={() => setMobileSidebarOpen(true)} />
 
         <div className="flex min-h-0 flex-1">
-          <Sidebar
-            mobileOpen={mobileSidebarOpen}
-            onCloseMobile={() => setMobileSidebarOpen(false)}
-          />
+          {!hideSidebar && (
+            <Sidebar
+              mobileOpen={mobileSidebarOpen}
+              onCloseMobile={() => setMobileSidebarOpen(false)}
+            />
+          )}
 
           <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
             {isChatRoute ? (
@@ -61,4 +75,23 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </>
   );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname() ?? "/";
+  const isLoginRoute = pathname === "/login";
+  const { isMobile } = useDevice();
+
+  // Auto-subscribe to push after login
+  useEffect(() => {
+    if (!isLoginRoute) {
+      subscribeToPush().catch(() => {});
+    }
+  }, [isLoginRoute]);
+
+  if (isLoginRoute) return <>{children}</>;
+
+  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+
+  return <DesktopShell>{children}</DesktopShell>;
 }

@@ -1,20 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
-  FolderKanban,
-  LayoutDashboard,
   LogOut,
   MessageSquareText,
   Plus,
-  Settings2,
-  Wrench,
-  Zap,
-  BrainCircuit,
   Trash2,
 } from 'lucide-react';
 
@@ -24,16 +17,6 @@ import { ProjectSwitcher } from '@/components/layout/project-switcher';
 import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
 import { getRelativeTime, cn } from '@/lib/utils';
-
-const navItems = [
-  { href: '/chat', label: 'Chat', icon: MessageSquareText },
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects', label: 'Projetos', icon: FolderKanban },
-  { href: '/remote', label: 'Ferramentas', icon: Wrench },
-  { href: '/workflows', label: 'Automacoes', icon: Zap },
-  { href: '/memory', label: 'Memoria', icon: BrainCircuit },
-  { href: '/settings', label: 'Config', icon: Settings2 },
-];
 
 function SidebarContent({
   collapsed,
@@ -169,38 +152,6 @@ function SidebarContent({
           </div>
         </div>
       )}
-
-      {/* Navigation */}
-      <div className="border-t border-white/5 p-2">
-        {(!collapsed || isMobile) && (
-          <p className="px-2 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
-            Navegacao
-          </p>
-        )}
-        <nav className="space-y-0.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onCloseMobile}
-                className={cn(
-                  'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition',
-                  isActive
-                    ? 'bg-white/5 text-zinc-200'
-                    : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300',
-                  collapsed && !isMobile && 'justify-center px-2',
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {(!collapsed || isMobile) && <span>{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
 
       {/* Logout + Collapse Toggle */}
       <div className="border-t border-white/5 p-2 space-y-0.5">
