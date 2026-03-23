@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================
 # AURA TUNNEL — Expoe o backend na internet
-# Usa Cloudflare Tunnel (gratis, seguro)
+# Usa ngrok com URL fixa (dominio reservado)
 # ============================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,67 +11,41 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_DIR="$REPO_ROOT/data/logs"
 TUNNEL_PID_FILE="$LOG_DIR/tunnel.pid"
 TUNNEL_URL_FILE="$LOG_DIR/tunnel_url.txt"
+NGROK_URL="https://communistical-seedier-alisia.ngrok-free.dev"
 
 mkdir -p "$LOG_DIR"
 
 start_tunnel() {
     if [ -f "$TUNNEL_PID_FILE" ] && kill -0 "$(cat "$TUNNEL_PID_FILE")" 2>/dev/null; then
         printf '✅ Tunel ja esta rodando (PID %s)\n' "$(cat "$TUNNEL_PID_FILE")"
-        if [ -f "$TUNNEL_URL_FILE" ]; then
-            printf '   URL: %s\n' "$(cat "$TUNNEL_URL_FILE")"
-        fi
+        printf '   URL: %s\n' "$NGROK_URL"
         return
     fi
 
-    # Verifica se cloudflared esta instalado
-    if command -v cloudflared &>/dev/null; then
-        printf '🌐 Iniciando tunel Cloudflare...\n'
-
-        nohup cloudflared tunnel --url http://localhost:8000 \
-            > "$LOG_DIR/tunnel.log" 2>&1 &
-        echo $! > "$TUNNEL_PID_FILE"
-
-        # Espera a URL aparecer no log
-        for _ in $(seq 1 15); do
-            sleep 2
-            URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG_DIR/tunnel.log" 2>/dev/null | head -1)
-            if [ -n "$URL" ]; then
-                echo "$URL" > "$TUNNEL_URL_FILE"
-                printf '✅ Tunel ativo!\n'
-                printf '   URL: %s\n' "$URL"
-                printf '\n'
-                printf '   Configure no Vercel:\n'
-                printf '   NEXT_PUBLIC_API_URL=%s\n' "$URL"
-                return
-            fi
-        done
-        printf '⚠️  Tunel iniciou mas URL nao detectada. Verifique: cat %s/tunnel.log\n' "$LOG_DIR"
-
-    elif command -v ngrok &>/dev/null; then
-        printf '🌐 Iniciando tunel ngrok...\n'
-
-        nohup ngrok http 8000 --log=stdout \
-            > "$LOG_DIR/tunnel.log" 2>&1 &
-        echo $! > "$TUNNEL_PID_FILE"
-
-        sleep 5
-        URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null || echo "")
-        if [ -n "$URL" ]; then
-            echo "$URL" > "$TUNNEL_URL_FILE"
-            printf '✅ Tunel ngrok ativo!\n'
-            printf '   URL: %s\n' "$URL"
-            printf '\n'
-            printf '   Configure no Vercel:\n'
-            printf '   NEXT_PUBLIC_API_URL=%s\n' "$URL"
-        else
-            printf '⚠️  ngrok iniciou mas URL nao detectada.\n'
-        fi
-    else
-        printf '❌ Nenhum tunel disponivel.\n'
-        printf '   Instale: brew install cloudflare/cloudflare/cloudflared\n'
-        printf '   Ou: brew install ngrok\n'
+    if ! command -v ngrok &>/dev/null; then
+        printf '❌ ngrok nao instalado.\n'
+        printf '   Instale: brew install ngrok\n'
         exit 1
+    fi
+
+    # Mata qualquer ngrok anterior
+    pkill -f ngrok 2>/dev/null || true
+    sleep 1
+
+    printf '🌐 Iniciando tunel ngrok (URL fixa)...\n'
+
+    nohup ngrok http 8000 --url communistical-seedier-alisia.ngrok-free.dev --log=stdout \
+        > "$LOG_DIR/tunnel.log" 2>&1 &
+    echo $! > "$TUNNEL_PID_FILE"
+    echo "$NGROK_URL" > "$TUNNEL_URL_FILE"
+
+    sleep 3
+
+    if kill -0 "$(cat "$TUNNEL_PID_FILE")" 2>/dev/null; then
+        printf '✅ Tunel ngrok ativo!\n'
+        printf '   URL: %s\n' "$NGROK_URL"
+    else
+        printf '⚠️  ngrok pode ter falhado. Verifique: cat %s/tunnel.log\n' "$LOG_DIR"
     fi
 }
 
@@ -88,8 +62,7 @@ stop_tunnel() {
     fi
 
     # Mata processos restantes
-    pkill -f "cloudflared tunnel" 2>/dev/null || true
-    pkill -f "ngrok http" 2>/dev/null || true
+    pkill -f ngrok 2>/dev/null || true
 }
 
 show_url() {

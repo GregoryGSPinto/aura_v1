@@ -32,6 +32,7 @@ BACKEND_LOGFILE="${AURA_LOG_DIR}/backend.log"
 FRONTEND_LOGFILE="${AURA_LOG_DIR}/frontend.log"
 TUNNEL_LOGFILE="${AURA_LOG_DIR}/tunnel.log"
 TUNNEL_URL_FILE="${REPO_ROOT}/data/logs/tunnel_url.txt"
+NGROK_URL="https://communistical-seedier-alisia.ngrok-free.dev"
 
 BACKEND_HEALTH_URL="http://localhost:${BACKEND_PORT}/api/v1/healthz"
 
@@ -84,34 +85,32 @@ start_frontend() {
 }
 
 start_tunnel() {
-  if ! command -v cloudflared &>/dev/null; then
-    log_warn "cloudflared nao instalado. Tunel desativado."
+  if ! command -v ngrok &>/dev/null; then
+    log_warn "ngrok nao instalado. Tunel desativado."
     return 0
   fi
 
-  # Mata tunel anterior
-  pkill -f "cloudflared tunnel" 2>/dev/null || true
+  # Mata qualquer ngrok anterior
+  pkill -f ngrok 2>/dev/null || true
   sleep 1
 
   mkdir -p "$(dirname "$TUNNEL_URL_FILE")"
 
-  log_info "Iniciando tunel Cloudflare..."
-  nohup cloudflared tunnel --url http://localhost:${BACKEND_PORT} \
+  log_info "Iniciando tunel ngrok (URL fixa)..."
+  nohup ngrok http "$BACKEND_PORT" --url communistical-seedier-alisia.ngrok-free.dev --log=stdout \
     >"$TUNNEL_LOGFILE" 2>&1 &
   write_pidfile "$TUNNEL_PIDFILE" "$!"
 
-  # Espera URL aparecer (nao bloqueante — max 40s em background)
-  local url
-  for _ in $(seq 1 20); do
-    sleep 2
-    url="$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOGFILE" 2>/dev/null | head -1 || true)"
-    if [[ -n "$url" ]]; then
-      echo "$url" > "$TUNNEL_URL_FILE"
-      log_info "Tunel ativo: $url"
-      return 0
-    fi
-  done
-  log_warn "Tunel iniciou mas URL nao detectada ainda. Verifique: cat $TUNNEL_LOGFILE"
+  # URL fixa — salva direto
+  echo "$NGROK_URL" > "$TUNNEL_URL_FILE"
+  sleep 3
+
+  # Verifica se ngrok ainda esta de pe
+  if is_running_pid "$(read_pidfile "$TUNNEL_PIDFILE" || true)"; then
+    log_info "Tunel ativo: $NGROK_URL"
+  else
+    log_warn "ngrok pode ter falhado. Verifique: cat $TUNNEL_LOGFILE"
+  fi
 }
 
 stop_all() {
@@ -125,7 +124,7 @@ stop_all() {
     log_info "  Tunel parado."
   fi
   remove_pidfile "$TUNNEL_PIDFILE"
-  pkill -f "cloudflared tunnel" 2>/dev/null || true
+  pkill -f ngrok 2>/dev/null || true
   rm -f "$TUNNEL_URL_FILE"
 
   # Para backend

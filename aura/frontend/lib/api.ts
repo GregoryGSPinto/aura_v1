@@ -71,6 +71,7 @@ async function fetchApi<T>(
   const url = normalizeUrl(endpoint);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
     ...((options?.headers as Record<string, string>) || {}),
   };
 
@@ -177,7 +178,10 @@ export async function chatStream(
   onError: (error: string) => void,
 ): Promise<void> {
   const url = normalizeUrl('/api/v1/chat/stream');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
   const streamToken = useAuthStore.getState().token || clientEnv.auraToken;
   if (streamToken) headers['Authorization'] = `Bearer ${streamToken}`;
 

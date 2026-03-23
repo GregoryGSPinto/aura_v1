@@ -35,6 +35,9 @@
     <string>__USER_HOME__</string>
   </dict>
 
+  <key>AbandonProcessGroup</key>
+  <true/>
+
   <key>ThrottleInterval</key>
   <integer>30</integer>
 </dict>
