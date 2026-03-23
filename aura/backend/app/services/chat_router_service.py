@@ -110,7 +110,7 @@ class ChatRouterService:
 
         history = context.get("history", [])
         response_text, elapsed_ms = await self.ollama.generate_response(
-            message, history, system_prompt=system_prompt,
+            message, history, think=False, system_prompt=system_prompt,
         )
 
         # Check for tool calls in response

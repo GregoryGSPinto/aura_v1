@@ -7,9 +7,15 @@ import httpx
 from app.core.config import Settings
 from app.core.exceptions import ModelUnavailableError, OllamaUnavailableError
 from app.models.chat_models import ChatHistoryItem
-from app.prompts.aura_absolute import AURA_ABSOLUTE_PROMPT
-
-SYSTEM_PROMPT = AURA_ABSOLUTE_PROMPT
+SYSTEM_PROMPT = """Voce e Aura — AI companion pessoal do Gregory.
+Responda em portugues brasileiro, de forma direta e breve.
+Tom: parceira operacional, confiante, sem enrolacao.
+Gregory e engenheiro de software e maquinista da EFVM (MG, Brasil).
+Projetos: Aura (voce), EFVM360, Black Belt.
+Regras: sem bajulacao, sem disclaimers de IA, sem "como posso ajudar".
+Se Gregory diz "bora" = execute, pare de planejar.
+Se e depois das 22h, sugira descanso.
+Familia > trabalho, sempre."""
 
 
 class OllamaService:
@@ -61,21 +67,20 @@ class OllamaService:
         think: bool = False,
         system_prompt: Optional[str] = None,
     ) -> tuple[str, int]:
-        prompt_parts = [system_prompt.strip() if system_prompt else SYSTEM_PROMPT]
+        # Always use condensed local prompt — full prompt is too large for local models
+        messages = []
+        messages.append({"role": "system", "content": SYSTEM_PROMPT})
         for item in history:
-            prompt_parts.append(f"{item.role.upper()}: {item.content}")
-        prompt_parts.append(f"USER: {message}")
-        prompt_parts.append("ASSISTANT:")
-        prompt = "\n".join(prompt_parts)
+            messages.append({"role": item.role, "content": item.content})
+        messages.append({"role": "user", "content": message})
 
         payload = {
             "model": self.settings.model_name,
-            "prompt": prompt,
+            "messages": messages,
             "stream": False,
             "think": False,
             "options": {
                 "temperature": temperature,
-                "num_predict": 512,
             },
         }
 
@@ -87,7 +92,7 @@ class OllamaService:
                 read=float(self.settings.llm_timeout),
             )
             async with httpx.AsyncClient(timeout=timeout) as client:
-                response = await client.post(f"{self.settings.ollama_url}/api/generate", json=payload)
+                response = await client.post(f"{self.settings.ollama_url}/api/chat", json=payload)
                 response.raise_for_status()
                 data = response.json()
         except httpx.ConnectError as exc:
@@ -124,7 +129,8 @@ class OllamaService:
             ) from exc
 
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        return data.get("response", "").strip(), elapsed_ms
+        content = data.get("message", {}).get("content", "")
+        return content.strip(), elapsed_ms
 
     async def generate_stream(
         self,
@@ -133,9 +139,9 @@ class OllamaService:
         system_prompt: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream tokens from Ollama using /api/chat with stream=True."""
+        # Always use condensed local prompt — full prompt is too large for local models
         messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "system", "content": SYSTEM_PROMPT})
         for item in history:
             if hasattr(item, "role"):
                 messages.append({"role": item.role, "content": item.content})
@@ -147,7 +153,8 @@ class OllamaService:
             "model": self.settings.model_name,
             "messages": messages,
             "stream": True,
-            "options": {"num_predict": 512, "temperature": 0.2},
+            "think": False,
+            "options": {"temperature": 0.2},
         }
 
         timeout = httpx.Timeout(timeout=float(self.settings.llm_timeout), connect=5.0, read=float(self.settings.llm_timeout))
