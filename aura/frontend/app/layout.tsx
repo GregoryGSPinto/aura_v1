@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import './globals.css';
 import { AppProvider } from '@/components/providers/app-provider';
 import { AppShell } from '@/components/layout/app-shell';
+import { ServiceWorkerRegister } from '@/components/pwa/sw-register';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   description: 'Assistente pessoal com IA local, chat centralizado e automação controlada.',
   keywords: ['AI', 'assistant', 'automation', 'macOS', 'local-first'],
   authors: [{ name: 'Aura' }],
-  manifest: '/site.webmanifest',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -53,10 +54,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <AppProvider>
+          <ServiceWorkerRegister />
           <AppShell>{children}</AppShell>
           <Toaster
             position="bottom-right"
