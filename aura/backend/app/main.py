@@ -58,7 +58,7 @@ from app.services.proactive_service import ProactiveService
 from app.aura_os.connectors.github_connector import GitHubConnector
 from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
 from app.aura_os.connectors.gmail_connector import GmailConnector
-from app.tools import BrowserTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
+from app.tools import BrowserTool, ClaudeTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
 
 
 class NullVoicePipeline:
@@ -157,6 +157,7 @@ class Container:
         self.system_tool = SystemTool(self.settings)
         self.llm_tool = LLMTool(self.ollama_service)
         self.project_tool = ProjectTool(self.project_service, self.terminal_tool, self.vscode_tool)
+        self.claude_tool = ClaudeTool()
         self.tool_router = ToolRouter()
         self.command_service = CommandService(
             self.persistence_service,
@@ -210,6 +211,7 @@ class Container:
                 "project": self.project_tool,
                 "system": self.system_tool,
                 "research": self.research_tool,
+                "claude": self.claude_tool,
             },
             governance=self.action_governance_service,
             persistence=self.persistence_service,
@@ -410,6 +412,7 @@ def create_app() -> FastAPI:
     app.state.aura_os = app_container.aura_os
     app.state.voice_pipeline = app_container.voice_pipeline
     app.state.research_tool = app_container.research_tool
+    app.state.claude_tool = app_container.claude_tool
     app.state.routine_service = app_container.routine_service
     app.state.token_budget_service = app_container.token_budget_service
     app.state.ollama_engine_service = app_container.ollama_engine_service

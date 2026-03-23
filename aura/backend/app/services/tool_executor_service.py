@@ -69,6 +69,9 @@ class ToolExecutorService:
         high_risk_tools = ["terminal.execute", "filesystem.write"]
         if tool_name in high_risk_tools:
             return {"blocked": False, "requires_confirmation": True, "risk_level": "high"}
+        elevated_tools = ["claude.execute"]
+        if tool_name in elevated_tools:
+            return {"blocked": False, "requires_confirmation": True, "risk_level": "elevated"}
         return {"blocked": False, "requires_confirmation": False, "risk_level": "low"}
 
     def _log_execution(self, tool_name: str, params: dict, result, status: str):

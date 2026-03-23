@@ -17,6 +17,17 @@ class ToolSchemaService:
     def get_available_tools(self) -> list:
         tools = [
             {
+                "name": "claude.execute",
+                "description": "Envia um prompt para o Claude Code e retorna o resultado. Usa para tarefas complexas de código, análise, commits, deploys.",
+                "parameters": {
+                    "prompt": {"type": "string", "description": "Prompt a enviar para o Claude Code", "required": True},
+                    "working_dir": {"type": "string", "description": "Diretório de trabalho (default: aura_v1)", "required": False},
+                },
+                "risk_level": "elevated",
+                "requires_confirmation": True,
+                "examples": ["Analisa o código do backend e sugere melhorias", "Faz commit das mudanças com mensagem descritiva"],
+            },
+            {
                 "name": "terminal.execute",
                 "description": "Executa um comando no terminal do Mac. Apenas comandos da whitelist.",
                 "parameters": {"command": {"type": "string", "description": "Comando a executar", "required": True}},
