@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useChatStore } from '@/lib/chat-store';
 import { useEditorStore } from '@/lib/editor-store';
+import { useGitStore } from '@/lib/git-store';
 import { usePreviewStore } from '@/lib/preview-store';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
@@ -21,6 +22,8 @@ export function StatusBar() {
   const cursorLine = useEditorStore((s) => s.cursorLine);
   const cursorCol = useEditorStore((s) => s.cursorCol);
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
+  const gitBranch = useGitStore((s) => s.branch);
+  const gitAhead = useGitStore((s) => s.ahead);
   const previewOpen = usePreviewStore((s) => s.isOpen);
   const previewUrl = usePreviewStore((s) => s.targetUrl);
 
@@ -59,6 +62,12 @@ export function StatusBar() {
           <>
             <span className="text-zinc-700">&middot;</span>
             <span className="hidden sm:inline">{sessionType}</span>
+          </>
+        )}
+        {gitBranch && (
+          <>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="text-orange-400">{gitBranch}{gitAhead > 0 ? ` ↑${gitAhead}` : ''}</span>
           </>
         )}
         {previewPort && (

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Code2, Globe, Menu, MessageSquareText, Settings2, SquareTerminal } from 'lucide-react';
+import { Code2, GitBranch, Globe, Menu, MessageSquareText, Settings2, SquareTerminal } from 'lucide-react';
 
 import { BrainSelector } from '@/components/chat/brain-selector';
 import { EngineToggle } from '@/components/chat/engine-toggle';
 import { useAuraPreferences } from '@/components/providers/app-provider';
+import { useGitStore } from '@/lib/git-store';
 import { usePreviewStore } from '@/lib/preview-store';
 import { useTerminalStore } from '@/lib/terminal-store';
 import { cn } from '@/lib/utils';
@@ -70,6 +71,8 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   const isTerminalOpen = useTerminalStore((s) => s.isOpen);
   const togglePreview = usePreviewStore((s) => s.togglePreview);
   const isPreviewOpen = usePreviewStore((s) => s.isOpen);
+  const toggleGit = useGitStore((s) => s.toggleGit);
+  const isGitOpen = useGitStore((s) => s.isOpen);
   const [ideMode, setIdeMode] = useState(false);
 
   type AuraWindow = Window & { __auraIdeMode?: boolean; __auraToggleIdeMode?: () => void };
@@ -158,6 +161,18 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
           title="Preview (Ctrl+Shift+V)"
         >
           <Globe className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={toggleGit}
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white/5',
+            isGitOpen ? 'text-orange-400 bg-white/5' : 'text-zinc-400 hover:text-zinc-200',
+          )}
+          aria-label="Git (Ctrl+Shift+G)"
+          title="Git (Ctrl+Shift+G)"
+        >
+          <GitBranch className="h-5 w-5" />
         </button>
         <StatusDot />
         <Link

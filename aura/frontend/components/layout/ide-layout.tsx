@@ -20,12 +20,14 @@ import type { ReactNode } from 'react';
 import {
   Code2,
   FolderTree,
+  GitBranch,
   Globe,
   MessageSquareText,
   SquareTerminal,
 } from 'lucide-react';
 
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useGitStore } from '@/lib/git-store';
 import { usePreviewStore } from '@/lib/preview-store';
 import { useTerminalStore } from '@/lib/terminal-store';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,7 @@ type IDELayoutProps = {
   chat: ReactNode;
   terminal: ReactNode;
   preview: ReactNode;
+  gitPanel: ReactNode;
 };
 
 // localStorage helpers
@@ -58,13 +61,15 @@ function saveBool(key: string, val: boolean) {
   localStorage.setItem(key, String(val));
 }
 
-export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDELayoutProps) {
+export function IDELayout({ fileExplorer, editor, chat, terminal, preview, gitPanel }: IDELayoutProps) {
   const [showFiles, setShowFiles] = useState(() => loadBool('ide-show-files', true));
   const [showChat] = useState(() => loadBool('ide-show-chat', true));
   const showTerminal = useTerminalStore((s) => s.isOpen);
   const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
   const showPreview = usePreviewStore((s) => s.isOpen);
   const togglePreview = usePreviewStore((s) => s.togglePreview);
+  const showGit = useGitStore((s) => s.isOpen);
+  const toggleGit = useGitStore((s) => s.toggleGit);
 
   const [filesWidth, setFilesWidth] = useState(() => loadNumber('ide-files-w', 200));
   const [chatWidth, setChatWidth] = useState(() => loadNumber('ide-chat-w', 320));
@@ -95,6 +100,8 @@ export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDE
     toggleTerminal,
     showPreview,
     togglePreview,
+    showGit,
+    toggleGit,
     ideMode: true,
     toggleIdeMode: () => {},
     onQuickOpen,
@@ -141,7 +148,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDE
   }, [dragging, handleMouseMove, handleMouseUp]);
 
   // Mobile tabs
-  const [mobileTab, setMobileTab] = useState<'chat' | 'files' | 'editor' | 'terminal' | 'preview'>('chat');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'files' | 'editor' | 'terminal' | 'preview' | 'git'>('chat');
 
   return (
     <>
@@ -158,6 +165,18 @@ export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDE
               className="group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center bg-white/5 transition hover:bg-blue-500/30"
             >
               <div className="h-8 w-0.5 rounded-full bg-zinc-700 transition group-hover:bg-blue-400" />
+            </div>
+          </>
+        )}
+
+        {/* Git panel */}
+        {showGit && (
+          <>
+            <div className="h-full overflow-hidden" style={{ width: 260 }}>
+              {gitPanel}
+            </div>
+            <div className="group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center bg-white/5 transition hover:bg-purple-500/30">
+              <div className="h-8 w-0.5 rounded-full bg-zinc-700 transition group-hover:bg-purple-400" />
             </div>
           </>
         )}
@@ -227,6 +246,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDE
           {mobileTab === 'editor' && editor}
           {mobileTab === 'terminal' && terminal}
           {mobileTab === 'preview' && preview}
+          {mobileTab === 'git' && gitPanel}
         </div>
 
         <div className="flex shrink-0 border-t border-white/5 bg-zinc-950">
@@ -236,6 +256,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDE
             { id: 'editor' as const, label: 'Editor', icon: Code2 },
             { id: 'terminal' as const, label: 'Term', icon: SquareTerminal },
             { id: 'preview' as const, label: 'Preview', icon: Globe },
+            { id: 'git' as const, label: 'Git', icon: GitBranch },
           ].map((tab) => {
             const Icon = tab.icon;
             return (

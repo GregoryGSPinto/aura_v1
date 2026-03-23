@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ChatWorkspace } from '@/components/chat/chat-workspace';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { FileExplorer } from '@/components/editor/file-explorer';
+import { GitPanel } from '@/components/editor/git-panel';
 import { PreviewPanel } from '@/components/editor/preview-panel';
 import { IDELayout } from '@/components/layout/ide-layout';
 import { SplitView } from '@/components/layout/split-view';
@@ -60,6 +61,7 @@ export default function ChatPage() {
         chat={<ChatWorkspace />}
         terminal={<TerminalPanel />}
         preview={<PreviewPanel />}
+        gitPanel={<GitPanel />}
       />
     );
   }

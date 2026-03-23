@@ -11,6 +11,8 @@ type IDEState = {
   toggleTerminal: () => void;
   showPreview: boolean;
   togglePreview: () => void;
+  showGit: boolean;
+  toggleGit: () => void;
   ideMode: boolean;
   toggleIdeMode: () => void;
   onQuickOpen: () => void;
@@ -61,6 +63,13 @@ export function useKeyboardShortcuts(state: IDEState) {
       if (e.ctrlKey && e.shiftKey && e.key === 'V') {
         e.preventDefault();
         state.togglePreview();
+        return;
+      }
+
+      // Ctrl+Shift+G — toggle git panel
+      if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+        e.preventDefault();
+        state.toggleGit();
         return;
       }
 
