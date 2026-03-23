@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Code2, Menu, MessageSquareText, Settings2, SquareTerminal } from 'lucide-react';
+import { Code2, Globe, Menu, MessageSquareText, Settings2, SquareTerminal } from 'lucide-react';
 
 import { BrainSelector } from '@/components/chat/brain-selector';
 import { EngineToggle } from '@/components/chat/engine-toggle';
 import { useAuraPreferences } from '@/components/providers/app-provider';
+import { usePreviewStore } from '@/lib/preview-store';
 import { useTerminalStore } from '@/lib/terminal-store';
 import { cn } from '@/lib/utils';
 
@@ -67,6 +68,8 @@ function StatusDot() {
 export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
   const isTerminalOpen = useTerminalStore((s) => s.isOpen);
+  const togglePreview = usePreviewStore((s) => s.togglePreview);
+  const isPreviewOpen = usePreviewStore((s) => s.isOpen);
   const [ideMode, setIdeMode] = useState(false);
 
   type AuraWindow = Window & { __auraIdeMode?: boolean; __auraToggleIdeMode?: () => void };
@@ -143,6 +146,18 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
           title="Terminal (Ctrl+`)"
         >
           <SquareTerminal className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={togglePreview}
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white/5',
+            isPreviewOpen ? 'text-green-400 bg-white/5' : 'text-zinc-400 hover:text-zinc-200',
+          )}
+          aria-label="Preview (Ctrl+Shift+V)"
+          title="Preview (Ctrl+Shift+V)"
+        >
+          <Globe className="h-5 w-5" />
         </button>
         <StatusDot />
         <Link

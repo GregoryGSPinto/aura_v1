@@ -9,6 +9,8 @@ type IDEState = {
   toggleFiles: () => void;
   showTerminal: boolean;
   toggleTerminal: () => void;
+  showPreview: boolean;
+  togglePreview: () => void;
   ideMode: boolean;
   toggleIdeMode: () => void;
   onQuickOpen: () => void;
@@ -52,6 +54,13 @@ export function useKeyboardShortcuts(state: IDEState) {
       if (e.ctrlKey && !e.shiftKey && e.key === 'p') {
         e.preventDefault();
         state.onQuickOpen();
+        return;
+      }
+
+      // Ctrl+Shift+V — toggle preview panel
+      if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        state.togglePreview();
         return;
       }
 

@@ -20,11 +20,13 @@ import type { ReactNode } from 'react';
 import {
   Code2,
   FolderTree,
+  Globe,
   MessageSquareText,
   SquareTerminal,
 } from 'lucide-react';
 
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { usePreviewStore } from '@/lib/preview-store';
 import { useTerminalStore } from '@/lib/terminal-store';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +35,7 @@ type IDELayoutProps = {
   editor: ReactNode;
   chat: ReactNode;
   terminal: ReactNode;
+  preview: ReactNode;
 };
 
 // localStorage helpers
@@ -55,11 +58,13 @@ function saveBool(key: string, val: boolean) {
   localStorage.setItem(key, String(val));
 }
 
-export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutProps) {
+export function IDELayout({ fileExplorer, editor, chat, terminal, preview }: IDELayoutProps) {
   const [showFiles, setShowFiles] = useState(() => loadBool('ide-show-files', true));
   const [showChat] = useState(() => loadBool('ide-show-chat', true));
   const showTerminal = useTerminalStore((s) => s.isOpen);
   const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
+  const showPreview = usePreviewStore((s) => s.isOpen);
+  const togglePreview = usePreviewStore((s) => s.togglePreview);
 
   const [filesWidth, setFilesWidth] = useState(() => loadNumber('ide-files-w', 200));
   const [chatWidth, setChatWidth] = useState(() => loadNumber('ide-chat-w', 320));
@@ -88,6 +93,8 @@ export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutPro
     toggleFiles: () => setShowFiles((s) => !s),
     showTerminal,
     toggleTerminal,
+    showPreview,
+    togglePreview,
     ideMode: true,
     toggleIdeMode: () => {},
     onQuickOpen,
@@ -134,7 +141,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutPro
   }, [dragging, handleMouseMove, handleMouseUp]);
 
   // Mobile tabs
-  const [mobileTab, setMobileTab] = useState<'chat' | 'files' | 'editor' | 'terminal'>('chat');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'files' | 'editor' | 'terminal' | 'preview'>('chat');
 
   return (
     <>
@@ -155,11 +162,25 @@ export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutPro
           </>
         )}
 
-        {/* Center: Editor + Terminal */}
+        {/* Center: Editor + Preview + Terminal */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          {/* Editor */}
-          <div className="flex-1 overflow-hidden">
-            {editor}
+          {/* Editor + Preview */}
+          <div className="flex flex-1 overflow-hidden">
+            <div className={cn('overflow-hidden', showPreview ? 'flex-1' : 'flex-1')}>
+              {editor}
+            </div>
+            {showPreview && (
+              <>
+                <div
+                  className="group relative z-10 flex w-1 shrink-0 cursor-col-resize items-center justify-center bg-white/5 transition hover:bg-green-500/30"
+                >
+                  <div className="h-8 w-0.5 rounded-full bg-zinc-700 transition group-hover:bg-green-400" />
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {preview}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Terminal handle */}
@@ -205,6 +226,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutPro
           {mobileTab === 'files' && fileExplorer}
           {mobileTab === 'editor' && editor}
           {mobileTab === 'terminal' && terminal}
+          {mobileTab === 'preview' && preview}
         </div>
 
         <div className="flex shrink-0 border-t border-white/5 bg-zinc-950">
@@ -213,6 +235,7 @@ export function IDELayout({ fileExplorer, editor, chat, terminal }: IDELayoutPro
             { id: 'files' as const, label: 'Files', icon: FolderTree },
             { id: 'editor' as const, label: 'Editor', icon: Code2 },
             { id: 'terminal' as const, label: 'Term', icon: SquareTerminal },
+            { id: 'preview' as const, label: 'Preview', icon: Globe },
           ].map((tab) => {
             const Icon = tab.icon;
             return (

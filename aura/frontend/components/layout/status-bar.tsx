@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useChatStore } from '@/lib/chat-store';
 import { useEditorStore } from '@/lib/editor-store';
+import { usePreviewStore } from '@/lib/preview-store';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,13 @@ export function StatusBar() {
   const cursorLine = useEditorStore((s) => s.cursorLine);
   const cursorCol = useEditorStore((s) => s.cursorCol);
   const activeFile = openFiles.find((f) => f.path === activeFilePath);
+  const previewOpen = usePreviewStore((s) => s.isOpen);
+  const previewUrl = usePreviewStore((s) => s.targetUrl);
+
+  const previewPort = (() => {
+    if (!previewOpen) return null;
+    try { return new URL(previewUrl).port || '80'; } catch { return null; }
+  })();
 
   const modelName = runtimeStatus?.model ?? 'qwen3.5:9b';
   const isOnline = runtimeStatus?.services.api === 'online' && runtimeStatus?.status !== 'offline';
@@ -51,6 +59,12 @@ export function StatusBar() {
           <>
             <span className="text-zinc-700">&middot;</span>
             <span className="hidden sm:inline">{sessionType}</span>
+          </>
+        )}
+        {previewPort && (
+          <>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="text-green-500">Preview :{previewPort}</span>
           </>
         )}
       </button>
