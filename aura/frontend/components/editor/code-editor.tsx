@@ -10,11 +10,13 @@
  * - Cursor position in status bar
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { highlightLine } from '@/components/editor/syntax-highlighter';
 import { useEditorStore, type OpenFile } from '@/lib/editor-store';
+import { clientEnv } from '@/lib/env';
+import { useAuthStore } from '@/lib/auth-store';
 import { cn } from '@/lib/utils';
 
 function EditorTab({ file, isActive }: { file: OpenFile; isActive: boolean }) {
@@ -79,6 +81,10 @@ export function CodeEditor() {
   const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [ghostText, setGhostText] = useState('');
+  const [ghostPos, setGhostPos] = useState(0);
+  const [aiEnabled, setAiEnabled] = useState(true);
 
   // Sync scroll between textarea and highlight overlay
   const handleScroll = useCallback(() => {
@@ -98,18 +104,55 @@ export function CodeEditor() {
     setCursor(lines.length, (lines[lines.length - 1]?.length ?? 0) + 1);
   }, [file, setCursor]);
 
+  // Fetch AI completion
+  const fetchCompletion = useCallback(async (content: string, cursorPos: number) => {
+    if (!file || !aiEnabled) return;
+    const prefix = content.substring(0, cursorPos);
+    const suffix = content.substring(cursorPos);
+    try {
+      const apiUrl = clientEnv.apiUrl || 'http://localhost:8000';
+      const base = apiUrl.replace(/\/+$/, '');
+      const apiPrefix = base.endsWith('/api/v1') ? base : `${base}/api/v1`;
+      const token = useAuthStore.getState().token || clientEnv.auraToken;
+      const res = await fetch(`${apiPrefix}/code/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ file_path: file.path, language: file.language, prefix, suffix, max_tokens: 100 }),
+      });
+      const json = await res.json();
+      if (json.success && json.data.completion) {
+        setGhostText(json.data.completion);
+        setGhostPos(cursorPos);
+      }
+    } catch { /* silent */ }
+  }, [file, aiEnabled]);
+
   // Auto-save debounce
   const handleChange = useCallback(
     (content: string) => {
       if (!file) return;
       updateContent(file.path, content);
+      setGhostText('');  // Clear ghost on type
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         saveFile(file.path);
       }, 2000);
+
+      // Trigger AI completion after 800ms idle
+      if (completionRef.current) clearTimeout(completionRef.current);
+      if (aiEnabled && textareaRef.current) {
+        const pos = textareaRef.current.selectionStart;
+        completionRef.current = setTimeout(() => {
+          fetchCompletion(content, pos);
+        }, 800);
+      }
     },
-    [file, updateContent, saveFile],
+    [file, updateContent, saveFile, aiEnabled, fetchCompletion],
   );
 
   // Ctrl+S
@@ -128,28 +171,47 @@ export function CodeEditor() {
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (completionRef.current) clearTimeout(completionRef.current);
     };
   }, []);
 
   // Handle Tab key in textarea
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Tab: accept ghost text or insert spaces
       if (e.key === 'Tab') {
         e.preventDefault();
         const ta = textareaRef.current;
         if (!ta) return;
+
+        if (ghostText) {
+          // Accept ghost text
+          const val = ta.value;
+          const newVal = val.substring(0, ghostPos) + ghostText + val.substring(ghostPos);
+          setGhostText('');
+          handleChange(newVal);
+          requestAnimationFrame(() => {
+            ta.selectionStart = ta.selectionEnd = ghostPos + ghostText.length;
+          });
+          return;
+        }
+
         const start = ta.selectionStart;
         const end = ta.selectionEnd;
         const val = ta.value;
         const newVal = val.substring(0, start) + '  ' + val.substring(end);
         handleChange(newVal);
-        // Restore cursor
         requestAnimationFrame(() => {
           ta.selectionStart = ta.selectionEnd = start + 2;
         });
       }
+
+      // Escape: clear ghost text
+      if (e.key === 'Escape' && ghostText) {
+        setGhostText('');
+      }
     },
-    [handleChange],
+    [handleChange, ghostText, ghostPos],
   );
 
   if (openFiles.length === 0) return <EmptyEditor />;
@@ -198,6 +260,18 @@ export function CodeEditor() {
                 />
               ))}
             </div>
+
+            {/* Ghost text overlay */}
+            {ghostText && file && (
+              <div
+                className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre p-2 font-mono text-sm leading-6"
+                aria-hidden="true"
+              >
+                {/* Render invisible text up to ghost position, then ghost in gray */}
+                <span className="invisible">{file.content.substring(0, ghostPos)}</span>
+                <span className="text-zinc-600">{ghostText}</span>
+              </div>
+            )}
 
             {/* Actual textarea */}
             <textarea

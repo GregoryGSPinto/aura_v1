@@ -64,6 +64,8 @@ export function StatusBar() {
             <span className="hidden sm:inline">{sessionType}</span>
           </>
         )}
+        <span className="text-zinc-700">&middot;</span>
+        <span className="text-zinc-500">AI <span className="text-green-500">●</span></span>
         {gitBranch && (
           <>
             <span className="text-zinc-700">&middot;</span>
