@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Menu, Plus, Settings, X } from 'lucide-react';
+import { LogOut, Menu, Plus, X } from 'lucide-react';
 
 import { ChatWorkspace } from '@/components/chat/chat-workspace';
 import { BrainSelector } from '@/components/chat/brain-selector';
 import { EngineToggle } from '@/components/chat/engine-toggle';
+import { SmartChips } from '@/components/mobile/smart-chips';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
@@ -24,6 +25,27 @@ export function MobileChat() {
   const deleteConversation = useChatStore((s) => s.clearConversation);
   const isOnline = runtimeStatus?.services.api === 'online' && runtimeStatus?.status !== 'offline';
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Smart chips: get last assistant message
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
+  const messages = activeConversation?.messages ?? [];
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.status === 'complete');
+  const [showChips, setShowChips] = useState(true);
+
+  // Pick up shared content from other apps
+  useEffect(() => {
+    const shared = sessionStorage.getItem('aura_shared_message');
+    if (shared) {
+      sessionStorage.removeItem('aura_shared_message');
+      // Dispatch event for ChatWorkspace to pick up
+      window.dispatchEvent(new CustomEvent('aura:suggestion', { detail: shared }));
+    }
+  }, []);
+
+  const handleChipMessage = useCallback((text: string) => {
+    setShowChips(false);
+    window.dispatchEvent(new CustomEvent('aura:suggestion', { detail: text }));
+  }, []);
 
   const { pullDistance, refreshing, handlers } = usePullRefresh({
     onRefresh: () => refreshRuntime(),
@@ -72,6 +94,13 @@ export function MobileChat() {
       <div ref={containerRef} className="flex-1 overflow-hidden" {...handlers}>
         <ChatWorkspace />
       </div>
+
+      {/* Smart reply chips */}
+      <SmartChips
+        lastAssistantMessage={lastAssistantMsg?.content ?? ''}
+        onSendMessage={handleChipMessage}
+        visible={showChips && !!lastAssistantMsg && messages.length > 0}
+      />
 
       {/* Drawer */}
       <AnimatePresence>

@@ -34,7 +34,7 @@ function ChatContext() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
           Sugestões rápidas
         </p>
         <div className="space-y-0.5">
@@ -43,9 +43,9 @@ function ChatContext() {
               key={s}
               type="button"
               onClick={() => sendSuggestion(s)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
             >
-              <Send className="h-3 w-3 shrink-0 text-zinc-600" />
+              <Send className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
               {s}
             </button>
           ))}
@@ -75,7 +75,7 @@ function EditorContext() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
           Arquivo
         </p>
         <div className="space-y-1.5 text-xs">
@@ -90,7 +90,7 @@ function EditorContext() {
         </div>
       </div>
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
           Git
         </p>
         <div className="flex items-center gap-2 text-xs text-zinc-500">
@@ -119,7 +119,7 @@ function TerminalContext() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
           Comandos frequentes
         </p>
         <div className="space-y-0.5">
@@ -128,9 +128,9 @@ function TerminalContext() {
               key={cmd}
               type="button"
               onClick={() => sendCommand(cmd)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-[11px] text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-sm text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
             >
-              <Terminal className="h-3 w-3 shrink-0 text-zinc-600" />
+              <Terminal className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
               {cmd}
             </button>
           ))}
@@ -150,7 +150,7 @@ function DashboardContext() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+        <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
           Ações rápidas
         </p>
         <div className="space-y-0.5">
@@ -160,9 +160,9 @@ function DashboardContext() {
               <button
                 key={a.label}
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
               >
-                <Icon className="h-3 w-3 shrink-0 text-zinc-600" />
+                <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
                 {a.label}
               </button>
             );
@@ -181,7 +181,7 @@ function SystemMiniStatus() {
 
   return (
     <div>
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+      <p className="mb-2 text-xs font-medium uppercase tracking-widest text-zinc-600">
         Sistema
       </p>
       <div className="space-y-1.5 text-xs">
@@ -243,7 +243,7 @@ export function ContextSidebar() {
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-white/5 p-2">
           {!collapsed && (
-            <span className="px-1 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+            <span className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-600">
               Contexto
             </span>
           )}

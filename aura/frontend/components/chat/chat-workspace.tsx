@@ -303,6 +303,16 @@ export function ChatWorkspace() {
     setIsListening(true);
   }, [clearVoiceCapture, isListening, stopSpeaking, submitVoiceTranscript]);
 
+  // External suggestion events (smart chips, share sheet)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail) setDraftText(detail);
+    };
+    window.addEventListener('aura:suggestion', handler);
+    return () => window.removeEventListener('aura:suggestion', handler);
+  }, []);
+
   // Composer commands from external triggers
   useEffect(() => {
     if (!composerCommand) return;

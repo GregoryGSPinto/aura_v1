@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, completion_api, connectors, dashboard_api, dataset, filesystem_api, git_api, jobs, os_runtime, preview_proxy, projects, push_api, routines, status, system, terminal_ws, tools, voice_api, workflow_api
+from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, completion_api, connectors, dashboard_api, dataset, filesystem_api, git_api, jobs, os_runtime, preview_proxy, projects, push_api, routines, status, system, terminal_ws, tools, voice_api, webauthn_api, workflow_api
 
 
 api_router = APIRouter()
@@ -28,3 +28,4 @@ api_router.include_router(voice_api.router, tags=["voice"])
 api_router.include_router(completion_api.router, tags=["code"])
 api_router.include_router(dashboard_api.router, tags=["dashboard"])
 api_router.include_router(workflow_api.router, tags=["workflows"])
+api_router.include_router(webauthn_api.router)

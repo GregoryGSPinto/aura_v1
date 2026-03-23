@@ -25,6 +25,7 @@ export interface ConversationMessage {
   inputSource?: 'text' | 'voice';
   modeLabel?: string;
   route?: 'chat' | 'agent' | 'agent_fallback';
+  reactions?: string[];
 }
 
 export interface ChatConversation {

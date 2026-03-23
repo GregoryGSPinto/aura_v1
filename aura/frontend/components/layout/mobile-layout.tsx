@@ -9,9 +9,12 @@ import { MobileFiles } from '@/components/mobile/mobile-files';
 import { MobileTerminal } from '@/components/mobile/mobile-terminal';
 import { MobileDashboard } from '@/components/mobile/mobile-dashboard';
 import { MobileToastContainer } from '@/components/mobile/mobile-toast';
+import { ConnectionBar } from '@/components/mobile/connection-bar';
+import { FloatingTerminal } from '@/components/mobile/floating-terminal';
 import { QuickPanel } from '@/components/mobile/quick-panel';
 import { TabBar, type MobileTab } from '@/components/mobile/tab-bar';
 import { useSwipe } from '@/hooks/use-swipe';
+import { useAdaptiveTheme } from '@/hooks/use-adaptive-theme';
 import { haptic } from '@/hooks/use-haptic';
 
 const TAB_ORDER: MobileTab[] = ['chat', 'editor', 'files', 'terminal', 'dashboard'];
@@ -20,6 +23,9 @@ export function MobileLayout({ children }: { children?: ReactNode }) {
   const [activeTab, setActiveTab] = useState<MobileTab>('chat');
   const [quickPanelOpen, setQuickPanelOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Night mode between 22h-6h
+  useAdaptiveTheme();
 
   // Swipe to change tabs
   useSwipe(contentRef, {
@@ -47,6 +53,7 @@ export function MobileLayout({ children }: { children?: ReactNode }) {
 
   return (
     <div className="flex h-dvh flex-col bg-zinc-950">
+      <ConnectionBar />
       <MobileToastContainer />
       <QuickPanel open={quickPanelOpen} onClose={() => setQuickPanelOpen(false)} />
 
@@ -68,6 +75,9 @@ export function MobileLayout({ children }: { children?: ReactNode }) {
           <MobileDashboard />
         </div>
       </div>
+
+      {/* Floating terminal widget */}
+      <FloatingTerminal />
 
       {/* Tab bar */}
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />

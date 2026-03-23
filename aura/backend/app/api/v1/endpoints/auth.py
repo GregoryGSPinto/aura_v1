@@ -2,7 +2,7 @@ import hmac
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.core.security_policies import limit_auth_requests
@@ -12,6 +12,20 @@ from app.models.common_models import ApiResponse
 logger = logging.getLogger("aura")
 
 router = APIRouter()
+
+
+async def get_current_user(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+) -> str:
+    """Extract and verify the current user from the auth token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = authorization.split(" ", 1)[1].strip()
+    settings = request.app.state.settings
+    if not hmac.compare_digest(token.encode(), settings.auth_token.encode()):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return settings.aura_admin_username
 
 
 @router.get("/status", response_model=ApiResponse[AuthStatus], dependencies=[Depends(limit_auth_requests)])

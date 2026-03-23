@@ -66,13 +66,24 @@ class PushService:
         body: str,
         url: Optional[str] = "/chat",
         tag: Optional[str] = "aura-default",
+        urgent: bool = False,
     ) -> int:
         """Send push notification to all subscriptions. Returns count of successful sends."""
         if not self.vapid_private_key:
             logger.warning("[PushService] No VAPID key configured, skipping push")
             return 0
 
-        payload = json.dumps({"title": title, "body": body, "url": url, "tag": tag})
+        from app.aura_os.config.settings import AuraOSSettings
+        settings = AuraOSSettings()
+        payload = json.dumps({
+            "title": title,
+            "body": body,
+            "url": url,
+            "tag": tag,
+            "urgent": urgent,
+            "apiUrl": settings.api_url if hasattr(settings, "api_url") else "",
+            "token": settings.auth_token,
+        })
         sent = 0
         dead: list[str] = []
 

@@ -32,7 +32,7 @@ export const WORKSPACE_PRESETS: Record<string, WorkspacePreset> = {
     icon: '💬',
     description: 'Foco total na conversa com a Aura',
     layout: {
-      leftSidebar: 'expanded',
+      leftSidebar: 'collapsed',
       rightContext: 'collapsed',
       fileExplorer: false,
       editor: false,

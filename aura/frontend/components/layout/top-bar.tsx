@@ -34,7 +34,7 @@ function StatusDot() {
       <span className="hidden text-xs text-zinc-400 lg:inline">{statusText}</span>
 
       {showTooltip && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-white/5 bg-zinc-900 p-3 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-900 p-3 shadow-xl">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between">
               <span className="text-zinc-500">Backend</span>
@@ -87,7 +87,7 @@ function WorkspaceSelector() {
             onClick={() => setDropdownOpen(false)}
             aria-label="Fechar"
           />
-          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-white/5 bg-zinc-900 py-1 shadow-xl">
+          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
             {presetKeys.map((key, i) => {
               const p = WORKSPACE_PRESETS[key];
               const isActive = activeWorkspace === key;

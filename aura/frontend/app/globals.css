@@ -389,3 +389,27 @@ html.light * {
   from { opacity: 0; transform: translateX(10px); }
   to { opacity: 1; transform: translateX(0); }
 }
+
+/* ── Night Mode (adaptive) ─────────────────────────── */
+
+html.night-mode {
+  --night-brightness: 0.92;
+}
+
+html.night-mode body {
+  filter: brightness(var(--night-brightness)) sepia(0.03);
+  transition: filter 1s ease-in-out;
+}
+
+body {
+  transition: filter 1s ease-in-out;
+}
+
+/* Scrollbar-none utility for chips */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
