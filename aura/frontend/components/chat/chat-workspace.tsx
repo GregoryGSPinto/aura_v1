@@ -360,7 +360,7 @@ export function ChatWorkspace() {
       {/* Chat messages area */}
       <div
         ref={scrollAreaRef}
-        className="flex flex-1 flex-col justify-end overflow-y-auto px-4 py-6 md:px-8"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6 md:px-8"
         onScroll={handleScroll}
       >
         {messages.length ? (
