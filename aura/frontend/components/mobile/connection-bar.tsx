@@ -12,7 +12,7 @@ export function ConnectionBar() {
   const [wasOffline, setWasOffline] = useState(false);
 
   const checkBackend = useCallback(async () => {
-    if (!navigator.onLine) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setStatus('offline');
       setWasOffline(true);
       return;

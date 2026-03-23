@@ -1,3 +1,5 @@
+'use client';
+
 import { clientEnv } from './env';
 import { useAuthStore } from './auth-store';
 

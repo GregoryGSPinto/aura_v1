@@ -104,6 +104,7 @@ export async function registerBiometric(username: string, token: string): Promis
 }
 
 export async function authenticateBiometric(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
   try {
     const base = getApiBase();
     const credentialId = localStorage.getItem(CREDENTIAL_KEY);
@@ -156,5 +157,6 @@ export async function authenticateBiometric(): Promise<string | null> {
 }
 
 export function clearBiometricCredential() {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem(CREDENTIAL_KEY);
 }

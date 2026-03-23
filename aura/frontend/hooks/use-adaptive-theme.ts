@@ -9,10 +9,12 @@ function isNightHour(): boolean {
 
 export function useAdaptiveTheme() {
   const [nightMode, setNightMode] = useState(false);
-  const [userDisabled, setUserDisabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('aura_night_mode_disabled') === 'true';
-  });
+  const [userDisabled, setUserDisabled] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('aura_night_mode_disabled') === 'true';
+    setUserDisabled(stored);
+  }, []);
 
   useEffect(() => {
     const check = () => {
@@ -20,7 +22,7 @@ export function useAdaptiveTheme() {
       setNightMode(shouldBeNight);
     };
     check();
-    const interval = setInterval(check, 60000); // Check every minute
+    const interval = setInterval(check, 60000);
     return () => clearInterval(interval);
   }, [userDisabled]);
 

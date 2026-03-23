@@ -364,17 +364,20 @@ export function ChatWorkspace() {
         onScroll={handleScroll}
       >
         {messages.length ? (
-          <div className="mx-auto mt-auto max-w-3xl space-y-4 pb-4 lg:pl-8">
-            <MessageList
-              messages={messages}
-              activeSpeakingMessageId={activeSpeakingMessageId}
-              onCopy={handleCopy}
-              onRead={speakMessage}
-              onRegenerate={handleRegenerate}
-              onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
-            />
-            <div ref={bottomRef} />
-          </div>
+          <>
+            <div className="flex-1" />
+            <div className="mx-auto max-w-3xl space-y-4 pb-4 lg:pl-8">
+              <MessageList
+                messages={messages}
+                activeSpeakingMessageId={activeSpeakingMessageId}
+                onCopy={handleCopy}
+                onRead={speakMessage}
+                onRegenerate={handleRegenerate}
+                onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
+              />
+              <div ref={bottomRef} />
+            </div>
+          </>
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />

@@ -58,7 +58,7 @@ export function FloatingTerminal() {
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (!dragRef.current) return;
+    if (!dragRef.current || typeof window === 'undefined') return;
     const vw = window.innerWidth;
     const snapX = position.x > vw / 2 - 140 ? 16 : vw - 296;
     setPosition((p) => ({ ...p, x: Math.max(16, Math.min(snapX, vw - 296)) }));
