@@ -360,11 +360,11 @@ export function ChatWorkspace() {
       {/* Chat messages area */}
       <div
         ref={scrollAreaRef}
-        className="flex-1 overflow-y-auto px-4 py-6 md:px-8"
+        className="flex flex-1 flex-col justify-end overflow-y-auto px-4 py-6 md:px-8"
         onScroll={handleScroll}
       >
         {messages.length ? (
-          <div className="mx-auto max-w-3xl space-y-4 pb-4 lg:pl-8">
+          <div className="mx-auto mt-auto max-w-3xl space-y-4 pb-4 lg:pl-8">
             <MessageList
               messages={messages}
               activeSpeakingMessageId={activeSpeakingMessageId}
@@ -376,7 +376,9 @@ export function ChatWorkspace() {
             <div ref={bottomRef} />
           </div>
         ) : (
-          <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
+          <div className="flex flex-1 items-center justify-center">
+            <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
+          </div>
         )}
       </div>
 
