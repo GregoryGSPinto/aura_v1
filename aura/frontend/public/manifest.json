@@ -4,6 +4,7 @@
   "description": "AI Companion Operacional do Gregory",
   "start_url": "/chat",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "orientation": "any",

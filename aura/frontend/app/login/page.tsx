@@ -82,7 +82,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-2.5 pl-10 pr-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 pl-10 pr-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
                 placeholder="Seu usuário"
                 autoComplete="username"
               />
@@ -101,7 +101,7 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-2.5 pl-10 pr-10 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 py-3 pl-10 pr-10 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30"
                 placeholder="Sua senha"
                 autoComplete="current-password"
               />
@@ -126,7 +126,7 @@ export default function LoginPage() {
             type="submit"
             disabled={isLoading || !username.trim() || !password.trim()}
             className={cn(
-              'w-full rounded-lg bg-teal-600 py-2.5 text-sm font-medium text-white transition',
+              'w-full rounded-lg bg-teal-600 py-3 text-sm font-medium text-white transition',
               isLoading
                 ? 'cursor-not-allowed opacity-60'
                 : 'hover:bg-teal-500 active:bg-teal-700',

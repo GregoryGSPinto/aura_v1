@@ -7,15 +7,18 @@ import type { ReactNode } from "react";
 import { subscribeToPush } from "@/lib/push-service";
 
 import { CommandPalette } from "@/components/layout/command-palette";
+import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/top-bar";
 import { StatusBar } from "@/components/layout/status-bar";
+import { useDevice } from "@/hooks/use-device";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isChatRoute = pathname === "/chat" || pathname === "/";
   const isLoginRoute = pathname === "/login";
+  const { isMobile } = useDevice();
 
   // Auto-subscribe to push after login
   useEffect(() => {
@@ -25,6 +28,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [isLoginRoute]);
 
   if (isLoginRoute) return <>{children}</>;
+
+  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
 
   return (
     <>
