@@ -55,6 +55,7 @@ from app.services.tool_call_parser import ToolCallParser
 from app.services.tool_executor_service import ToolExecutorService
 from app.services.knowledge_extractor import KnowledgeExtractor
 from app.services.proactive_service import ProactiveService
+from app.services.push_service import PushService
 from app.aura_os.connectors.github_connector import GitHubConnector
 from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
 from app.aura_os.connectors.gmail_connector import GmailConnector
@@ -247,6 +248,13 @@ class Container:
             app_password=self.settings.gmail_app_password,
         )
 
+        # Push Service
+        self.push_service = PushService(
+            vapid_public_key=self.settings.vapid_public_key,
+            vapid_private_key=self.settings.vapid_private_key,
+            vapid_email=self.settings.vapid_email,
+        )
+
         # Sprint 4: Proactive Service
         self.proactive_service = ProactiveService(
             scheduler=None,
@@ -256,6 +264,7 @@ class Container:
             github=self.github_connector,
             calendar=self.calendar_connector,
             gmail=self.gmail_connector,
+            push_service=self.push_service,
         )
 
     def _warn(self, message: str) -> None:
@@ -429,6 +438,7 @@ def create_app() -> FastAPI:
     app.state.tool_call_parser = app_container.tool_call_parser
     app.state.tool_executor_service = app_container.tool_executor_service
     app.state.knowledge_extractor = app_container.knowledge_extractor
+    app.state.push_service = app_container.push_service
     app.state.proactive_service = app_container.proactive_service
     app.state.github_connector = app_container.github_connector
     app.state.calendar_connector = app_container.calendar_connector

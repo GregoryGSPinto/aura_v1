@@ -13,7 +13,7 @@ logger = logging.getLogger("aura")
 class ProactiveService:
 
     def __init__(self, scheduler=None, ollama_service=None, memory_service=None, persistence=None,
-                 github=None, calendar=None, gmail=None):
+                 github=None, calendar=None, gmail=None, push_service=None):
         self.scheduler = scheduler
         self.ollama = ollama_service
         self.memory = memory_service
@@ -21,6 +21,7 @@ class ProactiveService:
         self.github = github
         self.calendar = calendar
         self.gmail = gmail
+        self.push_service = push_service
         self._routines: list = []
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -112,6 +113,13 @@ class ProactiveService:
             except Exception:
                 pass
         content = "Briefing matinal:\n" + "\n".join(sections) if sections else "Sem dados de conectores configurados."
+        if self.push_service and sections:
+            self.push_service.send_notification(
+                title="Aura — Briefing Matinal",
+                body=content[:100],
+                url="/chat",
+                tag="morning-briefing",
+            )
         return {"type": "morning_briefing", "content": content, "sources": sections}
 
     async def _system_health_check(self) -> dict:
@@ -127,6 +135,13 @@ class ProactiveService:
                 alerts.append(f"RAM alta: {ram.percent}%")
             if disk.percent > 90:
                 alerts.append(f"Disco quase cheio: {disk.percent}%")
+            if self.push_service and alerts:
+                self.push_service.send_notification(
+                    title="Aura — Alerta",
+                    body="; ".join(alerts),
+                    url="/chat",
+                    tag="health-alert",
+                )
             return {"type": "health_check", "cpu_percent": cpu, "ram_percent": ram.percent, "disk_percent": disk.percent, "alerts": alerts}
         except ImportError:
             return {"type": "health_check", "alerts": ["psutil not installed"]}

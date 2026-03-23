@@ -25,3 +25,23 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Push Notifications
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() || { title: 'Aura', body: 'Nova notificação' };
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: data.tag || 'aura-default',
+      data: { url: data.url || '/chat' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/chat';
+  event.waitUntil(clients.openWindow(url));
+});

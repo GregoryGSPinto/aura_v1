@@ -1,8 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+
+import { subscribeToPush } from "@/lib/push-service";
 
 import { CommandPalette } from "@/components/layout/command-palette";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -14,6 +16,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isChatRoute = pathname === "/chat" || pathname === "/";
   const isLoginRoute = pathname === "/login";
+
+  // Auto-subscribe to push after login
+  useEffect(() => {
+    if (!isLoginRoute) {
+      subscribeToPush().catch(() => {});
+    }
+  }, [isLoginRoute]);
 
   if (isLoginRoute) return <>{children}</>;
 
