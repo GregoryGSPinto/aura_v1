@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderKanban,
+  LayoutDashboard,
   LogOut,
   MessageSquareText,
   Plus,
@@ -24,6 +25,7 @@ import { getRelativeTime, cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/chat', label: 'Chat', icon: MessageSquareText },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projetos', icon: FolderKanban },
   { href: '/remote', label: 'Ferramentas', icon: Wrench },
   { href: '/memory', label: 'Memoria', icon: BrainCircuit },
