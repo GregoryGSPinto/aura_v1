@@ -61,14 +61,17 @@ export function ChatComposer({ value, onChange, onSubmit, attachments, onAttach,
             type="button"
             onClick={onToggleListening}
             className={cn(
-              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition',
+              'relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition',
               isListening
                 ? 'bg-red-500/10 text-red-400'
                 : 'text-zinc-600 hover:bg-white/5 hover:text-zinc-400',
             )}
             aria-label={isListening ? 'Parar gravacao' : 'Iniciar gravacao'}
           >
-            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            {isListening && (
+              <span className="absolute inset-0 animate-ping rounded-lg bg-red-500/20" />
+            )}
+            {isListening ? <MicOff className="relative h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
 
           {/* Textarea */}

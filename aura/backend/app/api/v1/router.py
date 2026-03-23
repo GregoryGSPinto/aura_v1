@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, connectors, dataset, filesystem_api, git_api, jobs, os_runtime, preview_proxy, projects, push_api, routines, status, system, terminal_ws, tools
+from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, connectors, dataset, filesystem_api, git_api, jobs, os_runtime, preview_proxy, projects, push_api, routines, status, system, terminal_ws, tools, voice_api
 
 
 api_router = APIRouter()
@@ -24,3 +24,4 @@ api_router.include_router(filesystem_api.router, tags=["files"])
 api_router.include_router(preview_proxy.router, tags=["preview"])
 api_router.include_router(push_api.router, tags=["push"])
 api_router.include_router(git_api.router, tags=["git"])
+api_router.include_router(voice_api.router, tags=["voice"])
