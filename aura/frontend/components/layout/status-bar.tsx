@@ -4,14 +4,22 @@ import { useState } from 'react';
 
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useChatStore } from '@/lib/chat-store';
+import { useEditorStore } from '@/lib/editor-store';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
+import { cn } from '@/lib/utils';
 
 export function StatusBar() {
   const { runtimeStatus } = useAuraPreferences();
   const selectedModeId = useChatStore((state) => state.selectedModeId);
   const currentMode = getAuraChatMode(selectedModeId);
   const [showPopover, setShowPopover] = useState(false);
+
+  const activeFilePath = useEditorStore((s) => s.activeFile);
+  const openFiles = useEditorStore((s) => s.openFiles);
+  const cursorLine = useEditorStore((s) => s.cursorLine);
+  const cursorCol = useEditorStore((s) => s.cursorCol);
+  const activeFile = openFiles.find((f) => f.path === activeFilePath);
 
   const modelName = runtimeStatus?.model ?? 'qwen3.5:9b';
   const isOnline = runtimeStatus?.services.api === 'online' && runtimeStatus?.status !== 'offline';
@@ -25,11 +33,26 @@ export function StatusBar() {
         onClick={() => setShowPopover(!showPopover)}
         className="flex h-7 w-full items-center gap-2 text-xs text-zinc-600 transition hover:text-zinc-400"
       >
+        <span className={cn('h-1.5 w-1.5 rounded-full', isOnline ? 'bg-green-500' : 'bg-red-500')} />
         <span className="hidden sm:inline">{currentMode.shortLabel}</span>
         <span className="hidden text-zinc-700 sm:inline">&middot;</span>
         <span>{modelName}</span>
-        <span className="text-zinc-700">&middot;</span>
-        <span className="hidden sm:inline">{sessionType}</span>
+        {activeFile && (
+          <>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="hidden sm:inline capitalize">{activeFile.language}</span>
+            <span className="text-zinc-700">&middot;</span>
+            <span>Ln {cursorLine}, Col {cursorCol}</span>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="hidden sm:inline">UTF-8</span>
+          </>
+        )}
+        {!activeFile && (
+          <>
+            <span className="text-zinc-700">&middot;</span>
+            <span className="hidden sm:inline">{sessionType}</span>
+          </>
+        )}
       </button>
 
       {showPopover && (
@@ -67,6 +90,12 @@ export function StatusBar() {
                 <span className="text-zinc-500">Sessao</span>
                 <span className="text-zinc-300">{sessionType}</span>
               </div>
+              {activeFile && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Arquivo</span>
+                  <span className="truncate pl-4 text-zinc-300">{activeFile.name}</span>
+                </div>
+              )}
               {runtimeStatus?.ollama && (
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Ollama</span>

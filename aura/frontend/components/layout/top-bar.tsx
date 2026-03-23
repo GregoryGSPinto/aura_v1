@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Menu, Settings2, SquareTerminal } from 'lucide-react';
+import { Code2, Menu, MessageSquareText, Settings2, SquareTerminal } from 'lucide-react';
 
 import { BrainSelector } from '@/components/chat/brain-selector';
 import { EngineToggle } from '@/components/chat/engine-toggle';
@@ -67,6 +67,27 @@ function StatusDot() {
 export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
   const isTerminalOpen = useTerminalStore((s) => s.isOpen);
+  const [ideMode, setIdeMode] = useState(false);
+
+  type AuraWindow = Window & { __auraIdeMode?: boolean; __auraToggleIdeMode?: () => void };
+
+  // Sync IDE mode from page state
+  useEffect(() => {
+    const check = () => {
+      setIdeMode(!!(window as AuraWindow).__auraIdeMode);
+    };
+    check();
+    const id = setInterval(check, 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const toggleIdeMode = () => {
+    const w = window as AuraWindow;
+    if (w.__auraToggleIdeMode) {
+      w.__auraToggleIdeMode();
+      setIdeMode(!ideMode);
+    }
+  };
 
   // Keyboard shortcut: Ctrl+`
   useEffect(() => {
@@ -97,6 +118,20 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
       <div className="flex items-center gap-3">
         <EngineToggle />
         <BrainSelector />
+        {/* IDE / Chat toggle */}
+        <button
+          type="button"
+          onClick={toggleIdeMode}
+          className={cn(
+            'inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition hover:bg-white/5',
+            ideMode ? 'text-blue-400 bg-white/5' : 'text-zinc-400 hover:text-zinc-200',
+          )}
+          aria-label={ideMode ? 'Modo Chat (Ctrl+Shift+I)' : 'Modo IDE (Ctrl+Shift+I)'}
+          title={ideMode ? 'Modo Chat (Ctrl+Shift+I)' : 'Modo IDE (Ctrl+Shift+I)'}
+        >
+          {ideMode ? <MessageSquareText className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
+          <span className="hidden sm:inline">{ideMode ? 'Chat' : 'IDE'}</span>
+        </button>
         <button
           type="button"
           onClick={toggleTerminal}
