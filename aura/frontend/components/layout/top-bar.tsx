@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Menu, Settings2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Menu, Settings2, SquareTerminal } from 'lucide-react';
 
 import { BrainSelector } from '@/components/chat/brain-selector';
 import { EngineToggle } from '@/components/chat/engine-toggle';
 import { useAuraPreferences } from '@/components/providers/app-provider';
+import { useTerminalStore } from '@/lib/terminal-store';
 import { cn } from '@/lib/utils';
 
 type AppHeaderProps = {
@@ -64,6 +65,21 @@ function StatusDot() {
 }
 
 export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
+  const toggleTerminal = useTerminalStore((s) => s.toggleTerminal);
+  const isTerminalOpen = useTerminalStore((s) => s.isOpen);
+
+  // Keyboard shortcut: Ctrl+`
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '`') {
+        e.preventDefault();
+        toggleTerminal();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggleTerminal]);
+
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950/80 px-4 backdrop-blur-xl">
       <div className="flex items-center gap-3">
@@ -81,6 +97,18 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
       <div className="flex items-center gap-3">
         <EngineToggle />
         <BrainSelector />
+        <button
+          type="button"
+          onClick={toggleTerminal}
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white/5',
+            isTerminalOpen ? 'text-purple-400 bg-white/5' : 'text-zinc-400 hover:text-zinc-200',
+          )}
+          aria-label="Terminal (Ctrl+`)"
+          title="Terminal (Ctrl+`)"
+        >
+          <SquareTerminal className="h-5 w-5" />
+        </button>
         <StatusDot />
         <Link
           href="/settings"
