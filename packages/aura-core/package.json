@@ -1,0 +1,17 @@
+{
+  "name": "@aura/core",
+  "version": "0.1.0",
+  "description": "Aura Core — Governance, Memory, and Autonomy layer for the Aura Personal AI Agent",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --import tsx --test __tests__/**/*.test.ts",
+    "test:watch": "node --import tsx --test --watch __tests__/**/*.test.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

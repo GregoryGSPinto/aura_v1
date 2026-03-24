@@ -45,8 +45,8 @@ export function ChatComposer({ value, onChange, onSubmit, attachments, onAttach,
   const placeholder = placeholderMap[selectedModeLabel] ?? 'Converse com Aura...';
 
   return (
-    <div className="sticky bottom-0 z-20 border-t border-white/5 bg-zinc-950 pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] pt-3 px-4 md:px-8">
-      <div className="mx-auto max-w-3xl">
+    <div className="shrink-0 border-t border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_84%,transparent)] pb-[calc(env(safe-area-inset-bottom,0px)+0.875rem)] pt-3 backdrop-blur-xl">
+      <div className="w-full">
         {/* Attachments */}
         {attachments.length > 0 && (
           <div className="mb-2">
@@ -55,7 +55,7 @@ export function ChatComposer({ value, onChange, onSubmit, attachments, onAttach,
         )}
 
         {/* Input Row */}
-        <div className="flex items-end gap-2 rounded-xl border border-white/5 bg-zinc-900 px-3 py-2 transition-colors focus-within:border-white/10">
+        <div className="flex items-end gap-2 rounded-[1.25rem] border border-white/8 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_92%,var(--bg-surface))] px-3 py-2 shadow-[0_-12px_32px_rgba(0,0,0,0.18)] transition-colors focus-within:border-white/12">
           {/* Mic button */}
           <button
             type="button"

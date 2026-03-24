@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { useAuraPreferences } from '@/components/providers/app-provider';
+import { useAdaptiveEdgeSidebar } from '@/hooks/use-adaptive-edge-sidebar';
 import { useWorkspaceStore } from '@/lib/workspace-store';
 import { useEditorStore } from '@/lib/editor-store';
 import { cn } from '@/lib/utils';
@@ -226,6 +227,12 @@ export function ContextSidebar() {
   const activePreset = useWorkspaceStore((s) => s.getActivePreset());
   const rightContext = activePreset.layout.rightContext;
   const [collapsed, setCollapsed] = useState(rightContext === 'collapsed');
+  const hoverSidebar = useAdaptiveEdgeSidebar({
+    collapsed,
+    defaultCollapsed: rightContext !== 'expanded',
+    onCollapsedChange: setCollapsed,
+    minWidth: 1280,
+  });
 
   useEffect(() => {
     setCollapsed(rightContext === 'collapsed');
@@ -234,39 +241,50 @@ export function ContextSidebar() {
   if (rightContext === 'hidden') return null;
 
   return (
-    <aside
-      className={cn(
-        'context-sidebar hidden shrink-0 border-l border-white/5 bg-zinc-950 transition-[width] duration-200 ease-out lg:block',
-        collapsed ? 'w-10' : 'w-56',
+    <>
+      {hoverSidebar.hoverMode && collapsed && (
+        <div
+          className="fixed inset-y-0 right-0 z-30 hidden w-3 xl:block"
+          style={{ top: 'var(--aura-header-h)' }}
+          aria-hidden="true"
+          {...hoverSidebar.hotspotHandlers}
+        />
       )}
-    >
-      <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-white/5 p-2">
-          {!collapsed && (
-            <span className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-600">
-              Contexto
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="flex items-center justify-center rounded p-1 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
-            aria-label={collapsed ? 'Expandir contexto' : 'Recolher contexto'}
-          >
-            {collapsed ? (
-              <ChevronLeft className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </button>
-        </div>
-
-        {!collapsed && (
-          <div className="context-content flex-1 overflow-y-auto p-3">
-            {getContextContent(activePanel)}
-          </div>
+      <aside
+        className={cn(
+          'context-sidebar hidden shrink-0 border-l border-white/5 bg-zinc-950 transition-[width] duration-200 ease-out lg:block',
+          collapsed ? 'w-10' : 'w-56',
         )}
-      </div>
-    </aside>
+        {...(hoverSidebar.hoverMode ? hoverSidebar.panelHandlers : {})}
+      >
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-white/5 p-2">
+            {!collapsed && (
+              <span className="px-1 text-xs font-medium uppercase tracking-widest text-zinc-600">
+                Contexto
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={hoverSidebar.toggle}
+              className="flex items-center justify-center rounded p-1 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
+              aria-label={collapsed ? 'Expandir contexto' : 'Recolher contexto'}
+            >
+              {collapsed ? (
+                <ChevronLeft className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+
+          {!collapsed && (
+            <div className="context-content flex-1 overflow-y-auto p-3">
+              {getContextContent(activePanel)}
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

@@ -20,7 +20,7 @@ export function MessageList({
   onTogglePin: (messageId: string) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-4">
       {messages.map((message, index) => {
         const previousUserContent =
           message.role === 'assistant'

@@ -347,8 +347,10 @@ export function ChatWorkspace() {
     } catch { notifyError('Erro', 'Nao foi possivel copiar.'); }
   };
 
+  const columnClass = 'mx-auto flex h-full min-h-0 w-full max-w-[52rem] flex-col';
+
   return (
-    <section className="flex h-full flex-col">
+    <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent">
       <input
         ref={fileInputRef}
         type="file"
@@ -358,71 +360,75 @@ export function ChatWorkspace() {
       />
 
       {/* Chat messages area */}
-      {messages.length ? (
-        <div
-          ref={scrollAreaRef}
-          className="flex flex-1 flex-col-reverse overflow-y-auto px-4 py-6 md:px-8"
-          onScroll={handleScroll}
-        >
-          <div className="mx-auto max-w-3xl space-y-4 pb-4 lg:pl-8">
-            <MessageList
-              messages={messages}
-              activeSpeakingMessageId={activeSpeakingMessageId}
-              onCopy={handleCopy}
-              onRead={speakMessage}
-              onRegenerate={handleRegenerate}
-              onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
-            />
-            <div ref={bottomRef} />
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 items-center justify-center">
-          <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
-        </div>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col px-4 md:px-6 lg:px-8">
+        <div className={columnClass}>
+          {messages.length ? (
+            <div
+              ref={scrollAreaRef}
+              className="min-h-0 flex-1 overflow-y-auto pb-6 pt-5"
+              onScroll={handleScroll}
+            >
+              <div className="flex min-h-full flex-col justify-end">
+                <MessageList
+                  messages={messages}
+                  activeSpeakingMessageId={activeSpeakingMessageId}
+                  onCopy={handleCopy}
+                  onRead={speakMessage}
+                  onRegenerate={handleRegenerate}
+                  onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
+                />
+                <div ref={bottomRef} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 items-center justify-center pb-6 pt-5">
+              <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
+            </div>
+          )}
 
-      {/* Scroll to bottom */}
-      {showScrollDown && (
-        <div className="flex justify-center pb-2">
-          <button
-            type="button"
-            onClick={scrollToBottom}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-400 shadow transition hover:bg-zinc-800"
-          >
-            <ArrowDown className="h-3 w-3" />
-            Novas mensagens
-          </button>
+          {/* Voice transcript */}
+          <VoiceTranscriptPanel
+            partialTranscript={voiceTranscriptPartial}
+            finalTranscript={voiceTranscriptFinal}
+            isListening={isListening}
+            isProcessingVoice={isProcessingVoice}
+            onClear={clearVoiceCapture}
+          />
+
+          {/* Composer */}
+          <ChatComposer
+            value={draftText}
+            onChange={setDraftText}
+            onSubmit={() => void submitPrompt(undefined, undefined, { source: 'text', autoVoiceReply: voiceReplyEnabled })}
+            attachments={attachments}
+            onAttach={() => fileInputRef.current?.click()}
+            onRemoveAttachment={(id) => setAttachments((c) => c.filter((a) => a.id !== id))}
+            isLoading={isLoading || isProcessingVoice}
+            isListening={isListening}
+            isSpeaking={isSpeaking}
+            voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+            onToggleListening={toggleListening}
+            onStopSpeaking={stopSpeaking}
+            onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
+            error={error}
+            selectedModeLabel={currentMode.label}
+          />
+
+          {/* Scroll to bottom */}
+          {showScrollDown && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-400 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur transition hover:bg-zinc-800"
+              >
+                <ArrowDown className="h-3 w-3" />
+                Novas mensagens
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Voice transcript */}
-      <VoiceTranscriptPanel
-        partialTranscript={voiceTranscriptPartial}
-        finalTranscript={voiceTranscriptFinal}
-        isListening={isListening}
-        isProcessingVoice={isProcessingVoice}
-        onClear={clearVoiceCapture}
-      />
-
-      {/* Composer */}
-      <ChatComposer
-        value={draftText}
-        onChange={setDraftText}
-        onSubmit={() => void submitPrompt(undefined, undefined, { source: 'text', autoVoiceReply: voiceReplyEnabled })}
-        attachments={attachments}
-        onAttach={() => fileInputRef.current?.click()}
-        onRemoveAttachment={(id) => setAttachments((c) => c.filter((a) => a.id !== id))}
-        isLoading={isLoading || isProcessingVoice}
-        isListening={isListening}
-        isSpeaking={isSpeaking}
-        voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
-        onToggleListening={toggleListening}
-        onStopSpeaking={stopSpeaking}
-        onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
-        error={error}
-        selectedModeLabel={currentMode.label}
-      />
+      </div>
     </section>
   );
 }

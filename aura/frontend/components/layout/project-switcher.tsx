@@ -51,11 +51,11 @@ export function ProjectSwitcher({ collapsed }: { collapsed: boolean }) {
   };
 
   return (
-    <div className="relative border-b border-white/5 px-3 py-2.5">
+    <div className="relative border-b border-white/5 px-3 py-3">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition hover:bg-white/5"
+        className="flex w-full items-center gap-2 rounded-[1rem] px-2.5 py-2 text-sm transition hover:bg-white/5"
       >
         <FolderOpen className="h-4 w-4 shrink-0 text-blue-400" />
         <span className="truncate font-medium text-zinc-200">
@@ -75,14 +75,14 @@ export function ProjectSwitcher({ collapsed }: { collapsed: boolean }) {
       )}
 
       {open && (
-        <div className="absolute left-2 right-2 top-full z-50 mt-1 rounded-lg border border-white/10 bg-zinc-900 py-1 shadow-xl">
+        <div className="app-popover absolute left-2 right-2 top-full z-50 mt-1.5 rounded-[1.1rem] py-1.5">
           {projects.map((p) => (
             <button
               key={p.name}
               type="button"
               onClick={() => handleSelect(p)}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-white/5',
+                'flex w-full items-center gap-2 rounded-[0.95rem] px-3 py-2.5 text-left text-sm transition hover:bg-white/5',
                 active?.name === p.name && 'bg-white/5 text-zinc-200',
               )}
             >

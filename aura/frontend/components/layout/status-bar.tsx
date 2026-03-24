@@ -38,7 +38,7 @@ export function StatusBar() {
   const version = runtimeStatus?.version ?? '5.x';
 
   return (
-    <div className="relative shrink-0 border-t border-white/5 bg-transparent px-4">
+    <div className="relative shrink-0 border-t border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_62%,transparent)] px-4 backdrop-blur-xl">
       <button
         type="button"
         onClick={() => setShowPopover(!showPopover)}
@@ -88,7 +88,7 @@ export function StatusBar() {
             onClick={() => setShowPopover(false)}
             aria-label="Fechar diagnostico"
           />
-          <div className="absolute bottom-full left-4 z-50 mb-2 w-72 rounded-lg border border-white/5 bg-zinc-900 p-4 shadow-lg">
+          <div className="app-popover absolute bottom-full left-4 z-50 mb-2 w-72 rounded-[1.1rem] p-4">
             <p className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">Diagnostico</p>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">

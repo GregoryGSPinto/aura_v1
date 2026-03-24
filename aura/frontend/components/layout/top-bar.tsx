@@ -34,7 +34,7 @@ function StatusDot() {
       <span className="hidden text-xs text-zinc-400 lg:inline">{statusText}</span>
 
       {showTooltip && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-900 p-3 shadow-xl">
+        <div className="app-popover absolute right-0 top-full z-50 mt-2 w-56 rounded-[1.1rem] p-3">
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between">
               <span className="text-zinc-500">Backend</span>
@@ -72,7 +72,7 @@ function WorkspaceSelector() {
       <button
         type="button"
         onClick={() => setDropdownOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-zinc-200 transition hover:bg-white/5"
+        className="flex items-center gap-1.5 rounded-[1rem] px-2.5 py-1.5 text-sm text-zinc-200 transition hover:bg-white/5"
       >
         <span className="text-base leading-none">{preset.icon}</span>
         <span className="hidden font-medium sm:inline">{preset.name}</span>
@@ -87,7 +87,7 @@ function WorkspaceSelector() {
             onClick={() => setDropdownOpen(false)}
             aria-label="Fechar"
           />
-          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
+          <div className="app-popover absolute left-0 top-full z-50 mt-1.5 w-56 rounded-[1.1rem] py-1.5">
             {presetKeys.map((key, i) => {
               const p = WORKSPACE_PRESETS[key];
               const isActive = activeWorkspace === key;
@@ -100,7 +100,7 @@ function WorkspaceSelector() {
                     setDropdownOpen(false);
                   }}
                   className={cn(
-                    'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition',
+                    'flex w-full items-center gap-2.5 rounded-[0.95rem] px-3 py-2.5 text-left text-sm transition',
                     isActive
                       ? 'bg-white/5 text-zinc-200'
                       : 'text-zinc-400 hover:bg-white/[0.03] hover:text-zinc-300',
@@ -126,13 +126,13 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   const togglePalette = useWorkspaceStore((s) => s.toggleCommandPalette);
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950/80 px-3 backdrop-blur-xl">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface)_82%,transparent)] px-3 backdrop-blur-xl">
       {/* Left: Menu + Workspace selector */}
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 lg:hidden"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-[0.9rem] text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 lg:hidden"
           aria-label="Abrir menu"
         >
           <Menu className="h-4.5 w-4.5" />
@@ -152,7 +152,7 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
         <button
           type="button"
           onClick={togglePalette}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
+          className="inline-flex h-8 items-center gap-1.5 rounded-[0.9rem] px-2 text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
           aria-label="Command Palette (Ctrl+K)"
           title="Ctrl+K"
         >

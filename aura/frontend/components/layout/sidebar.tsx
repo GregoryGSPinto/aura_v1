@@ -14,6 +14,7 @@ import {
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { ChatModeSelector } from '@/components/chat/mode-selector';
 import { ProjectSwitcher } from '@/components/layout/project-switcher';
+import { useAdaptiveEdgeSidebar } from '@/hooks/use-adaptive-edge-sidebar';
 import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
 import { getRelativeTime, cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ function SidebarContent({
   };
 
   return (
-    <div className="flex h-full flex-col bg-zinc-950 border-r border-white/5">
+    <div className="flex h-full flex-col overflow-hidden rounded-[inherit] bg-transparent">
       {/* Project Switcher */}
       <ProjectSwitcher collapsed={collapsed && !isMobile} />
 
@@ -59,7 +60,7 @@ function SidebarContent({
           type="button"
           onClick={handleNewChat}
           className={cn(
-            'flex w-full items-center gap-2 rounded-lg border border-white/5 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100',
+            'app-control flex w-full items-center gap-2 rounded-[1rem] px-3 py-2.5 text-sm text-zinc-300 transition hover:border-white/10 hover:text-zinc-100',
             collapsed && !isMobile && 'justify-center px-0',
           )}
         >
@@ -86,9 +87,9 @@ function SidebarContent({
                       onCloseMobile?.();
                     }}
                     className={cn(
-                      'w-full rounded-md px-2.5 py-2 text-left transition',
+                      'w-full rounded-[1rem] px-2.5 py-2.5 text-left transition',
                       isActive
-                        ? 'bg-white/5 text-zinc-200'
+                        ? 'app-control text-zinc-100'
                         : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300',
                     )}
                   >
@@ -123,8 +124,8 @@ function SidebarContent({
                 type="button"
                 onClick={() => setActiveConversation(conversation.id)}
                 className={cn(
-                  'mb-1 flex w-full items-center justify-center rounded-md p-2 transition',
-                  isActive ? 'bg-white/5 text-zinc-300' : 'text-zinc-600 hover:bg-white/[0.03] hover:text-zinc-400',
+                  'mb-1 flex w-full items-center justify-center rounded-[1rem] p-2.5 transition',
+                  isActive ? 'app-control text-zinc-300' : 'text-zinc-600 hover:bg-white/[0.03] hover:text-zinc-400',
                 )}
                 title={conversation.title}
               >
@@ -159,7 +160,7 @@ function SidebarContent({
           type="button"
           onClick={() => useAuthStore.getState().logout()}
           className={cn(
-            'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400',
+            'flex w-full items-center gap-2.5 rounded-[1rem] px-2.5 py-2.5 text-sm text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400',
             collapsed && !isMobile && 'justify-center px-2',
           )}
           aria-label="Sair"
@@ -172,7 +173,7 @@ function SidebarContent({
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="flex w-full items-center justify-center rounded-md p-2 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
+            className="flex w-full items-center justify-center rounded-[1rem] p-2.5 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-400"
             aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -192,21 +193,42 @@ export function Sidebar({
 }) {
   const collapsed = useChatStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useChatStore((state) => state.setSidebarCollapsed);
+  const hoverSidebar = useAdaptiveEdgeSidebar({
+    collapsed,
+    defaultCollapsed: true,
+    onCollapsedChange: setSidebarCollapsed,
+  });
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          'hidden shrink-0 transition-[width] duration-200 ease-out lg:block',
-          collapsed ? 'w-14' : 'w-60',
+      {/* Desktop sidebar — floating overlay (slides in/out via transform) */}
+      <>
+        {/* Edge hotspot — hover-to-open when collapsed */}
+        {hoverSidebar.hoverMode && collapsed && (
+          <div
+            className="fixed inset-y-0 left-0 z-30 hidden w-3 lg:block"
+            style={{ top: 'var(--aura-header-h)' }}
+            aria-hidden="true"
+            {...hoverSidebar.hotspotHandlers}
+          />
         )}
-      >
-        <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!collapsed)}
-        />
-      </aside>
+
+        {/* Sidebar panel — always full width, visibility via translateX */}
+        <aside
+          className={cn(
+            'app-popover fixed bottom-4 left-4 top-[calc(var(--aura-header-h)+1rem)] z-40 hidden w-60 overflow-hidden rounded-[1.75rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface)_82%,transparent)] shadow-[0_18px_44px_rgba(0,0,0,0.24)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] lg:block',
+            collapsed
+              ? '-translate-x-[calc(100%+2rem)] opacity-0 pointer-events-none'
+              : 'translate-x-0 opacity-100',
+          )}
+          {...(hoverSidebar.hoverMode ? hoverSidebar.panelHandlers : {})}
+        >
+          <SidebarContent
+            collapsed={false}
+            onToggleCollapse={hoverSidebar.toggle}
+          />
+        </aside>
+      </>
 
       {/* Mobile drawer */}
       <AnimatePresence>

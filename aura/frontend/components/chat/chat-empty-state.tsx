@@ -15,7 +15,7 @@ export function ChatEmptyState({
   onUsePrompt: (prompt: string) => void;
 }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-4 py-16">
+    <div className="flex w-full flex-col items-center justify-center py-10">
       <div className="mx-auto max-w-lg text-center">
         <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900">
           <Sparkles className="h-5 w-5 text-zinc-400" />

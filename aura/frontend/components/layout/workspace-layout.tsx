@@ -49,28 +49,32 @@ export function WorkspaceLayout() {
   // Chat as main content (chat, monitor, focus modes)
   if (layout.chat === 'main') {
     return (
-      <div className="flex flex-1 min-h-0 workspace-panel">
-        <div
-          className="flex flex-1 min-w-0 flex-col"
-          onFocus={() => setActivePanel('chat')}
-        >
-          <div className="flex-1 overflow-hidden">
-            <ChatWorkspace />
+      <div className="workspace-panel flex h-full min-h-0 flex-1 px-3 py-3 lg:px-4 lg:py-4">
+        <div className="mx-auto grid h-full w-full max-w-[1440px] min-h-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,52rem)_minmax(0,1fr)] xl:gap-6">
+          <div
+            className="shell-panel flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[2rem] xl:col-start-2"
+            onFocus={() => setActivePanel('chat')}
+          >
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <ChatWorkspace />
+            </div>
+            {layout.terminal && (
+              <>
+                <DragHandle direction="horizontal" onDrag={handleTerminalDrag} />
+                <div
+                  className="shrink-0 overflow-hidden"
+                  style={{ height: terminalHeight }}
+                  onFocus={() => setActivePanel('terminal')}
+                >
+                  <TerminalPanel />
+                </div>
+              </>
+            )}
           </div>
-          {layout.terminal && (
-            <>
-              <DragHandle direction="horizontal" onDrag={handleTerminalDrag} />
-              <div
-                className="shrink-0 overflow-hidden"
-                style={{ height: terminalHeight }}
-                onFocus={() => setActivePanel('terminal')}
-              >
-                <TerminalPanel />
-              </div>
-            </>
-          )}
+          <div className="hidden min-h-0 xl:flex xl:col-start-3 xl:justify-end">
+            <ContextSidebar />
+          </div>
         </div>
-        <ContextSidebar />
       </div>
     );
   }
@@ -112,7 +116,7 @@ export function WorkspaceLayout() {
   }
 
   return (
-    <div className="flex flex-1 min-h-0 workspace-panel">
+    <div className="workspace-panel flex h-full min-h-0 flex-1">
       {panels.map((panel, i) => {
         const ratio = layout.splitRatio?.[i];
         const sizeAdjust = panelSizes[String(i)] ?? 0;
@@ -127,7 +131,7 @@ export function WorkspaceLayout() {
               />
             )}
             <div
-              className="min-w-0 overflow-hidden"
+              className="min-h-0 min-w-0 overflow-hidden"
               style={{
                 flex: ratio ?? 1,
                 ...(sizeAdjust !== 0 ? { flexGrow: 0, flexBasis: `calc(${(ratio ?? 1) / (layout.splitRatio?.reduce((a, b) => a + b, 0) ?? panels.length)} * 100% + ${sizeAdjust}px)` } : {}),
