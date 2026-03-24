@@ -47,7 +47,7 @@ export const usePreviewStore = create<PreviewStoreState>()(
     }),
     {
       name: 'aura-preview-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         isOpen: state.isOpen,
         targetUrl: state.targetUrl,

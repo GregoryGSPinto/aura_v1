@@ -170,7 +170,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
     }),
     {
       name: 'aura-workspace',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         activeWorkspace: state.activeWorkspace,
         customWorkspaces: state.customWorkspaces,

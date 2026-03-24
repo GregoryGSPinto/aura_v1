@@ -115,7 +115,32 @@ async def chat(request_body: ChatRequest, request: Request):
     if tool_analysis.status == "allowed" and tool_route:
         preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
         action_preview = preview.model_dump()
-        if preview.requires_confirmation:
+        if tool_route.command == "claude_execute":
+            # Claude Code: async execution via ClaudeTool
+            claude_prompt = tool_route.params.get("prompt", request_body.message)
+            claude_result = await request.app.state.claude_tool.execute(
+                prompt=claude_prompt,
+                working_dir=tool_route.params.get("working_dir"),
+            )
+            exit_code = claude_result.get("exit_code", -1)
+            output = claude_result.get("output", "")
+            error = claude_result.get("error", "")
+            action_taken = {
+                "command": "claude_execute",
+                "params": sanitize_mapping(tool_route.params),
+                "status": "success" if exit_code == 0 else "error",
+                "result": {
+                    "message": output or error or "Claude Code executou sem saída.",
+                    "stdout": sanitize_string(output),
+                    "stderr": sanitize_string(error),
+                    "metadata": {"exit_code": exit_code},
+                },
+            }
+            response = output if exit_code == 0 else f"Erro do Claude Code:\n{error or output}"
+            if not response:
+                response = "Claude Code executou o comando sem saída."
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+        elif preview.requires_confirmation:
             action_taken = {
                 "command": tool_route.command,
                 "params": sanitize_mapping(tool_route.params),

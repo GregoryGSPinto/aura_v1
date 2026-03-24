@@ -84,7 +84,7 @@ export const useTerminalStore = create<TerminalStoreState>()(
     }),
     {
       name: 'aura-terminal-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         isOpen: state.isOpen,
         splitWidth: state.splitWidth,

@@ -154,7 +154,7 @@ export const useChatStore = create<ChatStoreState>()(
     },
     {
       name: 'aura-chat-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         conversations: state.conversations,
         activeConversationId: state.activeConversationId || state.conversations[0]?.id || '',

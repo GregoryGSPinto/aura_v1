@@ -1,13 +1,13 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { subscribeToPush } from "@/lib/push-service";
 
 import { CommandPalette } from "@/components/layout/command-palette";
-import { MobileLayout } from "@/components/layout/mobile-layout";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/top-bar";
 import { StatusBar } from "@/components/layout/status-bar";
@@ -15,6 +15,38 @@ import { useDevice } from "@/hooks/use-device";
 import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWorkspaceStore } from "@/lib/workspace-store";
 import { useChatStore } from "@/lib/chat-store";
+
+const MobileLayout = dynamic(
+  () => import("@/components/layout/mobile-layout").then((m) => ({ default: m.MobileLayout })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-dvh items-center justify-center bg-zinc-950 text-white">
+        Carregando...
+      </div>
+    ),
+  },
+);
+
+type ErrorBoundaryProps = { children: ReactNode; fallback: ReactNode };
+type ErrorBoundaryState = { hasError: boolean };
+
+class MobileErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.error("[MobileLayout crash] falling back to desktop:", error);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 function DesktopShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
@@ -91,7 +123,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   if (isLoginRoute) return <>{children}</>;
 
-  if (isMobile) return <MobileLayout>{children}</MobileLayout>;
+  if (isMobile) {
+    return (
+      <MobileErrorBoundary fallback={<DesktopShell>{children}</DesktopShell>}>
+        <MobileLayout>{children}</MobileLayout>
+      </MobileErrorBoundary>
+    );
+  }
 
   return <DesktopShell>{children}</DesktopShell>;
 }

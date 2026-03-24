@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'aura-auth-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         token: state.token,
         username: state.username,

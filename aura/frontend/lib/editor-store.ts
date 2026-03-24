@@ -155,7 +155,7 @@ export const useEditorStore = create<EditorStoreState>()(
     }),
     {
       name: 'aura-editor-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: typeof window !== 'undefined' ? createJSONStorage(() => localStorage) : undefined,
       partialize: (state) => ({
         activeFile: state.activeFile,
         // Don't persist file contents — reload on open

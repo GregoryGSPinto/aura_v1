@@ -26,3 +26,7 @@ aura/backend/.venv/
 data/
 .vercel
 .env*.local
+
+# Prompts e sprints soltos na raiz
+prompt-*.md
+sprint-*.md

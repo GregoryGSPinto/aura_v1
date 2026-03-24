@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional
 
@@ -203,6 +204,11 @@ class ToolRouter:
                 action_label="subir ambiente local",
             )
 
+        # Claude Code integration
+        claude_result = self._check_claude_code_request(lowered, message)
+        if claude_result:
+            return claude_result
+
         if any(term in lowered for term in self.BLOCKED_OPERATION_TERMS):
             return ToolAnalysis(
                 status="blocked",
@@ -228,3 +234,92 @@ class ToolRouter:
             if project.name.lower() in message:
                 return project.name
         return None
+
+    CLAUDE_ACTION_PATTERNS = (
+        "manda pro claude", "mande pro claude",
+        "envia pro claude", "envie pro claude",
+        "pede pro claude", "peça pro claude",
+        "executa no claude", "execute no claude",
+        "usa o claude", "use o claude",
+        "fala pro claude", "diz pro claude",
+        "roda no claude", "rode no claude",
+        "manda para o claude", "envia para o claude",
+        "pede para o claude", "peça para o claude",
+        "manda pra o claude", "envia pra o claude",
+        "manda comando pro claude", "manda comando para o claude",
+        "mandar comando pro claude", "mandar comando para o claude",
+    )
+
+    CLAUDE_QUESTION_INDICATORS = ("?", "consegue", "pode ", "como ", "o que é", "o que e")
+
+    def _check_claude_code_request(self, lowered: str, original: str) -> Optional[ToolAnalysis]:
+        """Detect Claude Code delegation requests and extract prompt."""
+        has_claude_ref = "claude code" in lowered or "claude" in lowered
+        if not has_claude_ref:
+            return None
+
+        # Questions about Claude Code → let LLM answer conversationally
+        if any(q in lowered for q in self.CLAUDE_QUESTION_INDICATORS):
+            return ToolAnalysis(
+                status="non_operational",
+                reason="Pergunta sobre Claude Code — resposta conversacional.",
+            )
+
+        # Direct action patterns
+        for pattern in self.CLAUDE_ACTION_PATTERNS:
+            if pattern in lowered:
+                prompt = self._extract_claude_prompt(original, pattern)
+                return ToolAnalysis(
+                    status="allowed",
+                    route=ToolRoute(
+                        command="claude_execute",
+                        params={"prompt": prompt},
+                        reason="Delegação explícita para Claude Code CLI.",
+                    ),
+                    action_label="executar via Claude Code",
+                )
+
+        # "claude code, [prompt]" or "claude code: [prompt]" at start
+        if lowered.startswith("claude code") or lowered.startswith("claude,") or lowered.startswith("claude:"):
+            prompt = self._extract_claude_prompt(original, "")
+            return ToolAnalysis(
+                status="allowed",
+                route=ToolRoute(
+                    command="claude_execute",
+                    params={"prompt": prompt},
+                    reason="Delegação direta para Claude Code CLI.",
+                ),
+                action_label="executar via Claude Code",
+            )
+
+        return None
+
+    def _extract_claude_prompt(self, message: str, matched_pattern: str) -> str:
+        """Extract the actual prompt from a Claude Code request."""
+        # Try regex patterns: "... claude code: [prompt]" or "... claude code, [prompt]"
+        for regex in (
+            r"claude\s*code\s*[,:]\s*(.+)",
+            r"claude\s*[,:]\s*(.+)",
+        ):
+            match = re.search(regex, message, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+
+        # Strip matched action pattern prefix and "claude code" to get the prompt
+        if matched_pattern:
+            idx = message.lower().find(matched_pattern)
+            if idx >= 0:
+                after = message[idx + len(matched_pattern):].strip()
+                # Remove remaining "code" if pattern ended with "claude"
+                after_lower = after.lower()
+                if after_lower.startswith("code"):
+                    after = after[4:].strip()
+                # Remove separator
+                if after and after[0] in ":,":
+                    after = after[1:].strip()
+                if after:
+                    return after
+
+        # Fallback: strip "claude code" prefix
+        cleaned = re.sub(r"^claude\s*code\s*[,:;]?\s*", "", message, flags=re.IGNORECASE).strip()
+        return cleaned if cleaned else message

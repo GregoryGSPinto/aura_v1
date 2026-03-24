@@ -94,6 +94,12 @@ ACTION_CATALOG: Dict[str, Dict[str, Any]] = {
         "preview": "Disparar um deploy com efeito externo.",
         "side_effects": ["Cria efeito persistente fora do ambiente local."],
     },
+    "claude_execute": {
+        "category": "ai_delegation",
+        "risk_score": 3,
+        "preview": "Enviar prompt para o Claude Code CLI e retornar resultado.",
+        "side_effects": ["Executa Claude Code no terminal — pode ler/alterar arquivos do projeto."],
+    },
 }
 
 
