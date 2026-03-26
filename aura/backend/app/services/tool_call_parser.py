@@ -14,6 +14,7 @@ class ToolCallParser:
 
     TOOL_CALL_PATTERNS = [
         r'```tool_call\s*\n(.*?)\n```',
+        r'<tool_call>\s*(.*?)\s*</tool_call>',
         r'```json\s*\n(\{[^`]*?"tool"[^`]*?\})\n```',
         r'(\{"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{.*?\}\})',
     ]

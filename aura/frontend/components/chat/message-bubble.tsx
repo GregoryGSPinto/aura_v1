@@ -7,6 +7,9 @@ import { Copy, Pin, RotateCcw, Trash2, Volume2 } from 'lucide-react';
 import type { ConversationMessage } from '@/lib/chat-types';
 import { cn, getRelativeTime } from '@/lib/utils';
 import { haptic } from '@/hooks/use-haptic';
+import { ToolCallList } from '@/components/chat/tool-call-block';
+import { MissionInlineCard } from '@/components/chat/mission-inline-card';
+import { AudioPlayer } from '@/components/voice/voice-recorder';
 
 const REACTIONS = ['👍', '👎', '😂', '🔥', '💡', '📌'] as const;
 
@@ -70,7 +73,7 @@ export function MessageBubble({
       onTouchMove={handleTouchEnd}
       onContextMenu={(e) => { e.preventDefault(); haptic.medium(); setLongPressMenu(true); }}
     >
-      <div className="group relative max-w-[85%] md:max-w-2xl">
+      <div className="group relative max-w-[86%] md:max-w-[48rem] xl:max-w-[54rem]">
         {/* Avatar for assistant (desktop only) */}
         {isAssistant && (
           <div className="absolute -left-8 top-3 hidden h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-zinc-400 lg:flex">
@@ -114,14 +117,49 @@ export function MessageBubble({
             )}
           </div>
 
-          {/* Provider / Route badge */}
-          {isAssistant && (message.provider || message.route) && (
+          {/* Tool calls */}
+          {isAssistant && message.toolCalls?.length ? (
+            <ToolCallList toolCalls={message.toolCalls} />
+          ) : null}
+
+          {/* Audio player — shown when assistant message has synthesized audio */}
+          {isAssistant && message.audioUrl && (
+            <div className="mt-2">
+              <AudioPlayer src={message.audioUrl} autoPlay={message.inputSource === 'voice'} />
+            </div>
+          )}
+
+          {/* Inline mission card (Sprint 5) */}
+          {isAssistant && message.mission && (
+            <MissionInlineCard
+              missionId={message.mission.id}
+              objective={message.mission.objective}
+              initialStatus={message.mission.status}
+            />
+          )}
+
+          {/* Brain / Provider / Route badge */}
+          {isAssistant && (message.brain || message.provider || message.route) && (
             <div className="mt-2 flex items-center gap-1">
+              {message.brain && (
+                <span className={cn(
+                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                  message.brain === 'cloud'
+                    ? 'bg-blue-900/30 text-blue-400'
+                    : 'bg-emerald-900/30 text-emerald-400',
+                )}>
+                  <span className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    message.brain === 'cloud' ? 'bg-blue-400' : 'bg-emerald-400',
+                  )} />
+                  {message.brain === 'cloud' ? 'cloud' : 'local'}
+                </span>
+              )}
               {message.route === 'agent' || message.route === 'agent_fallback' ? (
                 <span className="inline-flex items-center gap-1 rounded bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
                   via Agent
                 </span>
-              ) : message.provider && message.provider !== 'ollama' ? (
+              ) : message.provider && message.provider !== 'ollama' && !message.brain ? (
                 <span className={cn(
                   'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
                   message.provider === 'anthropic' && 'bg-amber-900/30 text-amber-500',

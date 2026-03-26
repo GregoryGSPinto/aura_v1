@@ -1,10 +1,14 @@
 import { clientEnv } from './env';
 import { useAuthStore } from './auth-store';
 import type {
-  StatusPayload, 
-  Project, 
-  ChatResponse, 
+  StatusPayload,
+  Project,
+  ChatResponse,
+  ClaudeMission,
   CommandResult,
+  LongMemory,
+  MemoryPreference,
+  MemoryProject,
   CompanionMemorySnapshot,
   CompanionOverview,
   CompanionTrustSnapshot,
@@ -49,6 +53,39 @@ interface ApiResponse<T> {
   error: { code: string; message: string; details?: unknown } | null;
   timestamp: string;
 }
+
+type HealthServiceStatus = {
+  name: string;
+  status: string;
+  latency_ms: number | null;
+  last_check: string;
+  last_error: string | null;
+  action: string | null;
+  extra: Record<string, unknown>;
+};
+
+type HealthStatusResponse = {
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'loading' | 'unreachable' | string;
+  services: Record<string, HealthServiceStatus>;
+  uptime_seconds: number;
+  timestamp: string | null;
+};
+
+type DoctorResponse = {
+  status: string;
+  error?: string;
+  details?: Record<string, unknown>;
+};
+
+type OperationLogEntry = {
+  [key: string]: unknown;
+};
+
+type RecentLogsResponse = {
+  count: number;
+  limit: number;
+  logs: OperationLogEntry[];
+};
 
 export class ApiClientError extends Error {
   status: number;
@@ -452,6 +489,19 @@ export async function fetchExecution(executionId: string): Promise<ApiResponse<R
   return fetchApi(`/api/v1/executions/${executionId}`);
 }
 
+// Health
+export async function fetchHealthStatus(): Promise<ApiResponse<HealthStatusResponse>> {
+  return fetchApi('/api/v1/health');
+}
+
+export async function fetchDoctor(): Promise<ApiResponse<DoctorResponse>> {
+  return fetchApi('/api/v1/health/doctor', { method: 'POST' });
+}
+
+export async function fetchRecentLogs(limit = 20): Promise<ApiResponse<RecentLogsResponse>> {
+  return fetchApi(`/api/v1/logs/recent?limit=${limit}`);
+}
+
 // Engine (Ollama lifecycle)
 export async function fetchEngineStatus(): Promise<ApiResponse<EngineStatusPayload>> {
   return fetchApi('/api/v1/system/engine/status');
@@ -463,4 +513,172 @@ export async function startEngine(): Promise<ApiResponse<EngineStatusPayload>> {
 
 export async function stopEngine(): Promise<ApiResponse<EngineStatusPayload>> {
   return fetchApi('/api/v1/system/engine/stop', { method: 'POST' });
+}
+
+// Memory (Sprint 3)
+export async function fetchMemoryPreferences(category?: string): Promise<ApiResponse<MemoryPreference[]>> {
+  const query = category ? `?category=${encodeURIComponent(category)}` : '';
+  return fetchApi(`/api/v1/memory/preferences${query}`);
+}
+
+export async function updateMemoryPreference(key: string, category: string, value: string): Promise<ApiResponse<MemoryPreference>> {
+  return fetchApi(`/api/v1/memory/preferences/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ category, value }),
+  });
+}
+
+export async function deleteMemoryPreference(key: string): Promise<ApiResponse<{ key: string; deleted: boolean }>> {
+  return fetchApi(`/api/v1/memory/preferences/${encodeURIComponent(key)}`, { method: 'DELETE' });
+}
+
+export async function fetchMemoryProjects(status?: string): Promise<ApiResponse<MemoryProject[]>> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  return fetchApi(`/api/v1/memory/projects${query}`);
+}
+
+export async function fetchMemoryProject(slug: string): Promise<ApiResponse<MemoryProject>> {
+  return fetchApi(`/api/v1/memory/projects/${encodeURIComponent(slug)}`);
+}
+
+export async function updateMemoryProject(slug: string, data: Partial<MemoryProject>): Promise<ApiResponse<MemoryProject>> {
+  return fetchApi(`/api/v1/memory/projects/${encodeURIComponent(slug)}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchLongMemories(params?: { category?: string; project?: string; limit?: number }): Promise<ApiResponse<LongMemory[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.category) searchParams.append('category', params.category);
+  if (params?.project) searchParams.append('project', params.project);
+  if (params?.limit) searchParams.append('limit', String(params.limit));
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  return fetchApi(`/api/v1/memory/long${query}`);
+}
+
+export async function addLongMemory(data: { category: string; content: string; project_slug?: string }): Promise<ApiResponse<LongMemory>> {
+  return fetchApi('/api/v1/memory/long', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteLongMemory(id: number): Promise<ApiResponse<{ id: number; deleted: boolean }>> {
+  return fetchApi(`/api/v1/memory/long/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchMemoryContext(query: string, project?: string): Promise<ApiResponse<unknown[]>> {
+  const searchParams = new URLSearchParams({ query });
+  if (project) searchParams.append('project', project);
+  return fetchApi(`/api/v1/memory/context?${searchParams.toString()}`);
+}
+
+// Claude Missions (Sprint 5)
+export async function createMission(data: {
+  objective: string;
+  project_slug: string;
+  working_dir?: string;
+  context?: string;
+  preferences?: Record<string, string>;
+}): Promise<ApiResponse<ClaudeMission>> {
+  return fetchApi('/api/v1/claude/mission', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function executeMission(missionId: string): Promise<ApiResponse<ClaudeMission>> {
+  return fetchApi(`/api/v1/claude/mission/${missionId}/execute`, { method: 'POST' });
+}
+
+export async function fetchMission(missionId: string): Promise<ApiResponse<ClaudeMission>> {
+  return fetchApi(`/api/v1/claude/mission/${missionId}`);
+}
+
+export async function fetchMissions(params?: {
+  project_slug?: string;
+  status?: string;
+  limit?: number;
+}): Promise<ApiResponse<ClaudeMission[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.project_slug) searchParams.append('project_slug', params.project_slug);
+  if (params?.status) searchParams.append('status', params.status);
+  if (params?.limit) searchParams.append('limit', String(params.limit));
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+  return fetchApi(`/api/v1/claude/missions${query}`);
+}
+
+export async function cancelMission(missionId: string): Promise<ApiResponse<{ mission_id: string; cancelled: boolean }>> {
+  return fetchApi(`/api/v1/claude/mission/${missionId}/cancel`, { method: 'POST' });
+}
+
+export async function retryMission(missionId: string, extraContext = ''): Promise<ApiResponse<ClaudeMission>> {
+  return fetchApi(`/api/v1/claude/mission/${missionId}/retry`, {
+    method: 'POST',
+    body: JSON.stringify({ extra_context: extraContext }),
+  });
+}
+
+// Safety / Audit (Sprint 11)
+export async function fetchAuditLog(limit = 50): Promise<ApiResponse<unknown[]>> {
+  return fetchApi(`/api/v1/safety/audit?limit=${limit}`);
+}
+
+// Briefing (Sprint 14)
+export async function fetchDailyBriefing(): Promise<ApiResponse<Record<string, unknown>>> {
+  return fetchApi('/api/v1/briefing/daily');
+}
+
+export async function fetchBriefingPriorities(): Promise<ApiResponse<unknown[]>> {
+  return fetchApi('/api/v1/briefing/priorities');
+}
+
+export async function fetchQuickBriefing(): Promise<ApiResponse<unknown[]>> {
+  return fetchApi('/api/v1/briefing/quick');
+}
+
+// Workspace (Sprint 8)
+export async function fetchWorkspaceDashboard(slug: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return fetchApi(`/api/v1/workspace/projects/${slug}/dashboard`);
+}
+
+export async function fetchWorkspaceActivity(slug: string): Promise<ApiResponse<unknown[]>> {
+  return fetchApi(`/api/v1/workspace/projects/${slug}/activity`);
+}
+
+export async function fetchWorkspaceCommits(slug: string, limit = 10): Promise<ApiResponse<unknown[]>> {
+  return fetchApi(`/api/v1/workspace/projects/${slug}/commits?limit=${limit}`);
+}
+
+// Calendar (Sprint 9)
+export async function fetchCalendarToday(): Promise<ApiResponse<unknown[]>> {
+  return fetchApi('/api/v1/calendar/today');
+}
+
+export async function fetchCalendarWeek(): Promise<ApiResponse<unknown[]>> {
+  return fetchApi('/api/v1/calendar/week');
+}
+
+// Email (Sprint 9)
+export async function fetchEmailUnread(limit = 10): Promise<ApiResponse<unknown[]>> {
+  return fetchApi(`/api/v1/email/unread?limit=${limit}`);
+}
+
+// Voice Premium (Sprint 12)
+export async function fetchVoicePremiumStatus(): Promise<ApiResponse<Record<string, unknown>>> {
+  return fetchApi('/api/v1/voice/premium/status');
+}
+
+// Mission V2 (Sprint 15)
+export async function fetchMissionBlockers(missionId: string): Promise<ApiResponse<unknown[]>> {
+  return fetchApi(`/api/v1/missions/${missionId}/blockers`);
+}
+
+export async function fetchMissionEvaluation(missionId: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return fetchApi(`/api/v1/missions/${missionId}/evaluation`);
+}
+
+export async function fetchMissionSummary(missionId: string): Promise<ApiResponse<Record<string, unknown>>> {
+  return fetchApi(`/api/v1/missions/${missionId}/summary`);
 }

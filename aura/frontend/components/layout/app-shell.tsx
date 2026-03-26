@@ -11,6 +11,8 @@ import { CommandPalette } from "@/components/layout/command-palette";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/top-bar";
 import { StatusBar } from "@/components/layout/status-bar";
+import { ApprovalDialog } from "@/components/safety/approval-dialog";
+import { ProactiveAlertBar } from "@/components/proactive/proactive-alert-bar";
 import { useDevice } from "@/hooks/use-device";
 import { useGlobalShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useWorkspaceStore } from "@/lib/workspace-store";
@@ -78,6 +80,8 @@ function DesktopShell({ children }: { children: ReactNode }) {
   return (
     <>
       <CommandPalette />
+      <ApprovalDialog />
+      <ProactiveAlertBar />
       <div className="flex h-dvh flex-col overflow-hidden bg-[var(--aura-bg-primary)]">
         <AppHeader onOpenSidebar={() => setMobileSidebarOpen(true)} />
 

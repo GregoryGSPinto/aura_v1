@@ -30,3 +30,11 @@ data/
 # Prompts e sprints soltos na raiz
 prompt-*.md
 sprint-*.md
+aura_*prompt*.md
+aura_*prompts*.md
+
+# Claude Code session data
+.claude/
+
+# Runtime JSON data
+aura/backend/data/json/

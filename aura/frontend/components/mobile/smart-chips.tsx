@@ -74,7 +74,7 @@ export function SmartChips({
   const chips = generateChips(lastAssistantMessage);
 
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-none">
+    <div className="mx-auto flex max-w-md gap-2 overflow-x-auto px-2 py-2 scrollbar-none">
       {chips.map((chip, i) => (
         <motion.button
           key={chip.label}
@@ -86,7 +86,7 @@ export function SmartChips({
             haptic.light();
             onSendMessage(chip.value);
           }}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-300 transition active:scale-95 active:bg-white/5"
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_74%,var(--bg-surface))] px-3 py-1.5 text-xs text-zinc-300 transition active:scale-95 active:bg-white/5"
         >
           <span>{chip.icon}</span>
           <span>{chip.label}</span>

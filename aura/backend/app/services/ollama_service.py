@@ -4,18 +4,12 @@ from typing import AsyncGenerator, Iterable, Optional
 
 import httpx
 
+from app.config.system_prompt import SYSTEM_PROMPT_LOCAL
 from app.core.config import Settings
 from app.core.exceptions import ModelUnavailableError, OllamaUnavailableError
 from app.models.chat_models import ChatHistoryItem
-SYSTEM_PROMPT = """Voce e Aura — AI companion pessoal do Gregory.
-Responda em portugues brasileiro, de forma direta e breve.
-Tom: parceira operacional, confiante, sem enrolacao.
-Gregory e engenheiro de software e maquinista da EFVM (MG, Brasil).
-Projetos: Aura (voce), EFVM360, Black Belt.
-Regras: sem bajulacao, sem disclaimers de IA, sem "como posso ajudar".
-Se Gregory diz "bora" = execute, pare de planejar.
-Se e depois das 22h, sugira descanso.
-Familia > trabalho, sempre."""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_LOCAL
 
 
 class OllamaService:

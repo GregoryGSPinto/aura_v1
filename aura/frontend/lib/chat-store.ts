@@ -19,9 +19,13 @@ type ChatStoreState = {
   activeProvider: ProviderName;
   providerStatuses: Record<string, ProviderInfo>;
   engineStatus: EngineStatusPayload | null;
+  wsConnected: boolean;
+  wsThinking: boolean;
   setActiveProvider: (provider: ProviderName) => void;
   setProviderStatuses: (statuses: Record<string, ProviderInfo>) => void;
   setEngineStatus: (status: EngineStatusPayload | null) => void;
+  setWsConnected: (connected: boolean) => void;
+  setWsThinking: (thinking: boolean) => void;
   createConversation: () => string;
   setActiveConversation: (id: string) => void;
   appendMessage: (conversationId: string, message: ConversationMessage) => void;
@@ -78,9 +82,13 @@ export const useChatStore = create<ChatStoreState>()(
         activeProvider: 'auto' as ProviderName,
         providerStatuses: {} as Record<string, ProviderInfo>,
         engineStatus: null as EngineStatusPayload | null,
+        wsConnected: false,
+        wsThinking: false,
         setActiveProvider: (provider) => set({ activeProvider: provider }),
         setProviderStatuses: (statuses) => set({ providerStatuses: statuses }),
         setEngineStatus: (status) => set({ engineStatus: status }),
+        setWsConnected: (connected) => set({ wsConnected: connected }),
+        setWsThinking: (thinking) => set({ wsThinking: thinking }),
         createConversation: () => {
           const conversation = createConversation();
           set((state) => ({

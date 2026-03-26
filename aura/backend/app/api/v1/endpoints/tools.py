@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
@@ -9,6 +9,47 @@ from app.models.common_models import ApiResponse
 
 
 router = APIRouter(prefix="/tools")
+
+
+# ── Sprint 4: Unified tool endpoints ────────────────────────────
+
+
+class ToolExecuteRequest(BaseModel):
+    tool: str = Field(min_length=1, description="Tool name in category.method format")
+    params: Dict[str, Any] = Field(default_factory=dict)
+    session_id: Optional[str] = None
+
+
+@router.get("", response_model=ApiResponse[list], dependencies=[Depends(require_bearer_token)])
+async def list_available_tools(request: Request):
+    """List all registered tools with descriptions and risk levels."""
+    registry = getattr(request.app.state, "tool_registry_v2", None)
+    if not registry:
+        return ApiResponse(data=[])
+    return ApiResponse(data=registry.list_tools())
+
+
+@router.post("/execute", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def execute_tool(request_body: ToolExecuteRequest, request: Request):
+    """Execute a tool by name. Format: category.method (e.g., git.status)."""
+    registry = getattr(request.app.state, "tool_registry_v2", None)
+    if not registry:
+        raise AuraError("tools_unavailable", "Tool registry not initialized.", status_code=503)
+    result = await registry.execute(
+        tool_name=request_body.tool,
+        params=request_body.params,
+        session_id=request_body.session_id,
+    )
+    return ApiResponse(data=result.to_dict())
+
+
+@router.get("/history", response_model=ApiResponse[list], dependencies=[Depends(require_bearer_token)])
+async def get_tool_history(request: Request, limit: int = 20):
+    """Return recent tool execution history."""
+    registry = getattr(request.app.state, "tool_registry_v2", None)
+    if not registry:
+        return ApiResponse(data=[])
+    return ApiResponse(data=registry.get_history(limit=min(limit, 100)))
 
 
 class TerminalToolRequest(BaseModel):

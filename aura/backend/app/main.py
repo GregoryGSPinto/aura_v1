@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -49,18 +50,33 @@ from app.services.project_service import ProjectService
 from app.services.routine_service import RoutineService
 from app.services.supabase_service import SupabaseService
 from app.services.token_budget_service import TokenBudgetService
+from app.services.brain_router import BrainRouter
 from app.services.chat_router_service import ChatRouterService
+from app.services.claude_client import ClaudeClient
 from app.services.tool_schema_service import ToolSchemaService
 from app.services.tool_call_parser import ToolCallParser
 from app.services.tool_executor_service import ToolExecutorService
 from app.services.knowledge_extractor import KnowledgeExtractor
+from app.services.claude_bridge import ClaudeBridge
+from app.services.daily_briefing import DailyBriefingService
+from app.services.deploy_orchestrator import DeployOrchestrator
+from app.services.github_service import GitHubService
+from app.services.integrations_service import CalendarService, DocService, EmailService
+from app.services.mission_engine import MissionExecutor, MissionPlanner, MissionStore
+from app.services.mission_engine_v2 import BlockerDetector, MissionEvaluator, MissionReplanner, MissionSummarizer, SmartRetry
+from app.services.proactive_engine import ProactiveEngine
+from app.services.safety_service import ApprovalQueue, AuditService, RollbackRegistry, SafetyService
+from app.services.sqlite_memory import SQLiteMemoryService
+from app.services.vercel_service import VercelService
+from app.services.voice_service import STTService, TTSService
 from app.services.proactive_service import ProactiveService
 from app.services.push_service import PushService
 from app.services.workflow_engine import WorkflowEngine
 from app.aura_os.connectors.github_connector import GitHubConnector
 from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
 from app.aura_os.connectors.gmail_connector import GmailConnector
-from app.tools import BrowserTool, ClaudeTool, FilesystemTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRouter, VSCodeTool
+from app.tools import BrowserTool, ClaudeTool, DocTool, FilesystemTool, GitTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRegistryV2, ToolRouter, VSCodeTool
+from app.tools.dev_tool import DevTool
 
 
 class NullVoicePipeline:
@@ -160,6 +176,8 @@ class Container:
         self.llm_tool = LLMTool(self.ollama_service)
         self.project_tool = ProjectTool(self.project_service, self.terminal_tool, self.vscode_tool)
         self.claude_tool = ClaudeTool()
+        self.git_tool = GitTool(self.settings)
+        self.doc_tool = DocTool(self.settings)
         self.tool_router = ToolRouter()
         self.command_service = CommandService(
             self.persistence_service,
@@ -182,6 +200,16 @@ class Container:
         self.ollama_engine_service = OllamaEngineService(
             ollama_url=self.settings.ollama_url,
             model_name=self.settings.model_name,
+        )
+
+        # Sprint 0 — Brain Router + Claude Client
+        self.claude_client = ClaudeClient(
+            api_key=self.settings.anthropic_api_key,
+            model=self.settings.claude_model,
+        )
+        self.brain_router = BrainRouter(
+            cloud_available=self.claude_client.available,
+            daily_budget_cents=self.settings.claude_daily_budget_cents,
         )
 
         self.ollama_provider = OllamaProvider(self.ollama_service, self.settings.model_name)
@@ -218,6 +246,58 @@ class Container:
             governance=self.action_governance_service,
             persistence=self.persistence_service,
         )
+        # Sprint 4: Tool Registry V2 (unified)
+        self.tool_registry_v2 = ToolRegistryV2()
+        self.tool_registry_v2.register("terminal", self.terminal_tool, "Executar comandos no terminal", parameters={"command": "string", "working_dir": "string (opcional)"})
+        self.tool_registry_v2.register("filesystem", self.filesystem_tool, "Operações com arquivos e diretórios", parameters={"path": "string"})
+        self.tool_registry_v2.register("git", self.git_tool, "Operações Git estruturadas", parameters={"repo_path": "string"})
+        self.tool_registry_v2.register("browser", self.browser_tool, "Acessar e buscar URLs")
+        self.tool_registry_v2.register("doc", self.doc_tool, "Ler e buscar em documentos/código")
+        self.tool_registry_v2.register("system", self.system_tool, "Monitoramento do sistema")
+        self.tool_registry_v2.register("project", self.project_tool, "Gerenciamento de projetos")
+
+        # AuraDev: DevTool for autonomous development
+        self.dev_tool = DevTool()
+        self.tool_registry_v2.register(
+            "auradev", self.dev_tool,
+            "Motor de desenvolvimento autônomo — gera código, corrige erros, faz review, gera testes",
+            parameters={"task": "string", "project": "string (opcional)", "provider": "string (opcional)"},
+        )
+
+        # Sprint 3: SQLite Memory
+        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "memory.db")
+        self.sqlite_memory = SQLiteMemoryService(db_path=db_path)
+
+        # Sprint 5: Claude Bridge (with SQLite memory for project context)
+        self.claude_bridge = ClaudeBridge(sqlite_memory=self.sqlite_memory)
+        self.tool_registry_v2.register("claude", self.claude_bridge, "Executar missões via Claude Code CLI", parameters={"objective": "string", "project_slug": "string", "working_dir": "string (opcional)"})
+
+        # Sprint 6: GitHub + Vercel + Deploy Orchestrator
+        self.github_service = GitHubService(
+            token=self.settings.github_token,
+            username=self.settings.github_username,
+        )
+        self.vercel_service = VercelService(
+            token=self.settings.vercel_token,
+            github_username=self.settings.github_username,
+        )
+        self.deploy_orchestrator = DeployOrchestrator(
+            github_service=self.github_service,
+            vercel_service=self.vercel_service,
+            sqlite_memory=self.sqlite_memory,
+        )
+        self.tool_registry_v2.register("github", self.github_service, "Operacoes GitHub API")
+        self.tool_registry_v2.register("vercel", self.vercel_service, "Operacoes Vercel API")
+
+        # Sprint 7: Mission Engine V1
+        self.mission_store = MissionStore(db_path=db_path)
+        self.mission_planner = MissionPlanner(ollama_service=self.ollama_service)
+        self.mission_executor = MissionExecutor(
+            tool_registry=self.tool_registry_v2,
+            claude_bridge=self.claude_bridge,
+            sqlite_memory=self.sqlite_memory,
+        )
+
         self.chat_router_service = ChatRouterService(
             ollama_service=self.ollama_service,
             aura_os=self.aura_os,
@@ -226,13 +306,15 @@ class Container:
             tool_schema=self.tool_schema_service,
             tool_parser=self.tool_call_parser,
             tool_executor=self.tool_executor_service,
+            tool_registry_v2=self.tool_registry_v2,
         )
 
-        # Sprint 4: Knowledge Extractor
+        # Sprint 4: Knowledge Extractor (with Sprint 3 SQLite memory)
         self.knowledge_extractor = KnowledgeExtractor(
             memory_service=self.memory_service,
             ollama_service=self.ollama_service,
             budget_service=self.token_budget_service,
+            sqlite_memory=self.sqlite_memory,
         )
 
         # Sprint 5: Connectors
@@ -258,6 +340,53 @@ class Container:
 
         # Workflow Engine
         self.workflow_engine = WorkflowEngine(push_service=self.push_service)
+
+        # Sprint 9: Integrations (Calendar, Email, Docs)
+        self.calendar_service = CalendarService(
+            calendar_connector=self.calendar_connector,
+            ollama_service=self.ollama_service,
+        )
+        self.email_service = EmailService(
+            gmail_connector=self.gmail_connector,
+            ollama_service=self.ollama_service,
+        )
+        self.doc_service = DocService(
+            ollama_service=self.ollama_service,
+            allowed_roots=self.settings.allowed_roots,
+        )
+
+        # Sprint 11: Safety Layer
+        self.safety_service = SafetyService()
+        self.audit_service = AuditService(db_path=db_path)
+        self.approval_queue = ApprovalQueue()
+        self.rollback_registry = RollbackRegistry()
+
+        # Sprint 12: Voice Premium
+        self.stt_service = STTService()
+        self.tts_service = TTSService()
+
+        # Sprint 13.5: Proactive Engine
+        self.proactive_engine = ProactiveEngine(
+            ollama_service=self.ollama_service,
+            claude_client=self.claude_client,
+        )
+
+        # Sprint 14: Daily Briefing
+        self.briefing_service = DailyBriefingService(
+            calendar_service=self.calendar_service,
+            email_service=self.email_service,
+            sqlite_memory=self.sqlite_memory,
+            mission_store=self.mission_store,
+            ollama_service=self.ollama_service,
+            deploy_orchestrator=self.deploy_orchestrator,
+        )
+
+        # Sprint 15: Mission Engine V2
+        self.mission_replanner = MissionReplanner(ollama_service=self.ollama_service)
+        self.smart_retry = SmartRetry()
+        self.blocker_detector = BlockerDetector()
+        self.mission_evaluator = MissionEvaluator()
+        self.mission_summarizer = MissionSummarizer(ollama_service=self.ollama_service)
 
         # Sprint 4: Proactive Service
         self.proactive_service = ProactiveService(
@@ -390,7 +519,29 @@ def get_container() -> Container:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.container.start_runtime()
+
+    # Sprint 1 — boot validation + background health polling
+    from app.services.health import health_registry
+    from app.services.operation_log import operation_log
+
+    app.state.health_registry = health_registry
+    app.state.operation_log = operation_log
+
+    operation_log.add("info", "boot", "Aura backend starting up")
+    await health_registry.boot_check()
+    await health_registry.start_background(interval=30)
+    operation_log.add("info", "boot", "Boot check completed, background health polling started")
+
+    try:
+        await app.state.proactive_service.start()
+        operation_log.add("info", "boot", "ProactiveService started (morning_briefing + health_check loops)")
+    except Exception as exc:
+        app.state.logger.warning("[Lifespan] ProactiveService did not start: %s", exc)
+
     yield
+
+    await app.state.proactive_service.stop()
+    await health_registry.stop_background()
     app.state.container.stop_runtime()
 
 
@@ -435,15 +586,45 @@ def create_app() -> FastAPI:
         "anthropic": app_container.anthropic_provider,
         "openai": app_container.openai_provider,
     }
+    from app.services.websocket_manager import ws_manager as _ws_manager
+    app.state.ws_manager = _ws_manager
+    app.state.brain_router = app_container.brain_router
+    app.state.claude_client = app_container.claude_client
     app.state.startup_warnings = app_container.startup_warnings
     app.state.feature_flags = app_container.feature_flags
     app.state.chat_router_service = app_container.chat_router_service
     app.state.tool_schema_service = app_container.tool_schema_service
     app.state.tool_call_parser = app_container.tool_call_parser
     app.state.tool_executor_service = app_container.tool_executor_service
+    app.state.tool_registry_v2 = app_container.tool_registry_v2
+    app.state.git_tool = app_container.git_tool
+    app.state.doc_tool = app_container.doc_tool
     app.state.knowledge_extractor = app_container.knowledge_extractor
     app.state.push_service = app_container.push_service
     app.state.workflow_engine = app_container.workflow_engine
+    app.state.sqlite_memory = app_container.sqlite_memory
+    app.state.claude_bridge = app_container.claude_bridge
+    app.state.github_service = app_container.github_service
+    app.state.vercel_service = app_container.vercel_service
+    app.state.deploy_orchestrator = app_container.deploy_orchestrator
+    app.state.mission_store = app_container.mission_store
+    app.state.mission_planner = app_container.mission_planner
+    app.state.mission_executor = app_container.mission_executor
+    app.state.calendar_service = app_container.calendar_service
+    app.state.email_service = app_container.email_service
+    app.state.doc_service = app_container.doc_service
+    app.state.safety_service = app_container.safety_service
+    app.state.audit_service = app_container.audit_service
+    app.state.approval_queue = app_container.approval_queue
+    app.state.rollback_registry = app_container.rollback_registry
+    app.state.stt_service = app_container.stt_service
+    app.state.tts_service = app_container.tts_service
+    app.state.proactive_engine = app_container.proactive_engine
+    app.state.briefing_service = app_container.briefing_service
+    app.state.blocker_detector = app_container.blocker_detector
+    app.state.mission_evaluator = app_container.mission_evaluator
+    app.state.mission_summarizer = app_container.mission_summarizer
+    app.state.dev_tool = app_container.dev_tool
     app.state.active_project = None
     app.state.proactive_service = app_container.proactive_service
     app.state.github_connector = app_container.github_connector

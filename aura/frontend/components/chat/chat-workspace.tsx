@@ -3,17 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 
+import { useVoiceTTS, useVoiceMode } from '@/hooks/use-voice';
+
 import { ChatComposer } from '@/components/chat/composer';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
 import { MessageList } from '@/components/chat/message-list';
 import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
 import { useAuraPreferences } from '@/components/providers/app-provider';
+import { useHealth } from '@/hooks/use-health';
+import { useWebSocket } from '@/hooks/use-websocket';
 import { ApiClientError, sendChat } from '@/lib/api';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
 import { useChatStore } from '@/lib/chat-store';
 import type { AttachmentPreview, ConversationMessage } from '@/lib/chat-types';
 import { notifyError, notifyInfo } from '@/lib/notifications';
+import { cn } from '@/lib/utils';
 
 type BrowserRecognitionAlternative = { transcript: string };
 type BrowserRecognitionResult = ArrayLike<BrowserRecognitionAlternative> & { isFinal?: boolean };
@@ -30,12 +35,6 @@ type BrowserSpeechRecognition = {
 };
 type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
 
 function createMessageId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
@@ -75,6 +74,7 @@ function classifyChatError(error: unknown) {
 
 export function ChatWorkspace() {
   const { refreshRuntime } = useAuraPreferences();
+  const health = useHealth();
   const conversations = useChatStore((s) => s.conversations);
   const activeConversationId = useChatStore((s) => s.activeConversationId);
   const appendMessage = useChatStore((s) => s.appendMessage);
@@ -87,11 +87,43 @@ export function ChatWorkspace() {
   const selectedModeId = useChatStore((s) => s.selectedModeId);
   const composerCommand = useChatStore((s) => s.composerCommand);
   const clearComposerCommand = useChatStore((s) => s.clearComposerCommand);
+  const setWsConnected = useChatStore((s) => s.setWsConnected);
+  const setWsThinking = useChatStore((s) => s.setWsThinking);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? conversations[0];
   const messages = activeConversation?.messages ?? [];
   const currentMode = getAuraChatMode(selectedModeId);
   const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant' && m.content.trim());
+
+  // WebSocket real-time events
+  const sessionId = activeConversation?.id ?? '';
+  const { connected: wsConnected, on: wsOn } = useWebSocket(sessionId);
+
+  useEffect(() => {
+    setWsConnected(wsConnected);
+  }, [wsConnected, setWsConnected]);
+
+  useEffect(() => {
+    if (!wsOn) return;
+    const unsubs = [
+      wsOn('chat.thinking', () => setWsThinking(true)),
+      wsOn('chat.done', () => setWsThinking(false)),
+      wsOn('health.changed', () => health.refetch()),
+      wsOn('mission.progress', (data) => {
+        window.dispatchEvent(new CustomEvent('aura:mission-progress', { detail: data }));
+      }),
+      wsOn('proactive.alert', (data) => {
+        window.dispatchEvent(new CustomEvent('aura:proactive-alert', { detail: data }));
+      }),
+      wsOn('tool.needs_approval', (data) => {
+        window.dispatchEvent(new CustomEvent('aura:tool-approval', { detail: data }));
+      }),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [wsOn, setWsThinking, health]);
+
+  const { isSpeaking, speak, stop: stopTTS } = useVoiceTTS();
+  const voiceMode = useVoiceMode();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -100,6 +132,8 @@ export function ChatWorkspace() {
   const streamTimerRef = useRef<number | null>(null);
   const voiceFinalRef = useRef('');
   const voicePartialRef = useRef('');
+  // Ref to avoid circular deps between speakMessage ↔ toggleListening ↔ submitPrompt
+  const toggleListeningRef = useRef<() => void>(() => {});
 
   const [draftText, setDraftText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
@@ -107,7 +141,6 @@ export function ChatWorkspace() {
   const [isListening, setIsListening] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [shouldReplyWithVoice, setShouldReplyWithVoice] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [activeSpeakingMessageId, setActiveSpeakingMessageId] = useState<string | null>(null);
   const [voiceTranscriptPartial, setVoiceTranscriptPartial] = useState('');
   const [voiceTranscriptFinal, setVoiceTranscriptFinal] = useState('');
@@ -152,6 +185,7 @@ export function ChatWorkspace() {
     setIsProcessingVoice(false);
   }, []);
 
+
   const runStreaming = useCallback(
     (messageId: string, fullText: string, meta: string, model?: string) =>
       new Promise<void>((resolve) => {
@@ -176,27 +210,23 @@ export function ChatWorkspace() {
   );
 
   const stopSpeaking = useCallback(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
+    stopTTS();
     setActiveSpeakingMessageId(null);
     setShouldReplyWithVoice(false);
-  }, []);
+  }, [stopTTS]);
 
   const speakMessage = useCallback((message: ConversationMessage) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window) || !message.content.trim()) {
-      notifyInfo('Audio indisponivel', 'Speech synthesis nao suportado.');
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message.content);
-    utterance.lang = 'pt-BR';
-    utterance.rate = 1;
-    utterance.onstart = () => { setIsSpeaking(true); setActiveSpeakingMessageId(message.id); };
-    utterance.onend = () => { setIsSpeaking(false); setActiveSpeakingMessageId(null); setShouldReplyWithVoice(false); };
-    utterance.onerror = () => { setIsSpeaking(false); setActiveSpeakingMessageId(null); setShouldReplyWithVoice(false); };
-    window.speechSynthesis.speak(utterance);
-  }, []);
+    if (!message.content.trim()) return;
+    setActiveSpeakingMessageId(message.id);
+    speak(message.content, () => {
+      setActiveSpeakingMessageId(null);
+      setShouldReplyWithVoice(false);
+      // Voice mode loop: after Aura finishes speaking, auto-activate mic
+      if (voiceMode.enabled) {
+        voiceMode.onAuraDoneSpeaking(toggleListeningRef.current);
+      }
+    });
+  }, [speak, voiceMode]);
 
   const handleAttachmentSelection = (files: FileList | null) => {
     if (!files?.length) return;
@@ -243,7 +273,11 @@ export function ChatWorkspace() {
         const payload = response.data;
         const meta = [payload.intent, currentMode.label, payload.model, payload.context_summary].filter(Boolean).join(' · ');
         await runStreaming(assistantMsg.id, payload.response, meta, payload.model);
-        if (payload.provider || payload.route) updateMessage(activeConversation.id, assistantMsg.id, { provider: payload.provider, route: payload.route });
+        const messageUpdate: Partial<ConversationMessage> = {};
+        if (payload.provider || payload.route) { messageUpdate.provider = payload.provider; messageUpdate.route = payload.route; }
+        if (payload.brain_used) messageUpdate.brain = payload.brain_used as 'local' | 'cloud';
+        if (payload.tool_calls?.length) messageUpdate.toolCalls = payload.tool_calls;
+        if (Object.keys(messageUpdate).length) updateMessage(activeConversation.id, assistantMsg.id, messageUpdate);
         await refreshRuntime();
         if (replyWithVoice) speakMessage({ ...assistantMsg, content: payload.response, status: 'complete', modeLabel: currentMode.label });
         else setShouldReplyWithVoice(false);
@@ -303,6 +337,27 @@ export function ChatWorkspace() {
     setIsListening(true);
   }, [clearVoiceCapture, isListening, stopSpeaking, submitVoiceTranscript]);
 
+  // Keep toggleListeningRef fresh so speakMessage can call it without circular dep
+  useEffect(() => {
+    toggleListeningRef.current = toggleListening;
+  }, [toggleListening]);
+
+  // VoiceButton transcript handler: auto-submit in voice mode, else fill composer
+  const handleVoiceTranscript = useCallback((text: string) => {
+    if (voiceMode.enabled || voiceReplyEnabled) {
+      void submitPrompt(text, undefined, { source: 'voice', autoVoiceReply: true });
+    } else {
+      setDraftText((prev) => (prev ? `${prev} ${text}` : text));
+    }
+  }, [voiceMode.enabled, voiceReplyEnabled, submitPrompt]);
+
+  // Voice mode toggle: sync both local voiceMode state and Zustand persistence
+  const handleToggleVoiceMode = useCallback(() => {
+    const next = !voiceReplyEnabled;
+    setVoiceReplyEnabled(next);
+    if (next) voiceMode.enable(); else voiceMode.disable();
+  }, [voiceReplyEnabled, setVoiceReplyEnabled, voiceMode]);
+
   // External suggestion events (smart chips, share sheet)
   useEffect(() => {
     const handler = (e: Event) => {
@@ -347,7 +402,9 @@ export function ChatWorkspace() {
     } catch { notifyError('Erro', 'Nao foi possivel copiar.'); }
   };
 
-  const columnClass = 'mx-auto flex h-full min-h-0 w-full max-w-[52rem] flex-col';
+  const chatGridClass = 'grid h-full min-h-0 w-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,66rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,70rem)_minmax(0,1fr)]';
+  const chatContentClass = 'flex h-full min-h-0 w-full flex-col xl:col-start-2';
+  const chatMeasureClass = 'mx-auto flex h-full min-h-0 w-full max-w-[52rem] flex-col 2xl:max-w-[54rem]';
 
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-transparent">
@@ -359,74 +416,90 @@ export function ChatWorkspace() {
         onChange={(e) => { handleAttachmentSelection(e.target.files); e.currentTarget.value = ''; }}
       />
 
+      {/* Unhealthy banner */}
+      {(health.overallStatus === 'unhealthy' || health.overallStatus === 'unreachable') && (
+        <button
+          type="button"
+          onClick={health.refetch}
+          className="flex shrink-0 items-center justify-center gap-2 border-b border-red-500/20 bg-red-500/5 px-4 py-1.5 text-xs text-red-400 transition hover:bg-red-500/10"
+        >
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+          Alguns servicos estao offline. Toque para atualizar.
+        </button>
+      )}
+
       {/* Chat messages area */}
-      <div className="flex min-h-0 flex-1 flex-col px-4 md:px-6 lg:px-8">
-        <div className={columnClass}>
-          {messages.length ? (
-            <div
-              ref={scrollAreaRef}
-              className="min-h-0 flex-1 overflow-y-auto pb-6 pt-5"
-              onScroll={handleScroll}
-            >
-              <div className="flex min-h-full flex-col justify-end">
-                <MessageList
-                  messages={messages}
-                  activeSpeakingMessageId={activeSpeakingMessageId}
-                  onCopy={handleCopy}
-                  onRead={speakMessage}
-                  onRegenerate={handleRegenerate}
-                  onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
-                />
-                <div ref={bottomRef} />
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 items-center justify-center pb-6 pt-5">
-              <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
-            </div>
-          )}
-
-          {/* Voice transcript */}
-          <VoiceTranscriptPanel
-            partialTranscript={voiceTranscriptPartial}
-            finalTranscript={voiceTranscriptFinal}
-            isListening={isListening}
-            isProcessingVoice={isProcessingVoice}
-            onClear={clearVoiceCapture}
-          />
-
-          {/* Composer */}
-          <ChatComposer
-            value={draftText}
-            onChange={setDraftText}
-            onSubmit={() => void submitPrompt(undefined, undefined, { source: 'text', autoVoiceReply: voiceReplyEnabled })}
-            attachments={attachments}
-            onAttach={() => fileInputRef.current?.click()}
-            onRemoveAttachment={(id) => setAttachments((c) => c.filter((a) => a.id !== id))}
-            isLoading={isLoading || isProcessingVoice}
-            isListening={isListening}
-            isSpeaking={isSpeaking}
-            voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
-            onToggleListening={toggleListening}
-            onStopSpeaking={stopSpeaking}
-            onToggleVoiceReply={() => setVoiceReplyEnabled(!voiceReplyEnabled)}
-            error={error}
-            selectedModeLabel={currentMode.label}
-          />
-
-          {/* Scroll to bottom */}
-          {showScrollDown && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
-              <button
-                type="button"
-                onClick={scrollToBottom}
-                className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-400 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur transition hover:bg-zinc-800"
+      <div className="flex min-h-0 flex-1 flex-col px-4 md:px-8 xl:px-10">
+        <div className={chatGridClass}>
+          <div className={cn(chatContentClass, chatMeasureClass)}>
+            {messages.length ? (
+              <div
+                ref={scrollAreaRef}
+                className="min-h-0 flex-1 overflow-y-auto pb-6 pt-6"
+                onScroll={handleScroll}
               >
-                <ArrowDown className="h-3 w-3" />
-                Novas mensagens
-              </button>
-            </div>
-          )}
+                <div className="flex min-h-full flex-col justify-end">
+                  <MessageList
+                    messages={messages}
+                    activeSpeakingMessageId={activeSpeakingMessageId}
+                    onCopy={handleCopy}
+                    onRead={speakMessage}
+                    onRegenerate={handleRegenerate}
+                    onTogglePin={(id) => activeConversation && togglePinnedMessage(activeConversation.id, id)}
+                  />
+                  <div ref={bottomRef} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-0 flex-1 items-center justify-center pb-6 pt-6">
+                <ChatEmptyState onUsePrompt={(prompt) => setDraftText(prompt)} />
+              </div>
+            )}
+
+            {/* Voice transcript */}
+            <VoiceTranscriptPanel
+              partialTranscript={voiceTranscriptPartial}
+              finalTranscript={voiceTranscriptFinal}
+              isListening={isListening}
+              isProcessingVoice={isProcessingVoice}
+              onClear={clearVoiceCapture}
+            />
+
+            {/* Composer */}
+            <ChatComposer
+              value={draftText}
+              onChange={setDraftText}
+              onSubmit={() => void submitPrompt(undefined, undefined, { source: 'text', autoVoiceReply: voiceReplyEnabled })}
+              attachments={attachments}
+              onAttach={() => fileInputRef.current?.click()}
+              onRemoveAttachment={(id) => setAttachments((c) => c.filter((a) => a.id !== id))}
+              isLoading={isLoading || isProcessingVoice}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              voiceReplyEnabled={voiceReplyEnabled || shouldReplyWithVoice}
+              voiceModeWaiting={voiceMode.waitingForUser}
+              onToggleListening={toggleListening}
+              onStopSpeaking={stopSpeaking}
+              onToggleVoiceReply={handleToggleVoiceMode}
+              onVoiceTranscript={handleVoiceTranscript}
+              error={error}
+              selectedModeLabel={currentMode.label}
+            />
+
+            {/* Scroll to bottom */}
+            {showScrollDown && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
+                <button
+                  type="button"
+                  onClick={scrollToBottom}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-zinc-900/95 px-3 py-1.5 text-xs text-zinc-400 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur transition hover:bg-zinc-800"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                  Novas mensagens
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>

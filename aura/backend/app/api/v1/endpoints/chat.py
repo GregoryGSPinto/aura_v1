@@ -10,6 +10,8 @@ from app.models.chat_models import ChatRequest, ChatResponseData, SuggestedActio
 from app.models.command_models import CommandExecutionResult
 from app.models.common_models import ApiResponse
 from app.models.persistence_models import ChatMessageRecord, ChatSessionRecord
+from app.services.events import AuraEvent
+from app.services.websocket_manager import ws_manager
 from app.tools.tool_router import ToolAnalysis
 
 
@@ -111,11 +113,56 @@ async def chat(request_body: ChatRequest, request: Request):
     route: Optional[str] = None
     actions_taken: Optional[list] = None
     plan: Optional[dict] = None
+    brain_used: Optional[str] = None
+    complexity: Optional[int] = None
+    classification_reason: Optional[str] = None
+    tool_calls: Optional[list] = None
+
+    # Brain override from @local / @cloud prefix
+    brain_override_header = request.headers.get("x-aura-brain-override")
+    raw_message = request_body.message
+    if raw_message.startswith("@local "):
+        brain_override_header = "local"
+        request_body.message = raw_message[7:]
+    elif raw_message.startswith("@cloud "):
+        brain_override_header = "cloud"
+        request_body.message = raw_message[7:]
+
+    # Emit chat.thinking via WebSocket
+    session_id = request_body.context.session_id
+    await ws_manager.send_to_session(session_id, AuraEvent.chat_thinking(session_id))
 
     if tool_analysis.status == "allowed" and tool_route:
         preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
         action_preview = preview.model_dump()
-        if tool_route.command == "claude_execute":
+        if tool_route.command == "auradev_execute":
+            # AuraDev: route dev tasks to the dual-brain engine
+            dev_tool = getattr(request.app.state, "dev_tool", None)
+            if dev_tool:
+                intent_type = tool_route.params.get("intent_type", "task")
+                dev_response = await dev_tool.execute_from_intent(intent_type, tool_route.params)
+                action_taken = {
+                    "command": "auradev_execute",
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": "success",
+                    "result": {
+                        "message": dev_response,
+                        "stdout": None,
+                        "stderr": None,
+                        "metadata": {"intent_type": intent_type},
+                    },
+                }
+                response = dev_response
+            else:
+                response = "AuraDev não está disponível."
+                action_taken = {
+                    "command": "auradev_execute",
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": "error",
+                    "result": {"message": response, "stdout": None, "stderr": None, "metadata": {}},
+                }
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+        elif tool_route.command == "claude_execute":
             # Claude Code: async execution via ClaudeTool
             claude_prompt = tool_route.params.get("prompt", request_body.message)
             claude_result = await request.app.state.claude_tool.execute(
@@ -194,6 +241,53 @@ async def chat(request_body: ChatRequest, request: Request):
         response = build_operational_response(tool_analysis)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
     else:
+        # === Brain Router classification ===
+        br = getattr(request.app.state, "brain_router", None)
+        cc = getattr(request.app.state, "claude_client", None)
+
+        if br:
+            classification = br.classify(request_body.message)
+            target = classification["target"]
+            complexity = classification["complexity"].value
+            classification_reason = classification["reason"]
+
+            # Apply brain override
+            if brain_override_header == "cloud" and cc and cc.available:
+                from app.services.brain_router import BrainTarget
+                target = BrainTarget.CLOUD
+                classification_reason = "Override manual: @cloud"
+            elif brain_override_header == "local":
+                from app.services.brain_router import BrainTarget
+                target = BrainTarget.LOCAL
+                classification_reason = "Override manual: @local"
+
+            brain_used = target.value
+            br.track_classification(classification["complexity"])
+
+            # Emit brain routing event via WebSocket
+            await ws_manager.send_to_session(
+                session_id,
+                AuraEvent.chat_brain_routing(session_id, target.value, complexity, classification_reason),
+            )
+        else:
+            from app.services.brain_router import BrainTarget
+            target = BrainTarget.LOCAL
+            brain_used = "local"
+            complexity = 2
+            classification_reason = "Brain router nao disponivel"
+
+        # Sprint 3: Inject SQLite memory context
+        sqlite_mem = getattr(request.app.state, "sqlite_memory", None)
+        memory_context_block = ""
+        if sqlite_mem:
+            try:
+                memory_context_block = sqlite_mem.build_context_prompt(
+                    session_id=session_id,
+                    project_slug=request_body.context.project_id,
+                )
+            except Exception:
+                pass
+
         # Try ChatRouterService first (handles agent routing + tool calling)
         chat_router = getattr(request.app.state, "chat_router_service", None)
         router_result = None
@@ -206,6 +300,7 @@ async def chat(request_body: ChatRequest, request: Request):
                         "memory_prompt_points": runtime_context["memory_prompt_points"],
                         "behavior_mode": runtime_context["behavior_mode"],
                         "history": request_body.context.history,
+                        "memory_context_block": memory_context_block,
                     },
                 )
             except Exception:
@@ -218,54 +313,63 @@ async def chat(request_body: ChatRequest, request: Request):
             route = router_result.get("route")
             actions_taken = router_result.get("actions_taken")
             plan = router_result.get("plan")
+            tool_calls = router_result.get("tool_calls")
+            if br:
+                br.track_usage(target)
         else:
-            # Fallback: direct provider call (original logic)
+            # Brain-routed fallback
             route = None
             actions_taken = None
             plan = None
-            override = getattr(request.app.state, "provider_override", "auto")
-            used_provider = "ollama"
-            if override not in {"auto", "ollama"}:
-                cloud_provider = request.app.state.chat_providers.get(override)
-                if cloud_provider and getattr(cloud_provider, "api_key", ""):
-                    chat_system_prompt = request.app.state.behavior_service.build_chat_prompt(
-                        runtime_context["context_summary"],
-                        runtime_context["memory_prompt_points"],
-                        runtime_context["behavior_mode"],
+
+            chat_system_prompt = request.app.state.behavior_service.build_chat_prompt(
+                runtime_context["context_summary"],
+                runtime_context["memory_prompt_points"],
+                runtime_context["behavior_mode"],
+            )
+
+            if target == BrainTarget.CLOUD and cc and cc.available:
+                # Route to Claude API
+                messages = [
+                    {"role": item.role, "content": item.content}
+                    for item in request_body.context.history
+                ]
+                messages.append({"role": "user", "content": request_body.message})
+                try:
+                    result = await cc.chat(
+                        messages=messages,
+                        system_prompt=chat_system_prompt,
+                        temperature=request_body.options.temperature,
                     )
-                    prompt_parts = [chat_system_prompt]
-                    for item in request_body.context.history:
-                        prompt_parts.append(f"{item.role.upper()}: {item.content}")
-                    prompt_parts.append(f"USER: {request_body.message}")
-                    prompt_parts.append("ASSISTANT:")
-                    full_prompt = "\n".join(prompt_parts)
-                    response = await cloud_provider.generate(full_prompt, "conversation")
+                    response = result["content"]
                     elapsed_ms = int((time.perf_counter() - started) * 1000)
-                    used_provider = override
-                else:
+                    used_provider = "anthropic"
+                    if br:
+                        br.track_usage(target)
+                except Exception:
+                    # Fallback to local on cloud failure
                     response, elapsed_ms = await request.app.state.ollama_service.generate_response(
                         message=request_body.message,
                         history=request_body.context.history,
                         temperature=request_body.options.temperature,
                         think=request_body.options.think,
-                        system_prompt=request.app.state.behavior_service.build_chat_prompt(
-                            runtime_context["context_summary"],
-                            runtime_context["memory_prompt_points"],
-                            runtime_context["behavior_mode"],
-                        ),
+                        system_prompt=chat_system_prompt,
                     )
+                    brain_used = "local"
+                    classification_reason += " [FALLBACK: erro na Claude API]"
+                    if br:
+                        br.track_usage(BrainTarget.LOCAL)
             else:
+                # Route to Qwen (local)
                 response, elapsed_ms = await request.app.state.ollama_service.generate_response(
                     message=request_body.message,
                     history=request_body.context.history,
                     temperature=request_body.options.temperature,
                     think=request_body.options.think,
-                    system_prompt=request.app.state.behavior_service.build_chat_prompt(
-                        runtime_context["context_summary"],
-                        runtime_context["memory_prompt_points"],
-                        runtime_context["behavior_mode"],
-                    ),
+                    system_prompt=chat_system_prompt,
                 )
+                if br:
+                    br.track_usage(target)
 
     request.app.state.persistence_service.upsert_chat_session(
         ChatSessionRecord(
@@ -282,6 +386,13 @@ async def chat(request_body: ChatRequest, request: Request):
         intent=intent,
         action_taken=action_taken,
     )
+    # Sprint 3: Auto-extract knowledge from user message
+    ke = getattr(request.app.state, "knowledge_extractor", None)
+    if ke:
+        try:
+            await ke.extract_and_save(request_body.message, response, session_id)
+        except Exception:
+            pass
     trust_snapshot = request.app.state.context_service.trust_snapshot(
         status={
             "auth_mode": request.app.state.settings.auth_mode,
@@ -348,5 +459,23 @@ async def chat(request_body: ChatRequest, request: Request):
         route=route,
         actions_taken=actions_taken,
         plan=plan,
+        brain_used=brain_used,
+        complexity=complexity,
+        classification_reason=classification_reason,
+        tool_calls=tool_calls,
     )
+
+    # Emit chat.done via WebSocket
+    await ws_manager.send_to_session(
+        session_id,
+        AuraEvent.chat_done(session_id, {
+            "brain_used": brain_used,
+            "complexity": complexity,
+            "classification_reason": classification_reason,
+            "provider": used_provider,
+            "processing_time_ms": elapsed_ms,
+            "intent": intent,
+        }),
+    )
+
     return ApiResponse(data=data)

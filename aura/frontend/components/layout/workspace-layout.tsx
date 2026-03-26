@@ -6,7 +6,6 @@ import { ChatSidePanel } from '@/components/chat/chat-side-panel';
 import { ChatWorkspace } from '@/components/chat/chat-workspace';
 import { CodeEditor } from '@/components/editor/code-editor';
 import { FileExplorer } from '@/components/editor/file-explorer';
-import { GitPanel } from '@/components/editor/git-panel';
 import { PreviewPanel } from '@/components/editor/preview-panel';
 import { ContextSidebar } from '@/components/layout/context-sidebar';
 import { DragHandle } from '@/components/layout/drag-handle';
@@ -49,10 +48,10 @@ export function WorkspaceLayout() {
   // Chat as main content (chat, monitor, focus modes)
   if (layout.chat === 'main') {
     return (
-      <div className="workspace-panel flex h-full min-h-0 flex-1 px-3 py-3 lg:px-4 lg:py-4">
-        <div className="mx-auto grid h-full w-full max-w-[1440px] min-h-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,52rem)_minmax(0,1fr)] xl:gap-6">
+      <div className="workspace-panel relative flex h-full min-h-0 flex-1 px-3 py-3 lg:px-4 lg:py-4">
+        <div className="mx-auto flex h-full w-full max-w-[1760px] min-h-0 justify-center">
           <div
-            className="shell-panel flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[2rem] xl:col-start-2"
+            className="shell-panel flex h-full min-h-0 min-w-0 w-full max-w-[84rem] flex-col overflow-hidden rounded-[2rem] 2xl:max-w-[88rem]"
             onFocus={() => setActivePanel('chat')}
           >
             <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -71,10 +70,8 @@ export function WorkspaceLayout() {
               </>
             )}
           </div>
-          <div className="hidden min-h-0 xl:flex xl:col-start-3 xl:justify-end">
-            <ContextSidebar />
-          </div>
         </div>
+        <ContextSidebar />
       </div>
     );
   }

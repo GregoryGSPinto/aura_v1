@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Menu, Plus, X } from 'lucide-react';
+import { ChevronDown, LogOut, MessageSquareText, Plus, Trash2, X } from 'lucide-react';
 
 import { ChatWorkspace } from '@/components/chat/chat-workspace';
 import { BrainSelector } from '@/components/chat/brain-selector';
@@ -11,6 +11,7 @@ import { SmartChips } from '@/components/mobile/smart-chips';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useAuthStore } from '@/lib/auth-store';
 import { useChatStore } from '@/lib/chat-store';
+import { getAuraChatMode } from '@/lib/chat-modes';
 import { getRelativeTime, cn } from '@/lib/utils';
 import { haptic } from '@/hooks/use-haptic';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -23,8 +24,10 @@ export function MobileChat() {
   const createConversation = useChatStore((s) => s.createConversation);
   const setActiveConversation = useChatStore((s) => s.setActiveConversation);
   const deleteConversation = useChatStore((s) => s.clearConversation);
+  const selectedModeId = useChatStore((s) => s.selectedModeId);
   const isOnline = runtimeStatus?.services.api === 'online' && runtimeStatus?.status !== 'offline';
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentMode = getAuraChatMode(selectedModeId);
 
   // Smart chips: get last assistant message
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
@@ -64,22 +67,48 @@ export function MobileChat() {
     setDrawerOpen(false);
   };
 
+  const handleResetChat = (id: string) => {
+    haptic.light();
+    deleteConversation(id);
+  };
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_42%)]">
       {/* Header */}
-      <div className="mobile-header flex shrink-0 items-center justify-between border-b border-white/5 bg-zinc-950/90 px-3 pb-2 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => { haptic.light(); setDrawerOpen(true); }}
-          className="rounded-lg p-2 text-zinc-400 active:bg-white/5"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <span className="text-sm font-semibold text-zinc-200">Aura</span>
-        <div className="flex items-center gap-1">
-          <EngineToggle />
-          <BrainSelector />
-          <span className={cn('h-2 w-2 rounded-full', isOnline ? 'bg-green-500' : 'bg-red-500')} />
+      <div className="mobile-header sticky top-0 z-20 shrink-0 border-b border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface)_84%,transparent)] backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-md items-center gap-2 px-[calc(var(--sal)+0.875rem)] pb-3 pr-[calc(var(--sar)+0.875rem)]">
+          <button
+            type="button"
+            onClick={() => { haptic.light(); setDrawerOpen(true); }}
+            className="app-control flex min-w-0 flex-1 items-center justify-between rounded-[1.1rem] px-3.5 py-2.5 text-left"
+            aria-expanded={drawerOpen}
+            aria-controls="mobile-chat-drawer"
+          >
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-600">
+                Workspace
+              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-zinc-100">Conversa</span>
+                <span className="truncate text-xs text-zinc-500">{currentMode.shortLabel}</span>
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500" />
+          </button>
+
+          <div className="app-control flex items-center gap-2 rounded-[1rem] px-2.5 py-2">
+            <EngineToggle />
+            <span className={cn('h-2 w-2 rounded-full', isOnline ? 'bg-green-500' : 'bg-red-500')} />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="app-control inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] text-zinc-300"
+            aria-label="Novo chat"
+          >
+            <Plus className="h-4.5 w-4.5" />
+          </button>
         </div>
       </div>
 
@@ -96,11 +125,13 @@ export function MobileChat() {
       </div>
 
       {/* Smart reply chips */}
-      <SmartChips
-        lastAssistantMessage={lastAssistantMsg?.content ?? ''}
-        onSendMessage={handleChipMessage}
-        visible={showChips && !!lastAssistantMsg && messages.length > 0}
-      />
+      <div className="px-[calc(var(--sal)+0.5rem)] pr-[calc(var(--sar)+0.5rem)]">
+        <SmartChips
+          lastAssistantMessage={lastAssistantMsg?.content ?? ''}
+          onSendMessage={handleChipMessage}
+          visible={showChips && !!lastAssistantMsg && messages.length > 0}
+        />
+      </div>
 
       {/* Drawer */}
       <AnimatePresence>
@@ -110,68 +141,135 @@ export function MobileChat() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-md"
               onClick={() => setDrawerOpen(false)}
             />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed inset-y-0 left-0 z-50 w-[80%] max-w-[320px] bg-zinc-950 border-r border-white/5"
+            <motion.aside
+              id="mobile-chat-drawer"
+              initial={{ x: -28, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -28, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed inset-y-0 left-0 z-[80] w-full max-w-[24rem] pl-[calc(var(--sal)+0.75rem)] pr-6 pt-[calc(var(--sat)+0.75rem)] pb-[calc(var(--sab)+5.75rem)]"
             >
-              <div className="flex h-full flex-col">
-                {/* Drawer header */}
-                <div className="mobile-header flex items-center justify-between border-b border-white/5 px-4 pb-3">
-                  <span className="text-sm font-semibold text-zinc-200">Chats</span>
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={handleNewChat} className="rounded-lg p-1.5 text-zinc-400 active:bg-white/5">
-                      <Plus className="h-5 w-5" />
-                    </button>
-                    <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-lg p-1.5 text-zinc-400 active:bg-white/5">
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Chat list */}
-                <div className="flex-1 overflow-y-auto px-2 py-2">
-                  {conversations.slice(0, 20).map((conv) => {
-                    const isActive = conv.id === activeConversationId;
-                    return (
-                      <button
-                        key={conv.id}
-                        type="button"
-                        onClick={() => handleSelectChat(conv.id)}
-                        className={cn(
-                          'mb-1 flex w-full flex-col rounded-xl px-3 py-2.5 text-left transition active:scale-[0.98]',
-                          isActive ? 'bg-white/5 text-zinc-200' : 'text-zinc-500 active:bg-white/[0.03]',
-                        )}
-                      >
-                        <span className="truncate text-sm">{conv.title}</span>
-                        <span className="mt-0.5 text-[11px] text-zinc-600">{getRelativeTime(conv.updatedAt)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Drawer footer */}
-                <div className="border-t border-white/5 p-3 space-y-2">
-                  <div className="flex items-center gap-2 px-1 text-xs text-zinc-600">
-                    <span className={cn('h-2 w-2 rounded-full', isOnline ? 'bg-green-500' : 'bg-red-500')} />
-                    <span>{runtimeStatus?.model ?? 'qwen3.5:9b'}</span>
+              <div className="app-popover flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface)_88%,transparent)] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+                <div className="flex items-start justify-between border-b border-white/5 px-4 py-4">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-600">
+                      Conversas
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_55%,var(--bg-surface))] text-zinc-200">
+                        <MessageSquareText className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-zinc-100">Aura</p>
+                        <p className="truncate text-xs text-zinc-500">{runtimeStatus?.model ?? 'qwen3.5:9b'}</p>
+                      </div>
+                    </div>
                   </div>
                   <button
                     type="button"
+                    onClick={() => setDrawerOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/10 bg-white/[0.03] text-zinc-400 transition active:scale-[0.98] active:bg-white/10"
+                    aria-label="Fechar painel"
+                  >
+                    <X className="h-4.5 w-4.5" />
+                  </button>
+                </div>
+
+                <div className="border-b border-white/5 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_65%,var(--bg-surface))] px-3.5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-zinc-200">Modo atual</p>
+                      <p className="truncate text-[11px] text-zinc-500">{currentMode.label}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <EngineToggle />
+                      <BrainSelector />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleNewChat}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-[1rem] bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-[0_12px_30px_rgba(37,99,235,0.28)] transition active:scale-[0.99] active:bg-blue-500"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo chat
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-3 py-3">
+                  <div className="space-y-1.5">
+                    {conversations.slice(0, 20).map((conv) => {
+                      const isActive = conv.id === activeConversationId;
+                      return (
+                        <div
+                          key={conv.id}
+                          className={cn(
+                            'group rounded-[1.15rem] border transition',
+                            isActive
+                              ? 'border-white/10 bg-white/[0.04]'
+                              : 'border-transparent bg-transparent',
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex items-start justify-between gap-3 rounded-[1.15rem] px-3.5 py-3 transition',
+                              isActive ? 'text-zinc-100' : 'text-zinc-400',
+                            )}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSelectChat(conv.id)}
+                              className="min-w-0 flex-1 text-left transition active:scale-[0.99]"
+                            >
+                              <p className="truncate text-sm font-medium">{conv.title}</p>
+                              <p className="mt-1 text-[11px] text-zinc-600">{getRelativeTime(conv.updatedAt)}</p>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleResetChat(conv.id);
+                              }}
+                              className="opacity-100 rounded-lg p-2 text-zinc-600 transition active:bg-red-500/10 active:text-red-400"
+                              aria-label="Limpar conversa"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t border-white/5 px-4 py-4">
+                  <div className="rounded-[1.1rem] border border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_65%,var(--bg-surface))] px-3.5 py-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-zinc-500">Conexão</span>
+                      <span className={isOnline ? 'text-green-400' : 'text-red-400'}>
+                        {isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="text-zinc-500">Sessão</span>
+                      <span className="text-zinc-300">{activeConversation?.title ? 'Ativa' : 'Nova'}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
                     onClick={() => useAuthStore.getState().logout()}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-500 active:bg-red-500/10 active:text-red-400"
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-[1rem] border border-red-500/15 bg-red-500/6 px-4 py-3 text-sm text-red-300 transition active:scale-[0.99] active:bg-red-500/12"
                   >
                     <LogOut className="h-4 w-4" />
                     Sair
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </motion.aside>
           </>
         )}
       </AnimatePresence>

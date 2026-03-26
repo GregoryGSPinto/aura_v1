@@ -206,25 +206,30 @@ export function Sidebar({
         {/* Edge hotspot — hover-to-open when collapsed */}
         {hoverSidebar.hoverMode && collapsed && (
           <div
-            className="fixed inset-y-0 left-0 z-30 hidden w-3 lg:block"
-            style={{ top: 'var(--aura-header-h)' }}
+            className="fixed left-0 z-30 hidden w-3 lg:block"
+            style={{
+              top: 'calc(var(--aura-header-h) + 1rem)',
+              bottom: 'calc(var(--aura-status-h) + 1rem)',
+            }}
             aria-hidden="true"
             {...hoverSidebar.hotspotHandlers}
           />
         )}
 
-        {/* Sidebar panel — always full width, visibility via translateX */}
+        {/* Sidebar panel — floating edge companion */}
         <aside
           className={cn(
-            'app-popover fixed bottom-4 left-4 top-[calc(var(--aura-header-h)+1rem)] z-40 hidden w-60 overflow-hidden rounded-[1.75rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface)_82%,transparent)] shadow-[0_18px_44px_rgba(0,0,0,0.24)] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] lg:block',
-            collapsed
-              ? '-translate-x-[calc(100%+2rem)] opacity-0 pointer-events-none'
-              : 'translate-x-0 opacity-100',
+            'app-popover fixed left-4 z-40 hidden overflow-hidden rounded-[1.35rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface)_78%,transparent)] shadow-[0_16px_34px_rgba(0,0,0,0.22)] transition-[width,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] lg:block',
+            collapsed ? 'w-14 opacity-100' : 'w-[18.5rem] opacity-100',
           )}
+          style={{
+            top: 'calc(var(--aura-header-h) + 1rem)',
+            bottom: 'calc(var(--aura-status-h) + 1rem)',
+          }}
           {...(hoverSidebar.hoverMode ? hoverSidebar.panelHandlers : {})}
         >
           <SidebarContent
-            collapsed={false}
+            collapsed={collapsed}
             onToggleCollapse={hoverSidebar.toggle}
           />
         </aside>

@@ -51,8 +51,10 @@ export function MobileLayout({ children }: { children?: ReactNode }) {
 
   const handleOpenFile = () => setActiveTab('editor');
 
+  void children;
+
   return (
-    <div className="flex h-dvh flex-col bg-zinc-950">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-[linear-gradient(180deg,color-mix(in_srgb,var(--bg-surface)_92%,transparent),var(--bg-primary))]">
       <ConnectionBar />
       <MobileToastContainer />
       <QuickPanel open={quickPanelOpen} onClose={() => setQuickPanelOpen(false)} />

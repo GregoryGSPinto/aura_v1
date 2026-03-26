@@ -53,3 +53,7 @@ class ChatResponseData(BaseModel):
     route: Optional[str] = None
     actions_taken: Optional[list] = None
     plan: Optional[dict] = None
+    brain_used: Optional[str] = None
+    complexity: Optional[int] = None
+    classification_reason: Optional[str] = None
+    tool_calls: Optional[list] = None

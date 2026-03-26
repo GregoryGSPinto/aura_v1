@@ -19,7 +19,7 @@ export function VoiceTranscriptPanel({
   if (!transcript && !isListening && !isProcessingVoice) return null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-2 md:px-8">
+    <div className="w-full pb-2">
       <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-zinc-900 px-3 py-2.5">
         <div className="mt-0.5">
           {isProcessingVoice ? (

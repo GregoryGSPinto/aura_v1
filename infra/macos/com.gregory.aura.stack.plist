@@ -5,18 +5,25 @@
   <key>Label</key>
   <string>com.gregory.aura.stack</string>
 
+  <!-- boot.sh: Ollama → modelo → tunel → exec run-aura-stack (supervisor) -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>__AURA_REPO_ROOT__/scripts/aura-start</string>
-    <string>start</string>
+    <string>__AURA_REPO_ROOT__/scripts/boot.sh</string>
   </array>
 
+  <!-- Inicia ao login do usuário -->
   <key>RunAtLoad</key>
   <true/>
 
+  <!-- KeepAlive=true: launchd reinicia o supervisor se ele cair.
+       O boot.sh re-verifica Ollama e modelo antes de subir o stack. -->
   <key>KeepAlive</key>
-  <false/>
+  <true/>
+
+  <!-- Não reinicia mais rápido que 60s para evitar loop de boot com erro -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
 
   <key>WorkingDirectory</key>
   <string>__AURA_REPO_ROOT__</string>
@@ -35,10 +42,8 @@
     <string>__USER_HOME__</string>
   </dict>
 
+  <!-- AbandonProcessGroup: filhos continuam rodando se launchd parar o job -->
   <key>AbandonProcessGroup</key>
   <true/>
-
-  <key>ThrottleInterval</key>
-  <integer>30</integer>
 </dict>
 </plist>

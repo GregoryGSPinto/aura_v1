@@ -1,10 +1,12 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, auth, chat, chat_stream, command, companion, completion_api, connectors, dashboard_api, dataset, filesystem_api, git_api, jobs, os_runtime, preview_proxy, projects, push_api, routines, status, system, terminal_ws, tools, voice_api, webauthn_api, workflow_api
+from app.api.v1.endpoints import agent, auth, brain, chat, chat_stream, claude_missions, command, companion, completion_api, connectors, dashboard_api, dataset, deploy_api, dev_api, filesystem_api, git_api, health, integrations_api, jobs, memory_api, missions_api, os_runtime, preview_proxy, proactive_api, projects, push_api, routines, safety_api, status, system, terminal_ws, tools, voice_api, webauthn_api, websocket_events, workflow_api, workspace_api
 
 
 api_router = APIRouter()
 api_router.include_router(status.router, tags=["status"])
+api_router.include_router(health.router, tags=["health"])
+api_router.include_router(brain.router, tags=["brain"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(chat.router, tags=["chat"])
 api_router.include_router(command.router, tags=["command"])
@@ -25,7 +27,18 @@ api_router.include_router(preview_proxy.router, tags=["preview"])
 api_router.include_router(push_api.router, tags=["push"])
 api_router.include_router(git_api.router, tags=["git"])
 api_router.include_router(voice_api.router, tags=["voice"])
+api_router.include_router(voice_api.chat_voice_router, tags=["voice"])
 api_router.include_router(completion_api.router, tags=["code"])
 api_router.include_router(dashboard_api.router, tags=["dashboard"])
 api_router.include_router(workflow_api.router, tags=["workflows"])
 api_router.include_router(webauthn_api.router)
+api_router.include_router(memory_api.router)
+api_router.include_router(claude_missions.router)
+api_router.include_router(deploy_api.router)
+api_router.include_router(missions_api.router)
+api_router.include_router(safety_api.router)
+api_router.include_router(proactive_api.router)
+api_router.include_router(integrations_api.router)
+api_router.include_router(websocket_events.router, tags=["websocket"])
+api_router.include_router(workspace_api.router)
+api_router.include_router(dev_api.router)

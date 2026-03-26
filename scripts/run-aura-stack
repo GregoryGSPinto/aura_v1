@@ -35,26 +35,28 @@ select_service_port() {
   local preferred="$2"
   local owner="$3"
 
+  # All log_info/log_warn calls redirect to stderr so only the port number
+  # ends up on stdout — safe for capture with $().
   if ! port_is_listening "$preferred"; then
-    log_info "${label} prefers port ${preferred}."
+    log_info "${label} prefers port ${preferred}." >&2
     printf '%s' "$preferred"
     return 0
   fi
 
   if service_port_owned_by_aura "$preferred" "$owner"; then
-    log_info "${label} already bound to port ${preferred}."
+    log_info "${label} already bound to port ${preferred}." >&2
     printf '%s' "$preferred"
     return 0
   fi
 
-  log_warn "Port ${preferred} is occupied by a non-Aura process; ${label} will find a new port."
-  describe_port_owner "$preferred"
+  log_warn "Port ${preferred} is occupied by a non-Aura process; ${label} will find a new port." >&2
+  describe_port_owner "$preferred" >&2
   local fallback
   fallback="$(find_free_port)"
   while port_is_listening "$fallback"; do
     fallback="$(find_free_port)"
   done
-  log_info "${label} will bind to port ${fallback}."
+  log_info "${label} will bind to port ${fallback}." >&2
   printf '%s' "$fallback"
 }
 

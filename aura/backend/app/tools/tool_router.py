@@ -204,6 +204,11 @@ class ToolRouter:
                 action_label="subir ambiente local",
             )
 
+        # AuraDev integration — detect dev intent before Claude Code
+        dev_result = self._check_dev_request(message)
+        if dev_result:
+            return dev_result
+
         # Claude Code integration
         claude_result = self._check_claude_code_request(lowered, message)
         if claude_result:
@@ -234,6 +239,33 @@ class ToolRouter:
             if project.name.lower() in message:
                 return project.name
         return None
+
+    def _check_dev_request(self, message: str) -> Optional[ToolAnalysis]:
+        """Detect dev intent and route to AuraDev."""
+        try:
+            from app.tools.dev_tool import detect_dev_intent
+        except ImportError:
+            return None
+
+        detected = detect_dev_intent(message)
+        if not detected:
+            return None
+
+        intent_type = detected["intent_type"]
+        params = detected["params"]
+
+        return ToolAnalysis(
+            status="allowed",
+            route=ToolRoute(
+                command="auradev_execute",
+                params={
+                    "intent_type": intent_type,
+                    **params,
+                },
+                reason=f"Tarefa de desenvolvimento detectada: {intent_type}",
+            ),
+            action_label=f"AuraDev: {intent_type}",
+        )
 
     CLAUDE_ACTION_PATTERNS = (
         "manda pro claude", "mande pro claude",

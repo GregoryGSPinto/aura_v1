@@ -1,8 +1,23 @@
+"""
+AURA Filesystem Tool — File operations with path traversal protection.
+"""
+
+from __future__ import annotations
+
+import shutil
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from app.core.config import Settings
 from app.core.exceptions import AuraError, CommandBlockedError
+from app.tools.base import RiskLevel, ToolResult, ToolStatus
+
+
+# Extensions blocked from write/create for security
+_BLOCKED_WRITE_EXTENSIONS = {".env", ".pem", ".key", ".p12", ".pfx", ".ssh"}
+MAX_FILE_READ_SIZE = 1_048_576  # 1 MB
+MAX_FILE_WRITE_SIZE = 5_242_880  # 5 MB
 
 
 class FilesystemTool:
@@ -23,6 +38,8 @@ class FilesystemTool:
 
     def ensure_allowed_path(self, raw_path: Optional[str] = None) -> str:
         return str(self._resolve_allowed_path(raw_path))
+
+    # ── Original read-only operations ────────────────────────────
 
     def list_directory(self, path: Optional[str] = None) -> List[Dict[str, object]]:
         target = self._resolve_allowed_path(path)
@@ -92,3 +109,129 @@ class FilesystemTool:
             if query.lower() in content.lower():
                 results.append({"path": str(entry), "match": query})
         return results
+
+    # ── New write operations (Sprint 4) ──────────────────────────
+
+    def write_file(self, path: str, content: str) -> ToolResult:
+        t0 = time.time()
+        try:
+            target = self._resolve_allowed_path(path)
+            if target.suffix.lower() in _BLOCKED_WRITE_EXTENSIONS:
+                return ToolResult.blocked(
+                    "filesystem.write_file",
+                    f"Writing to {target.suffix} files is blocked for security",
+                )
+            content_size = len(content.encode("utf-8"))
+            if content_size > MAX_FILE_WRITE_SIZE:
+                return ToolResult.fail(
+                    "filesystem.write_file",
+                    f"Content too large: {content_size} bytes (max {MAX_FILE_WRITE_SIZE})",
+                )
+            # Create parent dirs if needed
+            target.parent.mkdir(parents=True, exist_ok=True)
+            existed = target.exists()
+            target.write_text(content, encoding="utf-8")
+            return ToolResult(
+                tool_name="filesystem.write_file",
+                status=ToolStatus.SUCCESS,
+                started_at=t0,
+                finished_at=time.time(),
+                output=f"{'Updated' if existed else 'Created'}: {target}",
+                risk_level=RiskLevel.CONFIRM,
+                metadata={"path": str(target), "size": content_size, "existed": existed},
+            )
+        except CommandBlockedError as exc:
+            return ToolResult.blocked("filesystem.write_file", str(exc))
+        except Exception as exc:
+            return ToolResult.fail("filesystem.write_file", str(exc))
+
+    def delete_file(self, path: str) -> ToolResult:
+        t0 = time.time()
+        try:
+            target = self._resolve_allowed_path(path)
+            if not target.exists():
+                return ToolResult.fail("filesystem.delete_file", f"Not found: {path}")
+            if target.is_dir():
+                return ToolResult.blocked(
+                    "filesystem.delete_file",
+                    "Deleting directories is not allowed. Use terminal for that.",
+                )
+            size = target.stat().st_size
+            target.unlink()
+            return ToolResult(
+                tool_name="filesystem.delete_file",
+                status=ToolStatus.SUCCESS,
+                started_at=t0,
+                finished_at=time.time(),
+                output=f"Deleted: {target}",
+                risk_level=RiskLevel.CRITICAL,
+                metadata={"path": str(target), "size": size},
+            )
+        except CommandBlockedError as exc:
+            return ToolResult.blocked("filesystem.delete_file", str(exc))
+        except Exception as exc:
+            return ToolResult.fail("filesystem.delete_file", str(exc))
+
+    def move_file(self, src: str, dst: str) -> ToolResult:
+        t0 = time.time()
+        try:
+            src_path = self._resolve_allowed_path(src)
+            dst_path = self._resolve_allowed_path(dst)
+            if not src_path.exists():
+                return ToolResult.fail("filesystem.move_file", f"Source not found: {src}")
+            shutil.move(str(src_path), str(dst_path))
+            return ToolResult(
+                tool_name="filesystem.move_file",
+                status=ToolStatus.SUCCESS,
+                started_at=t0,
+                finished_at=time.time(),
+                output=f"Moved: {src_path} → {dst_path}",
+                risk_level=RiskLevel.CONFIRM,
+                metadata={"src": str(src_path), "dst": str(dst_path)},
+            )
+        except CommandBlockedError as exc:
+            return ToolResult.blocked("filesystem.move_file", str(exc))
+        except Exception as exc:
+            return ToolResult.fail("filesystem.move_file", str(exc))
+
+    def create_dir(self, path: str) -> ToolResult:
+        t0 = time.time()
+        try:
+            target = self._resolve_allowed_path(path)
+            existed = target.exists()
+            target.mkdir(parents=True, exist_ok=True)
+            return ToolResult(
+                tool_name="filesystem.create_dir",
+                status=ToolStatus.SUCCESS,
+                started_at=t0,
+                finished_at=time.time(),
+                output=f"{'Already exists' if existed else 'Created'}: {target}",
+                risk_level=RiskLevel.CONFIRM,
+                metadata={"path": str(target), "existed": existed},
+            )
+        except CommandBlockedError as exc:
+            return ToolResult.blocked("filesystem.create_dir", str(exc))
+        except Exception as exc:
+            return ToolResult.fail("filesystem.create_dir", str(exc))
+
+    def file_info(self, path: str) -> ToolResult:
+        t0 = time.time()
+        try:
+            target = self._resolve_allowed_path(path)
+            if not target.exists():
+                return ToolResult.fail("filesystem.file_info", f"Not found: {path}")
+            stat = target.stat()
+            return ToolResult.quick(
+                "filesystem.file_info",
+                {
+                    "path": str(target),
+                    "name": target.name,
+                    "type": "directory" if target.is_dir() else "file",
+                    "size": stat.st_size,
+                    "extension": target.suffix,
+                },
+            )
+        except CommandBlockedError as exc:
+            return ToolResult.blocked("filesystem.file_info", str(exc))
+        except Exception as exc:
+            return ToolResult.fail("filesystem.file_info", str(exc))

@@ -89,6 +89,23 @@ export interface ChatResponse {
   route?: 'chat' | 'agent' | 'agent_fallback';
   actions_taken?: unknown[];
   plan?: Record<string, unknown>;
+  brain_used?: 'local' | 'cloud' | null;
+  complexity?: number | null;
+  classification_reason?: string | null;
+  tool_calls?: ToolCallResult[] | null;
+}
+
+export interface ToolCallResult {
+  tool: string;
+  params: Record<string, unknown>;
+  result: {
+    tool: string;
+    status: string;
+    duration_ms: number | null;
+    output: unknown;
+    error: string | null;
+    risk_level: string;
+  };
 }
 
 export interface VoiceStatusPayload {
@@ -408,6 +425,71 @@ export interface EngineStatusPayload {
     vms_mb?: number;
   };
   message?: string;
+}
+
+// Memory (Sprint 3)
+export interface MemoryPreference {
+  id: number;
+  category: string;
+  key: string;
+  value: string;
+  confidence: number;
+  source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MemoryProject {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  stack: string[] | null;
+  status: string;
+  repo_url: string | null;
+  deploy_url: string | null;
+  directory: string | null;
+  links: Record<string, string> | null;
+  last_commands: string[] | null;
+  next_steps: string[] | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LongMemory {
+  id: number;
+  category: string;
+  content: string;
+  relevance_score: number;
+  project_slug: string | null;
+  created_at: string;
+  expires_at: string | null;
+}
+
+// Claude Missions (Sprint 5)
+export interface ClaudeMission {
+  id: string;
+  objective: string;
+  project_slug: string;
+  working_dir: string;
+  status: 'queued' | 'running' | 'blocked' | 'needs_approval' | 'done' | 'failed' | 'cancelled';
+  created_at: number;
+  started_at: number | null;
+  finished_at: number | null;
+  output_parsed: {
+    summary: string;
+    files_mentioned: string[];
+    errors_found: string[];
+    next_steps: string[];
+    code_blocks: string[];
+    success: boolean;
+  } | null;
+  files_changed: string[] | null;
+  diff_summary: string | null;
+  error: string | null;
+  retry_count: number;
+  duration_s: number | null;
 }
 
 export interface RoutineUpdateRequest {
