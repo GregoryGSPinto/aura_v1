@@ -21,6 +21,9 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from app.tools.tool_registry import ToolRegistry, ToolResult
+from app.services.self_mod_detector import detect_self_modification
+from app.services.self_mod_planner import SelfModPlanner
+from app.services.self_mod_executor import SelfModExecutor
 
 logger = logging.getLogger("aura")
 
@@ -40,6 +43,8 @@ class AgentService:
         self.settings = settings
         self.ollama_lifecycle = ollama_lifecycle
         self.active_tasks: Dict[str, dict] = {}
+        self.self_mod_planner = SelfModPlanner()
+        self.self_mod_executor = SelfModExecutor()
 
     def _build_system_prompt(self, base_prompt: str = "") -> str:
         """Constroi system prompt com tools disponiveis."""
@@ -140,6 +145,34 @@ Regras:
         }
         """
         start = time.time()
+
+        # Detectar auto-modificação ANTES de chamar o LLM
+        self_mod = detect_self_modification(message)
+        if self_mod.is_self_modification and self_mod.confidence > 0.6:
+            plan = await self.self_mod_planner.create_plan(message, self_mod)
+            return {
+                "response": plan.plan_description,
+                "tool_calls": [],
+                "mode": "self_modification",
+                "needs_approval": [{
+                    "approval_id": plan.id,
+                    "description": plan.plan_description,
+                    "tool": "self_modification",
+                    "risk_level": plan.risk_level,
+                    "files_affected": plan.files_affected,
+                }],
+                "execution_time_ms": (time.time() - start) * 1000,
+                "self_mod_plan": {
+                    "id": plan.id,
+                    "request": plan.request,
+                    "risk_level": plan.risk_level,
+                    "requires_restart": plan.requires_restart,
+                    "requires_rebuild": plan.requires_rebuild,
+                    "files_affected": plan.files_affected,
+                    "steps": plan.steps,
+                },
+            }
+
         system_prompt = self._build_system_prompt()
         tool_calls_log = []
         needs_approval = []

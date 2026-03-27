@@ -9,6 +9,7 @@ import { cn, getRelativeTime } from '@/lib/utils';
 import { haptic } from '@/hooks/use-haptic';
 import { ToolCallList } from '@/components/chat/tool-call-block';
 import { MissionInlineCard } from '@/components/chat/mission-inline-card';
+import { SelfModCard } from '@/components/chat/SelfModCard';
 import { AudioPlayer } from '@/components/voice/voice-recorder';
 
 const REACTIONS = ['👍', '👎', '😂', '🔥', '💡', '📌'] as const;
@@ -127,6 +128,14 @@ export function MessageBubble({
             <div className="mt-2">
               <AudioPlayer src={message.audioUrl} autoPlay={message.inputSource === 'voice'} />
             </div>
+          )}
+
+          {/* Self-modification card (auto-mod protocol) */}
+          {isAssistant && message.selfModPlan && (
+            <SelfModCard
+              plan={message.selfModPlan}
+              approvals={message.needs_approval ?? []}
+            />
           )}
 
           {/* Inline mission card (Sprint 5) */}

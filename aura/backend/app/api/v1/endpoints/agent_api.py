@@ -67,7 +67,43 @@ async def get_approvals(request: Request):
 
 @router.post("/approvals")
 async def handle_approval(request: Request, body: ApprovalRequest):
-    """Aprova ou rejeita uma acao L2."""
+    """Aprova ou rejeita uma acao L2 (incluindo auto-modificação)."""
+
+    # Self-modification approvals
+    if body.approval_id.startswith("selfmod_"):
+        planner = request.app.state.agent_service.self_mod_planner
+        executor = request.app.state.agent_service.self_mod_executor
+
+        if body.approved:
+            plan = planner.approve_plan(body.approval_id)
+            if not plan:
+                return {"status": "error", "message": "Plano não encontrado"}
+
+            result = await executor.execute(plan)
+
+            if result["success"]:
+                planner.complete_plan(plan.id, result["output"][:2000])
+                return {
+                    "status": "completed",
+                    "message": f"Auto-modificação concluída. Commit: {result['commit_hash']}",
+                    "result": {
+                        "validation": result["validation"],
+                        "commit_hash": result["commit_hash"],
+                        "execution_time": f"{result['execution_time_seconds']:.1f}s",
+                    },
+                }
+            else:
+                planner.fail_plan(plan.id, result["error"])
+                return {
+                    "status": "failed",
+                    "message": f"Auto-modificação falhou. Mudanças revertidas.\nErro: {result['error']}",
+                    "result": result,
+                }
+        else:
+            plan = planner.reject_plan(body.approval_id)
+            return {"status": "rejected" if plan else "error"}
+
+    # Regular tool approvals
     registry = request.app.state.agent_tool_registry
 
     if body.approved:

@@ -49,6 +49,24 @@ export interface ConversationMessage {
     objective: string;
     status: string;
   };
+  /** Self-modification plan (auto-mod protocol) */
+  selfModPlan?: {
+    id: string;
+    request: string;
+    risk_level: string;
+    requires_restart: boolean;
+    requires_rebuild: boolean;
+    files_affected: string[];
+    steps: string[];
+  };
+  /** Approvals needed (used with selfModPlan) */
+  needs_approval?: {
+    approval_id: string;
+    description: string;
+    tool: string;
+    risk_level: string;
+    files_affected: string[];
+  }[];
 }
 
 export interface ChatConversation {
