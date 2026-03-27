@@ -30,12 +30,30 @@
   --aura-text-secondary: #a1a1aa;
   --aura-text-muted: #52525b;
 
+  /* Aura brand */
+  --aura-green: #00D4AA;
+  --aura-green-dim: rgba(0, 212, 170, 0.15);
+  --aura-green-glow: rgba(0, 212, 170, 0.08);
+  --aura-dark: #0A0E1A;
+  --aura-surface: #111827;
+  --aura-surface-elevated: #1a2235;
+
   /* Accent */
   --aura-accent: #3b82f6;
   --aura-accent-hover: #2563eb;
   --aura-success: #22c55e;
   --aura-warning: #eab308;
   --aura-error: #ef4444;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(17, 24, 39, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 20px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Layout */
   --aura-header-h: 56px;
@@ -165,6 +183,18 @@ html.light {
     background: rgba(255, 255, 255, 0.92);
   }
 
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 212, 170, 0.15),
+                0 0 60px rgba(0, 212, 170, 0.05);
+  }
+
   /* Semantic CSS variable aliases */
   :root {
     --bg-surface-soft: rgba(255, 255, 255, 0.03);
@@ -287,6 +317,38 @@ html.light {
 
   .animate-pulse-dot {
     animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  /* Pulse sutil no mark da Aura */
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 0.6; }
+  }
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s ease-in-out infinite;
+  }
+
+  /* Bounce dots (loading) */
+  @keyframes bounce-dot {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Fade in up (mensagens novas) */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 300ms ease-out;
+  }
+
+  /* Respeitar reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -447,4 +509,26 @@ body {
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ── Mobile Safari Fixes ──────────────────────────── */
+
+/* Prevent zoom on inputs (Safari zooms if < 16px) */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Prevent bounce scroll */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Safe area utilities */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }

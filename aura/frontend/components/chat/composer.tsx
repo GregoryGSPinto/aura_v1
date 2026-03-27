@@ -46,11 +46,11 @@ export function ChatComposer({ value, onChange, onSubmit, attachments, onAttach,
     'Aura Profunda': 'Modo profundo ativo...',
   };
 
-  const placeholder = placeholderMap[selectedModeLabel] ?? 'Converse com Aura...';
+  const placeholder = placeholderMap[selectedModeLabel] ?? 'Fale com a Aura...';
   const brainOverride = value.startsWith('@local ') ? 'local' : value.startsWith('@cloud ') ? 'cloud' : null;
 
   return (
-    <div className="shrink-0 border-t border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface-soft)_84%,transparent)] pb-[calc(env(safe-area-inset-bottom,0px)+0.875rem)] pt-3 backdrop-blur-xl">
+    <div className="shrink-0 border-t border-white/[0.06] glass pb-[calc(env(safe-area-inset-bottom,0px)+0.875rem)] pt-3">
       <div className="mx-auto w-full xl:px-2 2xl:px-3">
         {/* Attachments */}
         {attachments.length > 0 && (
@@ -139,7 +139,7 @@ export function ChatComposer({ value, onChange, onSubmit, attachments, onAttach,
             type="button"
             onClick={onSubmit}
             disabled={isLoading || !hasContent}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--aura-green)] text-[var(--aura-dark)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Enviar mensagem"
           >
             {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}

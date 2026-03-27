@@ -103,7 +103,7 @@ export function ToolCallBlock({ toolCall }: { toolCall: ToolCallData }) {
     .join(', ');
 
   return (
-    <div className={cn('my-2 rounded-lg border p-2.5', config.bg)}>
+    <div className={cn('my-2 rounded-lg border bg-black/20 border-[var(--aura-border)] p-2.5')}>
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}

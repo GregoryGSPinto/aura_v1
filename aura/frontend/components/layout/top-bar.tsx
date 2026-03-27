@@ -31,7 +31,7 @@ function StatusDot() {
       onMouseLeave={() => setShowTooltip(false)}
     >
       <span className={cn('h-2 w-2 rounded-full', dotColor)} />
-      <span className="hidden text-xs text-zinc-400 lg:inline">{statusText}</span>
+      <span className="hidden font-mono text-[11px] text-white/40 lg:inline">{isOnline ? `${modelName}` : statusText}</span>
 
       {showTooltip && (
         <div className="app-popover absolute right-0 top-full z-50 mt-2 w-56 rounded-[1.1rem] p-3">
@@ -126,8 +126,8 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
   const togglePalette = useWorkspaceStore((s) => s.toggleCommandPalette);
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/5 bg-[color:color-mix(in_srgb,var(--bg-surface)_82%,transparent)] px-3 backdrop-blur-xl">
-      {/* Left: Menu + Workspace selector */}
+    <header className="glass safe-top flex h-12 shrink-0 items-center justify-between border-b border-white/[0.06] px-3 sticky top-0 z-50">
+      {/* Left: Menu + Brand + Workspace selector */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -137,6 +137,10 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
         >
           <Menu className="h-4.5 w-4.5" />
         </button>
+        <div className="flex items-center gap-2 mr-2">
+          <span className="text-[var(--aura-green)] text-lg animate-pulse-subtle">✦</span>
+          <span className="font-light tracking-[0.15em] text-sm text-white/90 hidden sm:inline">AURA</span>
+        </div>
         <WorkspaceSelector />
       </div>
 

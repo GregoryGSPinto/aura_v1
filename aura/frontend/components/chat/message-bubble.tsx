@@ -76,8 +76,8 @@ export function MessageBubble({
       <div className="group relative max-w-[86%] md:max-w-[48rem] xl:max-w-[54rem]">
         {/* Avatar for assistant (desktop only) */}
         {isAssistant && (
-          <div className="absolute -left-8 top-3 hidden h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-zinc-400 lg:flex">
-            A
+          <div className="absolute -left-8 top-3 hidden h-6 w-6 items-center justify-center rounded-full bg-[var(--aura-dark)] text-xs text-[var(--aura-green)] lg:flex">
+            ✦
           </div>
         )}
 
@@ -85,8 +85,8 @@ export function MessageBubble({
           className={cn(
             'rounded-2xl px-4 py-3',
             isAssistant
-              ? 'rounded-bl-md bg-zinc-900 text-zinc-100'
-              : 'rounded-br-md bg-blue-600/90 text-white',
+              ? 'rounded-bl-md bg-[var(--aura-surface-elevated)] border border-[var(--aura-border)] text-white/80'
+              : 'rounded-br-md bg-[var(--aura-green-dim)] border border-[rgba(0,212,170,0.12)] text-white/90',
           )}
         >
           {/* Attachments */}
@@ -106,10 +106,10 @@ export function MessageBubble({
           {/* Content */}
           <div className="whitespace-pre-wrap text-sm leading-relaxed">
             {message.content || (message.status === 'pending' ? (
-              <span className="inline-flex items-center gap-1">
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-zinc-500" />
+              <span className="inline-flex items-center gap-1.5">
+                <span className="typing-dot h-2 w-2 rounded-full bg-[var(--aura-green)]" />
+                <span className="typing-dot h-2 w-2 rounded-full bg-[var(--aura-green)]" />
+                <span className="typing-dot h-2 w-2 rounded-full bg-[var(--aura-green)]" />
               </span>
             ) : '')}
             {message.status === 'streaming' && (

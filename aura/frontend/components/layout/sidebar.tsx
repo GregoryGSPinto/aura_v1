@@ -89,7 +89,7 @@ function SidebarContent({
                     className={cn(
                       'w-full rounded-[1rem] px-2.5 py-2.5 text-left transition',
                       isActive
-                        ? 'app-control text-zinc-100'
+                        ? 'bg-white/[0.08] text-zinc-100 border-l-2 border-l-[var(--aura-green)]'
                         : 'text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300',
                     )}
                   >
@@ -252,7 +252,7 @@ export function Sidebar({
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed inset-y-0 left-0 z-50 w-[280px] lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[280px] glass lg:hidden"
             >
               <SidebarContent
                 collapsed={false}
