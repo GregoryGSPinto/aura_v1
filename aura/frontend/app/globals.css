@@ -511,6 +511,37 @@ body {
   scrollbar-width: none;
 }
 
+/* ── Login Screen Animations ──────────────────────── */
+
+@keyframes entrance-symbol {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes entrance-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes entrance-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.login-symbol { animation: entrance-symbol 600ms ease-out both; }
+.login-title { animation: entrance-fade-up 400ms ease-out 200ms both; }
+.login-subtitle { animation: entrance-fade 300ms ease-out 400ms both; }
+.login-form { animation: entrance-fade-up 400ms ease-out 600ms both; }
+.login-tagline { animation: entrance-fade 500ms ease-out 800ms both; }
+.login-error { animation: shake 300ms ease-out, entrance-fade 200ms ease-out; }
+.login-ring { animation: spin-slow var(--ring-duration, 60s) linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-symbol, .login-title, .login-subtitle,
+  .login-form, .login-tagline, .login-ring { animation: none !important; }
+}
+
 /* ── Mobile Safari Fixes ──────────────────────────── */
 
 /* Prevent zoom on inputs (Safari zooms if < 16px) */
