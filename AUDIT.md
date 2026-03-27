@@ -631,7 +631,7 @@ O mesmo token aparece em `frontend/.env.local` e `frontend/.vercel/.env.developm
 | Status | ✅ PASS |
 | ngrok URL | `https://communistical-seedier-alisia.ngrok-free.dev` |
 | brain_used | `local` |
-| response | "Oi. O que vamos resolver agora? Código, operação da EFVM ou Black Belt?" |
+| response | "Oi. O que vamos resolver agora? Código, operação ferroviária ou Black Belt?" |
 | latência | **27,124ms** (ngrok add ~1s overhead vs localhost) |
 
 Funciona corretamente para acesso remoto.

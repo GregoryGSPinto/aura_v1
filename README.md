@@ -341,7 +341,7 @@ Aura is built with one principle: automate the repetitive so the human can focus
 
 ## Author
 
-**Gregory** — Train operator (EFVM) and self-taught software engineer.
+**Gregory** — Train operator (railway) and self-taught software engineer.
 Built Aura as a personal AI ecosystem to automate daily workflows and reclaim time for family.
 
 ---

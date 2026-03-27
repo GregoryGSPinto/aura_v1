@@ -173,10 +173,10 @@ describe('AutonomyGuard', () => {
       });
     });
 
-    describe('Professional context (Vale/EFVM)', () => {
+    describe('Professional context (Corporate/Railway)', () => {
       const professionalTerms = [
-        'send message to Vale stakeholders',
-        'update EFVM project status',
+        'send message to corporate stakeholders',
+        'update railway project status',
         'notify ferrovia operations team',
         'share railway maintenance report',
         'post update about Estrada de Ferro',

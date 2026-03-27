@@ -1,7 +1,7 @@
 # AURA — Contexto para Claude Code
 
 ## O que é
-Aura é uma assistente pessoal AI autônoma criada por Gregory (maquinista da EFVM e engenheiro de software autodidata). A visão: mandar áudio do iPhone → Aura entende, executa, entrega pronto.
+Aura é uma assistente pessoal AI autônoma criada por Gregory (maquinista ferroviário e engenheiro de software autodidata). A visão: mandar áudio do iPhone → Aura entende, executa, entrega pronto.
 
 ---
 

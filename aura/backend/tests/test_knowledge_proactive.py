@@ -17,7 +17,7 @@ class TestKnowledgeExtractor:
 
     def test_extracts_fact(self):
         ext = self._make_extractor()
-        facts = ext._extract_rules("trabalho na EFVM como maquinista.")
+        facts = ext._extract_rules("trabalho como maquinista ferroviário.")
         assert any(f["category"] == "fact" for f in facts)
 
     def test_extracts_goal(self):
@@ -37,7 +37,7 @@ class TestKnowledgeExtractor:
         from app.services.knowledge_extractor import KnowledgeExtractor
         memory = MagicMock()
         ext = KnowledgeExtractor(memory_service=memory)
-        await ext.extract_and_save("trabalho na EFVM como maquinista.", "Legal!", "session-1")
+        await ext.extract_and_save("trabalho como maquinista ferroviário.", "Legal!", "session-1")
         memory.remember_companion_item.assert_called()
 
 

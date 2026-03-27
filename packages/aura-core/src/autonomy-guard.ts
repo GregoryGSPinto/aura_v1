@@ -65,8 +65,8 @@ const L3_BLOCKED_PATTERNS: ReadonlyArray<{
   { pattern: /\b(public\s*post|tweet|publish|publicar|broadcast)\b/i, reason: 'Public broadcast detected', category: 'reputation' },
   { pattern: /\b(reply\s*all|mass\s*email|bulk\s*send|spam)\b/i, reason: 'Mass communication detected', category: 'reputation' },
 
-  // === VALE/EFVM — contexto profissional ===
-  { pattern: /\b(vale|efvm|ferrovia|railway|estrada\s*de\s*ferro)\b/i, reason: 'Professional/employer context detected', category: 'professional' },
+  // === Corporate/Railway — contexto profissional ===
+  { pattern: /\b(ferrovia|railway|estrada\s*de\s*ferro)\b/i, reason: 'Professional/employer context detected', category: 'professional' },
 ]) as ReadonlyArray<{ pattern: RegExp; reason: string; category: string }>;
 
 /**

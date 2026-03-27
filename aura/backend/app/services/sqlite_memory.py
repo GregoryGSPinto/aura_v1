@@ -86,7 +86,7 @@ _SEED_PREFERENCES = [
     ("dev", "framework_backend", "FastAPI"),
     ("dev", "ai_local", "Ollama + Qwen"),
     ("personal", "name", "Gregory"),
-    ("personal", "role", "Maquinista EFVM + Software Engineer"),
+    ("personal", "role", "Maquinista ferroviário + Software Engineer"),
     ("personal", "language", "pt-BR"),
 ]
 
@@ -109,9 +109,9 @@ _SEED_PROJECTS = [
         "directory": "~/Projetos/black_belt_v2",
     },
     {
-        "slug": "efvm360",
-        "name": "EFVM360 - Plataforma Operacional Ferroviaria",
-        "description": "Plataforma operacional para a EFVM (aguardando aprovacao Vale)",
+        "slug": "rail360",
+        "name": "Rail360 - Plataforma Operacional Ferroviaria",
+        "description": "Plataforma operacional ferroviaria (aguardando aprovacao corporativa)",
         "stack": json.dumps([]),
         "status": "active",
     },

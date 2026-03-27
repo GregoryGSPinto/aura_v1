@@ -20,7 +20,7 @@ Auto-modificação = qualquer alteração em:
 - CLAUDE.md, .env (configuração)
 
 NÃO é auto-modificação:
-- Trabalhar em OUTROS projetos (Black Belt, EFVM360)
+- Trabalhar em OUTROS projetos (Black Belt, Rail360)
 - Criar arquivos em ~/Projetos/outro_projeto/
 - Operações de leitura (git status, ls, cat)
 - Pesquisa e análise
