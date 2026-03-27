@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════
+   DARK THEME (default)
+   ══════════════════════════════════════════════════════ */
 :root {
   color-scheme: dark;
 
@@ -65,40 +68,145 @@
   /* Shadows */
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* ── Login (dark) ──────────────────────────────── */
+  --login-page-bg: #0A0E1A;
+  --login-glow: rgba(0, 212, 170, 0.04);
+  --login-ring-1: rgba(0, 212, 170, 0.03);
+  --login-ring-2: rgba(0, 212, 170, 0.02);
+  --login-ring-3: rgba(0, 212, 170, 0.015);
+  --login-dot-1: rgba(0, 212, 170, 0.2);
+  --login-dot-2: rgba(0, 212, 170, 0.12);
+  --login-dot-3: rgba(0, 212, 170, 0.1);
+  --login-symbol-color: #00D4AA;
+  --login-symbol-glow: drop-shadow(0 0 40px rgba(0, 212, 170, 0.2));
+  --login-title-color: rgba(255, 255, 255, 0.9);
+  --login-subtitle-color: rgba(0, 212, 170, 0.4);
+  --login-input-bg: rgba(255, 255, 255, 0.03);
+  --login-input-border: rgba(255, 255, 255, 0.06);
+  --login-input-text: rgba(255, 255, 255, 0.8);
+  --login-input-placeholder: rgba(255, 255, 255, 0.2);
+  --login-input-icon: rgba(255, 255, 255, 0.2);
+  --login-focus-border: rgba(0, 212, 170, 0.3);
+  --login-focus-shadow: 0 0 0 3px rgba(0, 212, 170, 0.08);
+  --login-btn-bg: #00D4AA;
+  --login-btn-text: #0A0E1A;
+  --login-btn-glow: 0 0 30px rgba(0, 212, 170, 0.2);
+  --login-btn-spinner-track: rgba(10, 14, 26, 0.3);
+  --login-btn-spinner-active: #0A0E1A;
+  --login-error-bg: rgba(239, 68, 68, 0.08);
+  --login-error-border: rgba(239, 68, 68, 0.2);
+  --login-error-text: rgb(239, 68, 68);
+  --login-link-color: rgba(255, 255, 255, 0.2);
+  --login-link-hover: rgba(255, 255, 255, 0.4);
+  --login-tagline-color: rgba(255, 255, 255, 0.12);
+  --login-bio-btn-bg: rgba(0, 212, 170, 0.08);
+  --login-bio-btn-border: rgba(0, 212, 170, 0.2);
+  --login-bio-hover-border: rgba(0, 212, 170, 0.4);
+  --login-bio-hover-shadow: 0 0 30px rgba(0, 212, 170, 0.15);
+  --login-bio-spinner-track: rgba(0, 212, 170, 0.3);
+  --login-bio-spinner-active: #00D4AA;
+  --login-bio-text: rgba(255, 255, 255, 0.3);
+  --login-modal-bg: rgba(17, 24, 39, 0.95);
+  --login-modal-border: rgba(255, 255, 255, 0.08);
+  --login-modal-title: rgba(255, 255, 255, 0.9);
+  --login-modal-text: rgba(255, 255, 255, 0.4);
+  --login-modal-dismiss-border: rgba(255, 255, 255, 0.12);
+  --login-modal-dismiss-text: rgba(255, 255, 255, 0.5);
+  --login-modal-overlay: rgba(0, 0, 0, 0.6);
 }
 
-/* ── Light theme ────────────────────────────────────────── */
-html.light {
-  color-scheme: light;
+/* ══════════════════════════════════════════════════════
+   LIGHT THEME (auto via system preference)
+   ══════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
 
-  /* Flipped zinc palette */
-  --zinc-50: #09090b;
-  --zinc-100: #18181b;
-  --zinc-200: #27272a;
-  --zinc-300: #3f3f46;
-  --zinc-400: #52525b;
-  --zinc-500: #71717a;
-  --zinc-600: #a1a1aa;
-  --zinc-700: #d4d4d8;
-  --zinc-800: #f4f4f5;
-  --zinc-900: #fafafa;
-  --zinc-950: #ffffff;
+    /* Flipped zinc palette */
+    --zinc-50: #09090b;
+    --zinc-100: #18181b;
+    --zinc-200: #27272a;
+    --zinc-300: #3f3f46;
+    --zinc-400: #52525b;
+    --zinc-500: #71717a;
+    --zinc-600: #a1a1aa;
+    --zinc-700: #d4d4d8;
+    --zinc-800: #f4f4f5;
+    --zinc-900: #fafafa;
+    --zinc-950: #ffffff;
 
-  /* Backgrounds */
-  --aura-bg-primary: #ffffff;
-  --aura-bg-secondary: #f4f4f5;
-  --aura-bg-elevated: #e4e4e7;
-  --aura-border: rgba(0, 0, 0, 0.08);
-  --aura-border-hover: rgba(0, 0, 0, 0.15);
+    /* Backgrounds */
+    --aura-bg-primary: #ffffff;
+    --aura-bg-secondary: #f4f4f5;
+    --aura-bg-elevated: #e4e4e7;
+    --aura-border: rgba(0, 0, 0, 0.08);
+    --aura-border-hover: rgba(0, 0, 0, 0.15);
 
-  /* Text */
-  --aura-text-primary: #09090b;
-  --aura-text-secondary: #52525b;
-  --aura-text-muted: #71717a;
+    /* Text */
+    --aura-text-primary: #09090b;
+    --aura-text-secondary: #52525b;
+    --aura-text-muted: #71717a;
 
-  /* Shadows */
-  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+    /* Brand (slightly darker green for light bg) */
+    --aura-green: #00b368;
+    --aura-green-dim: rgba(0, 179, 104, 0.12);
+    --aura-green-glow: rgba(0, 179, 104, 0.06);
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.08);
+
+    /* Shadows */
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    /* ── Login (light) ──────────────────────────── */
+    --login-page-bg: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+    --login-glow: rgba(0, 179, 104, 0.04);
+    --login-ring-1: rgba(0, 179, 104, 0.08);
+    --login-ring-2: rgba(0, 179, 104, 0.05);
+    --login-ring-3: rgba(0, 179, 104, 0.035);
+    --login-dot-1: rgba(0, 179, 104, 0.35);
+    --login-dot-2: rgba(0, 179, 104, 0.25);
+    --login-dot-3: rgba(0, 179, 104, 0.2);
+    --login-symbol-color: #00b368;
+    --login-symbol-glow: drop-shadow(0 0 30px rgba(0, 179, 104, 0.18));
+    --login-title-color: #1a1a1a;
+    --login-subtitle-color: #00b368;
+    --login-input-bg: #f0f1f3;
+    --login-input-border: #d0d0d0;
+    --login-input-text: #1a1a1a;
+    --login-input-placeholder: #999999;
+    --login-input-icon: #999999;
+    --login-focus-border: rgba(0, 179, 104, 0.5);
+    --login-focus-shadow: 0 0 0 3px rgba(0, 179, 104, 0.12);
+    --login-btn-bg: #00b368;
+    --login-btn-text: #ffffff;
+    --login-btn-glow: 0 0 30px rgba(0, 179, 104, 0.25);
+    --login-btn-spinner-track: rgba(255, 255, 255, 0.3);
+    --login-btn-spinner-active: #ffffff;
+    --login-error-bg: rgba(229, 57, 53, 0.06);
+    --login-error-border: rgba(229, 57, 53, 0.2);
+    --login-error-text: #d32f2f;
+    --login-link-color: #888888;
+    --login-link-hover: #555555;
+    --login-tagline-color: #aaaaaa;
+    --login-bio-btn-bg: rgba(0, 179, 104, 0.06);
+    --login-bio-btn-border: rgba(0, 179, 104, 0.25);
+    --login-bio-hover-border: rgba(0, 179, 104, 0.5);
+    --login-bio-hover-shadow: 0 0 30px rgba(0, 179, 104, 0.2);
+    --login-bio-spinner-track: rgba(0, 179, 104, 0.3);
+    --login-bio-spinner-active: #00b368;
+    --login-bio-text: #888888;
+    --login-modal-bg: rgba(255, 255, 255, 0.96);
+    --login-modal-border: rgba(0, 0, 0, 0.1);
+    --login-modal-title: #1a1a1a;
+    --login-modal-text: #666666;
+    --login-modal-dismiss-border: rgba(0, 0, 0, 0.12);
+    --login-modal-dismiss-text: #666666;
+    --login-modal-overlay: rgba(0, 0, 0, 0.3);
+  }
 }
 
 @layer base {
@@ -140,11 +248,22 @@ html.light {
     resize: none;
   }
 
+  /* Global input theming */
+  input, textarea, select {
+    background-color: var(--login-input-bg, var(--aura-bg-elevated));
+    color: var(--aura-text-primary);
+    border-color: var(--aura-border);
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--aura-text-muted);
+  }
+
   ::selection {
     background: rgba(59, 130, 246, 0.3);
     color: var(--aura-text-primary);
   }
 
+  /* Scrollbar — dark */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -163,12 +282,15 @@ html.light {
     background: rgba(255, 255, 255, 0.14);
   }
 
-  html.light ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.12);
-  }
+  /* Scrollbar — light */
+  @media (prefers-color-scheme: light) {
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+    }
 
-  html.light ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
   }
 }
 
@@ -179,8 +301,10 @@ html.light {
     -webkit-backdrop-filter: blur(12px);
   }
 
-  html.light .glass-strong {
-    background: rgba(255, 255, 255, 0.92);
+  @media (prefers-color-scheme: light) {
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.92);
+    }
   }
 
   .glass {
@@ -228,22 +352,24 @@ html.light {
     --purple: #8b5cf6;
   }
 
-  html.light {
-    --bg-surface-soft: rgba(0, 0, 0, 0.03);
-    --bg-elevated: #e4e4e7;
-    --bg-surface: #f4f4f5;
-    --bg-surface-strong: #ececee;
-    --bg-primary: #ffffff;
-    --fg-primary: #09090b;
-    --fg-secondary: #52525b;
-    --fg-muted: #71717a;
-    --fg-subtle: #a1a1aa;
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-default: rgba(0, 0, 0, 0.1);
-    --border-strong: rgba(0, 0, 0, 0.15);
-    --text-primary: #09090b;
-    --text-secondary: #52525b;
-    --text-muted: #71717a;
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg-surface-soft: rgba(0, 0, 0, 0.03);
+      --bg-elevated: #e4e4e7;
+      --bg-surface: #f4f4f5;
+      --bg-surface-strong: #ececee;
+      --bg-primary: #ffffff;
+      --fg-primary: #09090b;
+      --fg-secondary: #52525b;
+      --fg-muted: #71717a;
+      --fg-subtle: #a1a1aa;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --border-default: rgba(0, 0, 0, 0.1);
+      --border-strong: rgba(0, 0, 0, 0.15);
+      --text-primary: #09090b;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+    }
   }
 
   .shell-panel {
@@ -352,32 +478,37 @@ html.light {
   }
 }
 
-/* Light mode: flip white-based overlays to black-based */
-html.light .border-white\/5 {
-  border-color: rgba(0, 0, 0, 0.06);
+/* Light mode: flip white-based Tailwind utilities to black-based */
+@media (prefers-color-scheme: light) {
+  .border-white\/5 {
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .bg-white\/5,
+  .hover\:bg-white\/5:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  .bg-white\/\[0\.03\],
+  .hover\:bg-white\/\[0\.03\]:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+
+  .bg-white\/10 {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
 }
 
-html.light .bg-white\/5,
-html.light .hover\:bg-white\/5:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-html.light .bg-white\/\[0\.03\],
-html.light .hover\:bg-white\/\[0\.03\]:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-html.light .bg-white\/10 {
-  background-color: rgba(0, 0, 0, 0.06);
-}
-
+/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 
-html.light * {
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+@media (prefers-color-scheme: light) {
+  * {
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  }
 }
 
 /* ── Mobile Premium ──────────────────────────────── */
@@ -442,6 +573,13 @@ html.light * {
   background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+@media (prefers-color-scheme: light) {
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 25%, rgba(0,0,0,0.04) 50%, transparent 75%);
+    background-size: 200% 100%;
+  }
 }
 
 /* Pull to refresh spinner */

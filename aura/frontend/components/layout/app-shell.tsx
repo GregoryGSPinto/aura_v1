@@ -23,7 +23,7 @@ const MobileLayout = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-dvh items-center justify-center bg-zinc-950 text-white">
+      <div className="flex h-dvh items-center justify-center bg-[var(--aura-bg-primary)] text-[var(--aura-text-primary)]">
         Carregando...
       </div>
     ),

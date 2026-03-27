@@ -96,18 +96,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const applyTheme = () => {
-      const nextResolved = themeMode === 'system' ? (media.matches ? 'dark' : 'light') : themeMode;
-      const root = document.documentElement;
-      root.classList.remove('light', 'dark');
-      root.classList.add(nextResolved);
-      root.style.colorScheme = nextResolved;
+      const nextResolved = media.matches ? 'dark' : 'light';
       setResolvedTheme(nextResolved);
     };
 
     applyTheme();
     media.addEventListener('change', applyTheme);
     return () => media.removeEventListener('change', applyTheme);
-  }, [themeMode]);
+  }, []);
 
   const refreshRuntime = useCallback(async () => {
     try {

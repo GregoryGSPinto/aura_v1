@@ -21,25 +21,25 @@ function OrbitalBackground() {
       {/* Radial glow */}
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(0,212,170,0.04) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(ellipse at 50% 40%, var(--login-glow) 0%, transparent 70%)' }}
       />
 
       {/* Orbital rings */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
         {/* Ring 1 */}
         <div
-          className="absolute rounded-full border border-[rgba(0,212,170,0.03)] login-ring"
-          style={{ width: 400, height: 400, '--ring-duration': '60s' } as React.CSSProperties}
+          className="absolute rounded-full login-ring"
+          style={{ width: 400, height: 400, '--ring-duration': '60s', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--login-ring-1)' } as React.CSSProperties}
         />
         {/* Ring 2 */}
         <div
-          className="absolute rounded-full border border-[rgba(0,212,170,0.02)] login-ring"
-          style={{ width: 600, height: 600, '--ring-duration': '90s' } as React.CSSProperties}
+          className="absolute rounded-full login-ring"
+          style={{ width: 600, height: 600, '--ring-duration': '90s', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--login-ring-2)' } as React.CSSProperties}
         />
         {/* Ring 3 (reverse) */}
         <div
-          className="absolute rounded-full border border-[rgba(0,212,170,0.015)] login-ring"
-          style={{ width: 800, height: 800, '--ring-duration': '120s', animationDirection: 'reverse' } as React.CSSProperties}
+          className="absolute rounded-full login-ring"
+          style={{ width: 800, height: 800, '--ring-duration': '120s', animationDirection: 'reverse', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--login-ring-3)' } as React.CSSProperties}
         />
 
         {/* Orbital dots */}
@@ -49,7 +49,7 @@ function OrbitalBackground() {
         >
           <div
             className="absolute left-1/2 top-0 h-[3px] w-[3px] -translate-x-1/2 rounded-full"
-            style={{ background: 'rgba(0,212,170,0.2)' }}
+            style={{ background: 'var(--login-dot-1)' }}
           />
         </div>
         <div
@@ -58,7 +58,7 @@ function OrbitalBackground() {
         >
           <div
             className="absolute bottom-0 left-1/4 h-[3px] w-[3px] rounded-full"
-            style={{ background: 'rgba(0,212,170,0.12)' }}
+            style={{ background: 'var(--login-dot-2)' }}
           />
         </div>
         <div
@@ -67,7 +67,7 @@ function OrbitalBackground() {
         >
           <div
             className="absolute right-[15%] top-1/4 h-[3px] w-[3px] rounded-full"
-            style={{ background: 'rgba(0,212,170,0.1)' }}
+            style={{ background: 'var(--login-dot-3)' }}
           />
         </div>
       </div>
@@ -105,7 +105,7 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
   return (
     <div
       className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6"
-      style={{ background: '#0A0E1A' }}
+      style={{ background: 'var(--login-page-bg)' }}
     >
       <OrbitalBackground />
 
@@ -113,7 +113,7 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
         {/* Symbol */}
         <span
           className="login-symbol mb-4 text-[56px] leading-none animate-pulse-subtle"
-          style={{ color: '#00D4AA', filter: 'drop-shadow(0 0 40px rgba(0,212,170,0.2))' }}
+          style={{ color: 'var(--login-symbol-color)', filter: 'var(--login-symbol-glow)' }}
         >
           ✦
         </span>
@@ -121,7 +121,7 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
         {/* Title */}
         <h1
           className="login-title mb-1 text-[36px] font-extralight tracking-[12px]"
-          style={{ color: 'rgba(255,255,255,0.9)' }}
+          style={{ color: 'var(--login-title-color)' }}
         >
           AURA
         </h1>
@@ -129,7 +129,7 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
         {/* Subtitle */}
         <p
           className="login-subtitle mb-12 font-mono text-[11px] lowercase tracking-[4px]"
-          style={{ color: 'rgba(0,212,170,0.4)' }}
+          style={{ color: 'var(--login-subtitle-color)' }}
         >
           autonomous ai agent
         </p>
@@ -140,17 +140,31 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
             type="button"
             onClick={handleBiometric}
             disabled={loading}
-            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-[rgba(0,212,170,0.2)] transition-all duration-200 hover:border-[rgba(0,212,170,0.4)] hover:shadow-[0_0_30px_rgba(0,212,170,0.15)] active:scale-95 disabled:opacity-60"
-            style={{ background: 'rgba(0,212,170,0.08)' }}
+            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full transition-all duration-200 active:scale-95 disabled:opacity-60"
+            style={{
+              background: 'var(--login-bio-btn-bg)',
+              border: '1px solid var(--login-bio-btn-border)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--login-bio-hover-border)';
+              e.currentTarget.style.boxShadow = 'var(--login-bio-hover-shadow)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--login-bio-btn-border)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           >
             {loading ? (
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-[rgba(0,212,170,0.3)] border-t-[#00D4AA]" />
+              <span
+                className="h-6 w-6 animate-spin rounded-full"
+                style={{ border: '2px solid var(--login-bio-spinner-track)', borderTopColor: 'var(--login-bio-spinner-active)' }}
+              />
             ) : (
-              <Fingerprint className="h-10 w-10" style={{ color: '#00D4AA' }} />
+              <Fingerprint className="h-10 w-10" style={{ color: 'var(--login-symbol-color)' }} />
             )}
           </button>
 
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          <p className="text-sm" style={{ color: 'var(--login-bio-text)' }}>
             Toque para entrar com biometria
           </p>
 
@@ -158,9 +172,9 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
             <div
               className="login-error mx-auto mt-4 max-w-xs rounded-lg p-3 text-xs"
               style={{
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                color: 'rgb(239,68,68)',
+                background: 'var(--login-error-bg)',
+                border: '1px solid var(--login-error-border)',
+                color: 'var(--login-error-text)',
               }}
             >
               {error}
@@ -170,8 +184,10 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
           <button
             type="button"
             onClick={onFallback}
-            className="mt-6 text-sm transition hover:text-white/40"
-            style={{ color: 'rgba(255,255,255,0.2)' }}
+            className="mt-6 text-sm transition"
+            style={{ color: 'var(--login-link-color)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--login-link-hover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--login-link-color)'; }}
           >
             ou entre com senha
           </button>
@@ -181,7 +197,7 @@ function BiometricLoginScreen({ onFallback }: { onFallback: () => void }) {
       {/* Tagline */}
       <p
         className="login-tagline absolute text-xs italic"
-        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 32px)', color: 'rgba(255,255,255,0.12)' }}
+        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 32px)', color: 'var(--login-tagline-color)' }}
       >
         devolvendo tempo a familia
       </p>
@@ -198,18 +214,21 @@ function BiometricOfferModal({
   onDismiss: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+      style={{ background: 'var(--login-modal-overlay)' }}
+    >
       <div
         className="w-full max-w-xs rounded-2xl p-6 shadow-2xl"
         style={{
-          background: 'rgba(17,24,39,0.95)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'var(--login-modal-bg)',
+          border: '1px solid var(--login-modal-border)',
         }}
       >
-        <h2 className="text-center text-lg font-light tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>
+        <h2 className="text-center text-lg font-light tracking-wide" style={{ color: 'var(--login-modal-title)' }}>
           Ativar Face ID?
         </h2>
-        <p className="mt-2 text-center text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+        <p className="mt-2 text-center text-sm" style={{ color: 'var(--login-modal-text)' }}>
           Proxima vez voce entra so olhando pro celular.
         </p>
         <div className="mt-5 flex gap-3">
@@ -217,7 +236,7 @@ function BiometricOfferModal({
             type="button"
             onClick={onActivate}
             className="flex-1 rounded-xl py-2.5 text-[13px] font-medium tracking-[2px] uppercase transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
-            style={{ background: '#00D4AA', color: '#0A0E1A' }}
+            style={{ background: 'var(--login-btn-bg)', color: 'var(--login-btn-text)' }}
           >
             Ativar
           </button>
@@ -225,7 +244,7 @@ function BiometricOfferModal({
             type="button"
             onClick={onDismiss}
             className="flex-1 rounded-xl py-2.5 text-sm transition hover:bg-white/5"
-            style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}
+            style={{ border: '1px solid var(--login-modal-dismiss-border)', color: 'var(--login-modal-dismiss-text)' }}
           >
             Agora nao
           </button>
@@ -312,18 +331,16 @@ export default function LoginPage() {
   }
 
   const inputStyle = {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    color: 'rgba(255,255,255,0.8)',
+    background: 'var(--login-input-bg)',
+    border: '1px solid var(--login-input-border)',
+    color: 'var(--login-input-text)',
     fontSize: 16, // prevent Safari zoom
   } as const;
-
-  const inputFocusClass = 'focus:border-[rgba(0,212,170,0.3)] focus:shadow-[0_0_0_3px_rgba(0,212,170,0.08)]';
 
   return (
     <div
       className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6"
-      style={{ background: '#0A0E1A' }}
+      style={{ background: 'var(--login-page-bg)' }}
     >
       <OrbitalBackground />
 
@@ -332,7 +349,7 @@ export default function LoginPage() {
         {/* Symbol */}
         <span
           className="login-symbol mb-4 text-[56px] leading-none animate-pulse-subtle"
-          style={{ color: '#00D4AA', filter: 'drop-shadow(0 0 40px rgba(0,212,170,0.2))' }}
+          style={{ color: 'var(--login-symbol-color)', filter: 'var(--login-symbol-glow)' }}
         >
           ✦
         </span>
@@ -340,7 +357,7 @@ export default function LoginPage() {
         {/* Title */}
         <h1
           className="login-title mb-1 text-[36px] font-extralight tracking-[12px]"
-          style={{ color: 'rgba(255,255,255,0.9)' }}
+          style={{ color: 'var(--login-title-color)' }}
         >
           AURA
         </h1>
@@ -348,7 +365,7 @@ export default function LoginPage() {
         {/* Subtitle */}
         <p
           className="login-subtitle mb-12 font-mono text-[11px] lowercase tracking-[4px]"
-          style={{ color: 'rgba(0,212,170,0.4)' }}
+          style={{ color: 'var(--login-subtitle-color)' }}
         >
           autonomous ai agent
         </p>
@@ -362,7 +379,7 @@ export default function LoginPage() {
           <div className="relative">
             <User
               className="pointer-events-none absolute left-[14px] top-1/2 h-4 w-4 -translate-y-1/2"
-              style={{ color: 'rgba(255,255,255,0.2)' }}
+              style={{ color: 'var(--login-input-icon)' }}
             />
             <input
               ref={usernameRef}
@@ -370,10 +387,21 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className={cn('h-12 w-full rounded-xl pl-11 pr-4 text-sm outline-none transition-all duration-200 placeholder:text-white/20', inputFocusClass)}
-              style={inputStyle}
+              className="h-12 w-full rounded-xl pl-11 pr-4 text-sm outline-none transition-all duration-200"
+              style={{
+                ...inputStyle,
+                '--tw-placeholder-color': 'var(--login-input-placeholder)',
+              } as React.CSSProperties}
               placeholder="Usuario"
               autoComplete="username"
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--login-focus-border)';
+                e.currentTarget.style.boxShadow = 'var(--login-focus-shadow)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--login-input-border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
 
@@ -381,23 +409,33 @@ export default function LoginPage() {
           <div className="relative">
             <Lock
               className="pointer-events-none absolute left-[14px] top-1/2 h-4 w-4 -translate-y-1/2"
-              style={{ color: 'rgba(255,255,255,0.2)' }}
+              style={{ color: 'var(--login-input-icon)' }}
             />
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={cn('h-12 w-full rounded-xl pl-11 pr-11 text-sm outline-none transition-all duration-200 placeholder:text-white/20', inputFocusClass)}
+              className="h-12 w-full rounded-xl pl-11 pr-11 text-sm outline-none transition-all duration-200"
               style={inputStyle}
               placeholder="Senha"
               autoComplete="current-password"
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--login-focus-border)';
+                e.currentTarget.style.boxShadow = 'var(--login-focus-shadow)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--login-input-border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 transition hover:text-white/40"
-              style={{ color: 'rgba(255,255,255,0.2)' }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 transition"
+              style={{ color: 'var(--login-input-icon)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--login-link-hover)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--login-input-icon)'; }}
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -408,12 +446,17 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading || !username.trim() || !password.trim()}
-            className="!mt-5 h-12 w-full rounded-xl text-[13px] font-medium uppercase tracking-[3px] transition-all duration-200 hover:brightness-110 hover:shadow-[0_0_30px_rgba(0,212,170,0.2)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ background: '#00D4AA', color: '#0A0E1A' }}
+            className="!mt-5 h-12 w-full rounded-xl text-[13px] font-medium uppercase tracking-[3px] transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ background: 'var(--login-btn-bg)', color: 'var(--login-btn-text)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--login-btn-glow)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0A0E1A]/30 border-t-[#0A0E1A]" />
+                <span
+                  className="h-4 w-4 animate-spin rounded-full"
+                  style={{ border: '2px solid var(--login-btn-spinner-track)', borderTopColor: 'var(--login-btn-spinner-active)' }}
+                />
                 <span className="text-[11px] tracking-[2px]">AUTENTICANDO...</span>
               </span>
             ) : (
@@ -426,9 +469,9 @@ export default function LoginPage() {
             <div
               className="login-error mt-2 rounded-lg p-3 text-xs"
               style={{
-                background: 'rgba(239,68,68,0.08)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                color: 'rgb(239,68,68)',
+                background: 'var(--login-error-bg)',
+                border: '1px solid var(--login-error-border)',
+                color: 'var(--login-error-text)',
               }}
             >
               {error}
@@ -440,7 +483,7 @@ export default function LoginPage() {
       {/* Tagline */}
       <p
         className="login-tagline absolute text-xs italic"
-        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 32px)', color: 'rgba(255,255,255,0.12)' }}
+        style={{ bottom: 'max(env(safe-area-inset-bottom, 0px), 32px)', color: 'var(--login-tagline-color)' }}
       >
         devolvendo tempo a familia
       </p>
