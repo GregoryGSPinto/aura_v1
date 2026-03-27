@@ -1,140 +1,162 @@
-# ✦ Aura — Autonomous Personal AI Agent
+<div align="center">
 
-> Voice-driven AI that controls your Mac so you don't have to.
+# 🧠 Aura v1
 
-Aura is a personal AI agent built for one person's real workflow. Send a voice command from your iPhone, and Aura understands it, picks the right tools, executes on macOS, and responds with audio — all through a dual-brain architecture that runs local models for free and routes complex tasks to Claude API.
+**Autonomous Personal AI Agent — Voice-driven, dual-brain architecture, 3-tier autonomy**
+
+![Next.js 15](https://img.shields.io/badge/Next.js-15.3-black?logo=next.js)
+![React 19](https://img.shields.io/badge/React-19.1-61DAFB?logo=react)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
+![TypeScript 5.8](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-Qwen_3-white?logo=ollama)
+![Claude API](https://img.shields.io/badge/Claude_API-Sonnet-D97706?logo=anthropic)
+![Tests](https://img.shields.io/badge/Tests-19_suites-brightgreen?logo=pytest)
+![License](https://img.shields.io/badge/License-Private-red)
+
+[Architecture](#architecture) · [Getting Started](#getting-started) · [Testing](#testing)
+
+</div>
 
 ---
 
-## Demo
+## The Problem
 
-Aura is a private project in active daily use. No public demo is available.
-Screenshots and video walkthroughs will be added as the project stabilizes.
+Current AI assistants are cloud-only, have no offline capability, no real tool execution, and zero privacy. They respond to prompts — they don't act. Every interaction requires manual copy-paste between the assistant and the tools you actually use. There is no local-first, voice-driven AI that controls your machine, respects autonomy boundaries, and costs near-zero to run daily.
+
+## The Solution
+
+Aura is a **local-first personal AI agent** that takes voice commands from an iPhone, routes them through a dual-brain architecture (free local Ollama for simple tasks, Claude API for complex reasoning), executes real actions on macOS via 27 registered tools, and enforces a 3-tier autonomy system where dangerous operations are **hardcoded blocked** — no prompt injection, no config override, no exceptions.
 
 ---
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        iPhone["📱 iPhone (Voice)"]
+        Browser["🖥️ Next.js Frontend (Vercel)"]
+    end
+
+    subgraph Tunnel["Tunnel"]
+        ngrok["ngrok (Permanent Domain)"]
+    end
+
+    subgraph Backend["FastAPI Backend (:8000)"]
+        AuthMW["Auth Middleware (Bearer Token)"]
+        BrainRouter["Brain Router"]
+        AgentService["Agent Service (max 10 tool calls)"]
+        ToolRegistry["Tool Registry (27 tools)"]
+        Safety["Safety Layer (L1/L2/L3)"]
+        MissionEngine["Mission Engine"]
+        AuditTrail["Audit Trail (SQLite + JSONL)"]
+        SelfMod["Self-Modification Protocol"]
+    end
+
+    subgraph AI["AI Layer"]
+        Ollama["Ollama — Qwen 3 (Local, Free)"]
+        Claude["Claude API — Sonnet (Cloud, Paid)"]
+    end
+
+    subgraph Voice["Voice Pipeline"]
+        STT["Web Speech API / Whisper (STT)"]
+        TTS["edge-tts / macOS say (TTS)"]
+    end
+
+    subgraph Storage["Persistence"]
+        SQLite["SQLite (Memory, Audit, Missions)"]
+    end
+
+    iPhone --> ngrok --> AuthMW
+    Browser <--> AuthMW
+    AuthMW --> BrainRouter
+    BrainRouter -->|"Simple (~80%)"| Ollama
+    BrainRouter -->|"Complex (~20%)"| Claude
+    Ollama --> AgentService
+    Claude --> AgentService
+    AgentService --> ToolRegistry
+    ToolRegistry --> Safety
+    Safety --> AuditTrail
+    AgentService --> MissionEngine
+    AgentService --> SelfMod
+    MissionEngine --> SQLite
+    AuditTrail --> SQLite
+    STT --> AuthMW
+    AgentService --> TTS
 ```
-┌─────────────┐     ┌──────────────┐     ┌───────────────────────────────────┐
-│   iPhone     │────▶│  ngrok       │────▶│  FastAPI Backend (:8000)          │
-│   (voice)    │     │  tunnel      │     │                                   │
-└─────────────┘     └──────────────┘     │  ┌─────────────┐  ┌───────────┐  │
-                                          │  │ Brain Router │  │ Agent     │  │
-┌─────────────┐                           │  │ local/cloud  │──│ Service   │  │
-│  Next.js     │◀────────────────────────▶│  └──────┬──────┘  └─────┬─────┘  │
-│  Frontend    │     WebSocket + REST      │         │               │        │
-│  (Vercel)    │                           │    ┌────▼────┐   ┌─────▼──────┐ │
-└─────────────┘                           │    │  Qwen    │   │   Tool     │ │
-                                          │    │  3.5:9b  │   │  Registry  │ │
-                                          │    │ (Ollama) │   │  13 tools  │ │
-                                          │    └─────────┘   └────────────┘ │
-                                          │    ┌─────────┐                   │
-                                          │    │ Claude   │   ┌────────────┐ │
-                                          │    │   API    │   │  SQLite    │ │
-                                          │    │ (Sonnet) │   │  memory    │ │
-                                          │    └─────────┘   └────────────┘ │
-                                          └───────────────────────────────────┘
-```
+
+### Dual-Brain Architecture
+
+The `BrainRouter` classifies every incoming message by complexity using regex pattern matching and routes accordingly:
+
+| Brain | Model | When | Cost |
+|-------|-------|------|------|
+| **Local** | Qwen 3 via Ollama | Greetings, simple Q&A, confirmations, basic explanations | Free (~3 GB RAM) |
+| **Cloud** | Claude Sonnet via API | Tool calling, multi-step planning, code analysis, debugging | ~3 cents/call, daily budget cap |
+
+Ollama lifecycle is fully managed: auto-starts when a request needs the local model, auto-stops after 10 minutes idle to free RAM. No manual intervention required.
+
+### Autonomy Guard
+
+A 3-tier enforcement system implemented both in the Python backend (`SafetyService` + `ShellTool`) and in the TypeScript governance layer (`AutonomyGuard` in `packages/aura-core`):
+
+| Level | Policy | Examples | Override |
+|-------|--------|----------|----------|
+| **L1** — Autonomous | Executes without asking | Read files, list directories, git status, search, system metrics | — |
+| **L2** — Approval | Queued for user approval | Write files, deploy, git push, open apps, send email, install packages | User approves/rejects |
+| **L3** — Blocked | **Never executes** | `rm -rf /`, force push, credential rotation, financial ops, legal actions, public posts | **Hardcoded — not promotable** |
+
+**L3 enforcement is structural, not behavioral.** The `ShellTool` blocks dangerous commands via regex before they reach the OS. The TypeScript `AutonomyGuard` classifies actions across 6 categories (financial, legal, irreversible, security, reputation, professional) with frozen/immutable pattern arrays. Attempting to promote an L3 action throws an `AutonomyViolationError`. This is verified by dedicated tests including adversarial inputs, mixed-case evasion, and 1,000-cycle degradation checks.
+
+### Self-Modification Protocol
+
+When the user requests changes to Aura's own codebase, a dedicated pipeline activates:
+
+1. **Detector** — Identifies if the request modifies Aura's source (backend, frontend, scripts, config)
+2. **Planner** — Generates a modification plan with affected files, risk level, and restart requirements
+3. **Executor** — Executes only after explicit approval, delegates to Claude Code CLI for implementation
 
 ---
 
 ## Features
 
-Implemented and working (verified via [test suite](#test-results)):
+All features listed below are implemented in the codebase and verified through tests or manual validation:
 
-- **Voice commands** — Web Speech API (STT) + edge-tts (TTS), works from iPhone via ngrok
-- **13 tools** with real execution — shell, filesystem, git, browser, deploy, and more
-- **Dual brain** — Qwen 3.5:9b local (free) for simple tasks, Claude API for complex reasoning
-- **Ollama on-demand** — auto-starts when needed, auto-stops after 10 min idle, frees RAM
-- **Autonomy levels** — L1 autonomous, L2 needs approval, L3 hardcoded block
-- **Browser automation** — AppleScript + DOM extraction (no Playwright, no screenshots)
+- **Voice commands** — Web Speech API (STT in browser) + Whisper (backend STT) + edge-tts / macOS `say` (TTS); works from iPhone via ngrok tunnel
+- **27 tool modules** with real execution — shell, filesystem, git, browser, deploy, macOS control, Claude Code delegation, project management, and more
+- **Dual brain** — Qwen 3 local (free, ~80% of requests) + Claude API Sonnet (complex reasoning, native tool calling)
+- **Ollama lifecycle** — auto-starts on demand, auto-stops after 10 min idle, frees ~3 GB RAM
+- **3-tier autonomy** — L1 autonomous, L2 approval queue, L3 hardcoded block with regex enforcement
+- **Browser automation** — AppleScript + JavaScript DOM extraction (no Playwright, no screenshots, ~2 KB structured text vs ~500 KB image)
 - **Web workflows** — pre-built templates for GitHub, Vercel, Supabase operations
+- **Mission engine** — LLM-planned multi-step task execution with SQLite persistence and step-level status tracking
+- **Knowledge extractor** — Learns user preferences, project context, and facts from conversations via pattern matching
+- **Self-modification protocol** — Detector + Planner + Executor pipeline for safe changes to Aura's own codebase
 - **File attachments** — PDF text extraction, ZIP listing, image/text processing
-- **Missions engine** — LLM-planned multi-step task execution with SQLite persistence
-- **Boot-on-login** — LaunchAgent with idempotent 5-phase boot script
-- **Remote access** — ngrok permanent domain with auth middleware
-- **Audit trail** — every tool call logged to JSONL with timestamp, params, result
-- **Safety layer** — approval queue, rollback registry, dangerous command blocking
-- **65 backend tests + 22 E2E tests** passing
-
----
-
-## Autonomy Levels
-
-| Level | Policy | Examples | Override |
-|-------|--------|----------|----------|
-| **L1** — Autonomous | Executes without asking | Read files, list directories, git status, search | — |
-| **L2** — Approval | Queued for user approval | Write files, deploy, git push, open apps, browser navigation | User approves/rejects |
-| **L3** — Blocked | **Never executes** | `rm -rf /`, force push, credential rotation, financial ops | **Hardcoded — not promotable** |
-
-L3 is enforced at the tool level with regex pattern matching. The ShellTool blocks dangerous commands before they reach the OS. There is no configuration or prompt that can elevate an L3 action.
-
----
-
-## Tool Layer
-
-All 13 tools registered in `create_tool_registry()`:
-
-| Tool | Description | Level | Category |
-|------|-------------|-------|----------|
-| `shell` | Execute terminal commands (with L3 blocking for dangerous patterns) | Dynamic | System |
-| `macos` | Control macOS — open apps, notifications, volume, clipboard, Finder | Dynamic | System |
-| `file_read` | Read file contents with optional line range | L1 | Filesystem |
-| `file_write` | Create or overwrite files | L2 | Filesystem |
-| `file_search` | Search files by name or glob pattern | L1 | Filesystem |
-| `file_list` | List directory contents with metadata | L1 | Filesystem |
-| `git` | Git operations — status, diff, log, commit, push, branch | Dynamic | Version Control |
-| `claude_code` | Delegate complex engineering tasks to Claude Code CLI | L2 | Development |
-| `vercel` | Deploy and manage Vercel projects | Dynamic | Deployment |
-| `browser` | Control Chrome/Safari via AppleScript — open URLs, read pages | Dynamic | Browser |
-| `browser_navigate` | Multi-step site navigation via DOM extraction + LLM reasoning | L2 | Browser |
-| `web_workflow` | Pre-built workflows for GitHub, Vercel, Supabase | L2 | Browser |
-| `attachment` | Process uploaded files — PDF, text, ZIP, images | L1 | Filesystem |
-
-Tools marked **Dynamic** classify their autonomy at runtime based on the specific operation (e.g., `git status` = L1, `git push` = L2, `git push --force` = L3).
+- **Safety layer** — Approval queue, rollback registry, audit trail (every tool call logged to SQLite with timestamp, params, result)
+- **Boot automation** — macOS LaunchAgent with idempotent 5-phase boot script (env, Ollama, model, ngrok, stack)
+- **Remote access** — ngrok permanent domain with bearer token auth middleware
+- **13 frontend pages** — Chat workspace, dashboard, memory, projects, routines, workflows, settings, system metrics, trust/safety dashboard, remote control, swarm/jobs, and login
+- **Mobile-first PWA** — Responsive layout with dedicated mobile components, touch-optimized
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Python 3.11+, FastAPI 0.115, uvicorn, SQLite |
-| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind 3, Zustand 5, Vercel |
-| **AI (local)** | Ollama + Qwen 3.5:9b — zero cost, ~3 GB RAM |
-| **AI (cloud)** | Claude API (Sonnet) — complex reasoning, native tool calling |
-| **Infrastructure** | macOS, LaunchAgent, ngrok (permanent domain) |
-| **Voice** | Web Speech API (STT in browser), edge-tts (TTS) |
-| **Browser control** | AppleScript + JavaScript injection — DOM extraction, no Playwright |
-| **State** | Zustand 5 (frontend, SSR-safe), SQLite (backend memory + audit) |
-
----
-
-## How It Works
-
-```
-1. Voice command from iPhone
-   └─▶ Web Speech API transcribes to text
-
-2. Request hits FastAPI via ngrok tunnel
-   └─▶ Auth middleware validates bearer token
-
-3. Brain Router classifies complexity
-   ├─▶ Simple → Qwen 3.5:9b (local, free, fast)
-   └─▶ Complex → Claude API (reasoning, tool calling)
-
-4. Agent Service orchestrates execution
-   └─▶ LLM emits <tool_call> tags → parsed → executed (max 10 per message)
-
-5. Tool Registry enforces autonomy
-   ├─▶ L1: execute immediately
-   ├─▶ L2: queue for approval
-   └─▶ L3: block and log
-
-6. Response returned with TTS audio
-   └─▶ Every tool call logged to audit trail (JSONL)
-```
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| **Backend** | Python, FastAPI, uvicorn, Pydantic | 3.11+, 0.115.12, 0.34.0 |
+| **Frontend** | Next.js, React, TypeScript, Tailwind CSS | 15.3, 19.1, 5.8, 3.4 |
+| **State** | Zustand (frontend, SSR-safe), SQLite (backend) | 5.0 |
+| **AI (Local)** | Ollama + Qwen 3 | Latest |
+| **AI (Cloud)** | Claude API (Sonnet) via Anthropic SDK | anthropic >= 0.42.0 |
+| **UI** | Framer Motion, Recharts, cmdk, Lucide, Sonner | See package.json |
+| **Data Fetching** | TanStack React Query | 5.90 |
+| **Infrastructure** | macOS, LaunchAgent, ngrok (permanent domain) | — |
+| **Voice** | Web Speech API (browser STT), Whisper (backend STT), edge-tts / macOS say (TTS) | — |
+| **Browser Control** | AppleScript + JS injection — DOM extraction | — |
+| **Governance** | @aura/core (TypeScript: AutonomyGuard, EventBus) | 0.1.0 |
 
 ---
 
@@ -143,81 +165,64 @@ Tools marked **Dynamic** classify their autonomy at runtime based on the specifi
 ```
 aura_v1/
 ├── aura/
-│   ├── backend/
+│   ├── backend/                           # Python/FastAPI
 │   │   ├── app/
-│   │   │   ├── main.py                 # FastAPI app, lifespan, Container DI
-│   │   │   ├── api/v1/                 # 40+ endpoint modules
-│   │   │   │   ├── endpoints/
-│   │   │   │   │   ├── health.py       # /healthz, /health, /status
-│   │   │   │   │   ├── chat.py         # POST /chat (brain router + tools)
-│   │   │   │   │   ├── chat_stream.py  # POST /chat/stream (SSE)
-│   │   │   │   │   ├── agent_api.py    # /agent/chat, /agent/approvals
-│   │   │   │   │   ├── engine_api.py   # /engine/status, start, stop
-│   │   │   │   │   ├── voice_api.py    # /voice/tts, /voice/stt
-│   │   │   │   │   └── ...
-│   │   │   │   └── router.py           # Central API router
-│   │   │   ├── services/
-│   │   │   │   ├── brain_router.py     # LOCAL/CLOUD routing by complexity
-│   │   │   │   ├── agent_service.py    # Tool calling orchestrator (max 10 loops)
-│   │   │   │   ├── ollama_lifecycle.py # Auto start/stop with 10min idle timer
-│   │   │   │   ├── claude_client.py    # Claude API via httpx
-│   │   │   │   ├── safety_service.py   # L1/L2/L3 enforcement, audit, rollback
-│   │   │   │   ├── mission_engine.py   # Multi-step task planner + executor
-│   │   │   │   ├── sqlite_memory.py    # Preferences, projects, long-term memory
+│   │   │   ├── main.py                    # FastAPI app, lifespan, DI container
+│   │   │   ├── api/v1/                    # 41 endpoint modules
+│   │   │   ├── services/                  # 48 business logic services
+│   │   │   │   ├── brain_router.py        # LOCAL/CLOUD routing by complexity
+│   │   │   │   ├── agent_service.py       # Tool calling orchestrator (max 10 loops)
+│   │   │   │   ├── ollama_lifecycle.py    # Auto start/stop with 10min idle timer
+│   │   │   │   ├── claude_client.py       # Claude API via httpx
+│   │   │   │   ├── safety_service.py      # L1/L2/L3 enforcement + audit
+│   │   │   │   ├── mission_engine.py      # Multi-step task planner + executor
+│   │   │   │   ├── sqlite_memory.py       # Preferences, projects, long-term memory
+│   │   │   │   ├── self_mod_detector.py   # Detects self-modification requests
+│   │   │   │   ├── self_mod_planner.py    # Generates modification plans
+│   │   │   │   ├── self_mod_executor.py   # Executes approved modifications
+│   │   │   │   ├── knowledge_extractor.py # Extracts facts from conversations
 │   │   │   │   └── ...
-│   │   │   └── tools/
-│   │   │       ├── tool_registry.py    # BaseTool, ToolRegistry, AutonomyLevel
-│   │   │       ├── shell_tool.py       # Shell with L3 command blocking
-│   │   │       ├── browser_navigator.py# DOM extraction + AppleScript
-│   │   │       ├── web_workflows.py    # GitHub/Vercel/Supabase templates
-│   │   │       └── ...                 # 13 tools total
-│   │   ├── tests/                      # 65 pytest tests
+│   │   │   └── tools/                     # 27 tool modules
+│   │   │       ├── tool_registry.py       # BaseTool, ToolRegistry, AutonomyLevel
+│   │   │       ├── shell_tool.py          # Shell with L3 regex blocking
+│   │   │       ├── browser_navigator.py   # DOM extraction + AppleScript
+│   │   │       ├── web_workflows.py       # GitHub/Vercel/Supabase templates
+│   │   │       └── ...
+│   │   ├── tests/                         # 17 pytest test files
 │   │   └── requirements.txt
-│   └── frontend/
-│       ├── app/                        # Next.js App Router
-│       │   ├── chat/page.tsx           # Main workspace interface
-│       │   ├── dashboard/page.tsx      # System metrics
-│       │   ├── trust/page.tsx          # Safety dashboard
-│       │   └── ...                     # 12 pages total
-│       ├── components/
-│       │   ├── chat/                   # WorkspaceChat, Composer, MessageList
-│       │   ├── layout/                 # AppShell, Sidebar, TopBar
-│       │   ├── mobile/                 # MobileLayout, tabs, quick-panel
-│       │   └── ...
-│       ├── lib/
-│       │   ├── api.ts                  # Central API client (ngrok headers)
-│       │   ├── chat-store.ts           # Zustand: messages, mode, provider
-│       │   └── ...
-│       └── middleware.ts               # Auth guard (cookie-based)
-├── scripts/
-│   ├── boot.sh                         # 5-phase boot: env → Ollama → model → ngrok → stack
-│   ├── run-aura-stack                  # Supervisor: backend + frontend
-│   ├── install-launch-agents           # macOS auto-start on login
-│   ├── doctor                          # Health diagnostics
-│   └── ...                             # 18 scripts total
+│   └── frontend/                          # Next.js 15 App Router
+│       ├── app/                           # 13 pages (chat, dashboard, memory, ...)
+│       ├── components/                    # chat, layout, mobile, editor, terminal, ...
+│       ├── lib/                           # Zustand stores, API client, utils
+│       └── middleware.ts                  # Auth guard (cookie-based)
 ├── packages/
-│   ├── aura-core/                      # TypeScript: governance, memory, autonomy guard
-│   └── aura-brain-claude/              # TypeScript: Claude integration layer
-├── docs/                               # Architecture, security, product docs
-├── config/models.yaml                  # Model routing config
-└── CLAUDE.md                           # Project context for AI assistants
+│   ├── aura-core/                         # TypeScript: AutonomyGuard, EventBus, governance
+│   └── aura-brain-claude/                 # TypeScript: Claude integration layer
+├── scripts/                               # 19 operational scripts
+│   ├── boot.sh                            # 5-phase boot: env → Ollama → model → ngrok → stack
+│   ├── install-launch-agents              # macOS auto-start on login
+│   ├── doctor                             # Health diagnostics
+│   └── ...
+├── config/models.yaml                     # Model routing configuration
+├── docs/                                  # Architecture, security, product docs
+└── CLAUDE.md                              # AI assistant project context
 ```
 
 ---
 
-## Setup
+## Getting Started
 
 ### Prerequisites
 
-- macOS (AppleScript tools are macOS-only)
-- Python 3.11+
-- Node.js 18+ and pnpm
-- Ollama ([install](https://ollama.com))
+- **macOS** (AppleScript-based tools are macOS-only)
+- **Python 3.11+**
+- **Node.js 18+** and **pnpm**
+- **Ollama** ([install](https://ollama.com))
 
 ### 1. Clone
 
 ```bash
-git clone https://github.com/gregorydossantos/aura_v1.git
+git clone https://github.com/GregoryGSPinto/aura_v1.git
 cd aura_v1
 ```
 
@@ -247,10 +252,10 @@ pnpm dev
 
 ```bash
 ollama serve
-ollama pull qwen3.5:9b
+ollama pull qwen3:latest
 ```
 
-### 5. Boot (production)
+### 5. Production Boot
 
 ```bash
 # One-time: install macOS LaunchAgent for auto-start on login
@@ -260,64 +265,80 @@ ollama pull qwen3.5:9b
 ./scripts/boot.sh
 ```
 
-The boot script is idempotent — it checks Ollama, pulls the model if missing, starts ngrok, and launches the full stack. Under LaunchAgent with `KeepAlive=true`, the entire stack restarts automatically if it crashes.
+The boot script is idempotent — checks Ollama, pulls the model if missing, starts ngrok, and launches the full stack. Under LaunchAgent with `KeepAlive=true`, the entire stack restarts automatically on crash.
 
-### 6. Remote access
+### 6. Remote Access
 
-The boot script starts an ngrok tunnel with a permanent domain. Access Aura from your phone at the configured URL. All requests require a bearer token.
+The boot script starts an ngrok tunnel with a permanent domain. Access Aura from your phone at the configured URL. All requests require a bearer token via `Authorization` header.
+
+---
+
+## Testing
+
+### Test Inventory
+
+| Layer | Framework | Files | Description |
+|-------|-----------|-------|-------------|
+| **Backend** | pytest | 17 test files | Unit tests for tool calling, chat routing, safety, streaming, voice, providers, connectors, and more |
+| **Governance (TS)** | Vitest | 2 test files | AutonomyGuard (L1/L2/L3 classification, L3 immutability, adversarial inputs, performance) |
+| **Total** | — | **19 test suites** | — |
+
+### Running Tests
+
+```bash
+# Backend (pytest)
+cd aura/backend
+source .venv/bin/activate
+pytest tests/ -v
+
+# Governance (TypeScript)
+cd packages/aura-core
+node --import tsx --test __tests__/**/*.test.ts
+```
+
+### Key Safety Tests
+
+The `autonomy-guard.test.ts` suite includes:
+- **L3 hardcoded blocks** across 6 categories: financial, legal, irreversible, security, reputation, professional
+- **L3 promotion impossibility** — `AutonomyViolationError` thrown on any attempt
+- **L3 degradation resistance** — verified stable after 1,000 classification cycles
+- **Adversarial inputs** — mixed case, special characters, embedded keywords in long strings, Portuguese
+- **Performance** — 10,000 classifications in under 1 second
 
 ---
 
 ## Design Decisions
 
-- **Dual brain over single model** — Qwen handles ~80% of requests at zero cost; Claude handles the rest that need reasoning. Budget is configurable per day.
-- **L3 is hardcoded** — Dangerous actions are blocked at the tool level with regex, not by prompt instructions. No configuration can promote an L3 action.
-- **AppleScript over Playwright** — Zero dependencies, no browser binary to manage. DOM extraction via JS injection gives structured data without screenshots or vision models.
-- **DOM extraction over screenshots** — Extracted DOM is ~2KB of structured text vs ~500KB image. Faster, cheaper, works with any text-based LLM.
-- **Agent loop with cap** — The Agent Service runs up to 10 tool calls per message to prevent infinite loops while allowing multi-step tasks.
-- **Ollama lifecycle management** — Auto-starts Ollama when a request arrives, auto-stops after 10 minutes idle. Keeps ~3GB RAM free when not in use.
-- **SQLite over Postgres** — Single-user system, no need for connection pooling or network overhead. Memory, audit, and state all in local SQLite.
-
----
-
-## Test Results
-
-From the latest test run (2026-03-26):
-
-**Backend (pytest):**
-- 65 passed, 2 failed (pre-existing — require live Ollama in test env), 21 skipped
-
-**E2E (22 tests across 8 groups):**
-
-| Group | Tests | Result |
-|-------|-------|--------|
-| Infrastructure | 5 | All pass — backend, frontend, ngrok, Ollama |
-| Ollama Lifecycle | 3 + 2 skip | Engine status, start, health all pass |
-| Tool Layer | 5 | 13 tools registered, shell/git execute, L3 blocks `rm -rf` |
-| Chat | 1 | Qwen responds correctly |
-| Frontend Build | 2 | TypeScript clean, production build passes |
-| Remote Access | 1 | Health endpoint reachable via ngrok |
-| New Modules | 6 | DOM extractor, web workflow, attachment, lifecycle, app init |
-
-**Security:** L3 blocking confirmed — `rm -rf /` returns `BLOQUEADO: Comando perigoso detectado`.
+| Decision | Rationale |
+|----------|-----------|
+| **Dual brain over single model** | Qwen handles ~80% of requests at zero cost; Claude handles the rest that need reasoning. Budget configurable per day. |
+| **L3 is hardcoded** | Dangerous actions blocked at the tool level with regex and frozen pattern arrays, not by prompt instructions. No config can promote an L3 action. |
+| **AppleScript over Playwright** | Zero dependencies, no browser binary to manage. DOM extraction via JS injection gives structured data without screenshots. |
+| **DOM extraction over screenshots** | ~2 KB structured text vs ~500 KB image. Faster, cheaper, works with any text-based LLM. |
+| **Agent loop with cap** | Up to 10 tool calls per message prevents infinite loops while allowing multi-step tasks. |
+| **Ollama lifecycle management** | Auto-starts when needed, auto-stops after 10 min idle. Keeps ~3 GB RAM free when not in use. |
+| **SQLite over Postgres** | Single-user system. No connection pooling or network overhead needed. Memory, audit, and state all in local SQLite. |
+| **Self-modification protocol** | Aura can modify its own code, but only through a Detector → Planner → Executor pipeline requiring explicit approval. |
 
 ---
 
 ## Roadmap
 
-### Done
-- [x] FastAPI backend with 40+ endpoints
-- [x] Next.js frontend with 12 pages (PWA, mobile-first)
-- [x] Brain Router (local/cloud classification)
-- [x] 13-tool Agent Service with autonomy enforcement
-- [x] Ollama lifecycle (auto start/stop)
-- [x] Missions engine (plan + execute + persist)
-- [x] Safety layer (approval queue, audit, rollback)
-- [x] Browser automation via DOM extraction
-- [x] Voice pipeline (Web Speech API + edge-tts)
-- [x] Boot automation (LaunchAgent, 5-phase script)
-- [x] Remote access (ngrok permanent domain)
+### Completed
+- [x] FastAPI backend with 41 API endpoint modules
+- [x] Next.js 15 frontend with 13 pages (PWA, mobile-first)
+- [x] Brain Router (local/cloud classification by complexity)
+- [x] 27-tool Agent Service with 3-tier autonomy enforcement
+- [x] Ollama lifecycle (auto start/stop with 10 min idle timer)
+- [x] Mission engine (LLM plan + step execution + SQLite persistence)
+- [x] Safety layer (approval queue, audit trail, rollback registry)
+- [x] Browser automation via AppleScript + DOM extraction
+- [x] Voice pipeline (Web Speech API + Whisper + edge-tts)
+- [x] Boot automation (macOS LaunchAgent, 5-phase idempotent script)
+- [x] Remote access (ngrok permanent domain + auth middleware)
 - [x] File upload and attachment processing
+- [x] Self-modification protocol (detect, plan, execute with approval)
+- [x] Knowledge extraction from conversations
 
 ### Planned
 - [ ] Persistent Claude API budget tracking (currently resets on restart)
@@ -333,16 +354,17 @@ From the latest test run (2026-03-26):
 
 > "Technology exists to return time to family — not to consume more of it."
 
-> "Every sprint is evaluated against this metric: how many real hours does it return?"
-
-Aura is built with one principle: automate the repetitive so the human can focus on what matters. Every feature is measured by whether it saves real time in a real workflow.
+Every feature is measured against one metric: **how many real hours does it return?** Aura automates the repetitive so the human can focus on what matters.
 
 ---
 
 ## Author
 
-**Gregory** — Train operator (railway) and self-taught software engineer.
-Built Aura as a personal AI ecosystem to automate daily workflows and reclaim time for family.
+**Gregory Guimaraes Pinto** — Senior AI Solution Architect
+
+Train operator (railway) and self-taught software engineer. Built Aura as a personal AI ecosystem to automate daily workflows and reclaim time for family.
+
+- GitHub: [github.com/GregoryGSPinto](https://github.com/GregoryGSPinto)
 
 ---
 
