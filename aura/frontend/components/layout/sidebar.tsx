@@ -197,6 +197,7 @@ export function Sidebar({
     collapsed,
     defaultCollapsed: true,
     onCollapsedChange: setSidebarCollapsed,
+    minWidth: 640,
   });
 
   return (
@@ -206,7 +207,7 @@ export function Sidebar({
         {/* Edge hotspot — hover-to-open when collapsed */}
         {hoverSidebar.hoverMode && collapsed && (
           <div
-            className="fixed left-0 z-30 hidden w-3 lg:block"
+            className="fixed left-0 z-30 hidden w-3 sm:block"
             style={{
               top: 'calc(var(--aura-header-h) + 1rem)',
               bottom: 'calc(var(--aura-status-h) + 1rem)',
@@ -219,12 +220,13 @@ export function Sidebar({
         {/* Sidebar panel — floating edge companion */}
         <aside
           className={cn(
-            'app-popover fixed left-4 z-40 hidden overflow-hidden rounded-[1.35rem] border border-[var(--border-default)] bg-[color:color-mix(in_srgb,var(--bg-surface)_78%,transparent)] shadow-[0_16px_34px_rgba(0,0,0,0.22)] transition-[width,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] lg:block',
+            'fixed left-4 z-40 hidden overflow-hidden rounded-[1.35rem] border border-[var(--border-default)] shadow-[0_16px_34px_rgba(0,0,0,0.22)] backdrop-blur-[20px] transition-[width,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] sm:block',
             collapsed ? 'w-14 opacity-100' : 'w-[18.5rem] opacity-100',
           )}
           style={{
             top: 'calc(var(--aura-header-h) + 1rem)',
             bottom: 'calc(var(--aura-status-h) + 1rem)',
+            background: 'var(--sidebar-bg)',
           }}
           {...(hoverSidebar.hoverMode ? hoverSidebar.panelHandlers : {})}
         >
@@ -243,7 +245,7 @@ export function Sidebar({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
               onClick={onCloseMobile}
               aria-label="Fechar menu"
             />
@@ -252,7 +254,7 @@ export function Sidebar({
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed inset-y-0 left-0 z-50 w-[280px] glass lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[280px] glass sm:hidden"
             >
               <SidebarContent
                 collapsed={false}

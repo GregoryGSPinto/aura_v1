@@ -61,12 +61,12 @@ export function StatusBar() {
           <span>{modelName}</span>
           {activeFile && (
             <>
-              <span className="text-zinc-700">&middot;</span>
+              <span className="hidden sm:inline text-zinc-700">&middot;</span>
               <span className="hidden sm:inline capitalize">{activeFile.language}</span>
-              <span className="text-zinc-700">&middot;</span>
-              <span>Ln {cursorLine}, Col {cursorCol}</span>
-              <span className="text-zinc-700">&middot;</span>
-              <span className="hidden sm:inline">UTF-8</span>
+              <span className="hidden md:inline text-zinc-700">&middot;</span>
+              <span className="hidden md:inline">Ln {cursorLine}, Col {cursorCol}</span>
+              <span className="hidden lg:inline text-zinc-700">&middot;</span>
+              <span className="hidden lg:inline">UTF-8</span>
             </>
           )}
           {!activeFile && (
@@ -75,19 +75,19 @@ export function StatusBar() {
               <span className="hidden sm:inline">{sessionType}</span>
             </>
           )}
-          <span className="text-zinc-700">&middot;</span>
-          <span className="text-zinc-500">AI <span className={wsConnected ? 'text-green-500' : 'text-zinc-600'}>&bull;</span></span>
-          {wsConnected && <span className="text-zinc-600">WS</span>}
+          <span className="hidden sm:inline text-zinc-700">&middot;</span>
+          <span className="hidden sm:inline text-zinc-500">AI <span className={wsConnected ? 'text-green-500' : 'text-zinc-600'}>&bull;</span></span>
+          {wsConnected && <span className="hidden md:inline text-zinc-600">WS</span>}
           {gitBranch && (
             <>
-              <span className="text-zinc-700">&middot;</span>
-              <span className="text-orange-400">{gitBranch}{gitAhead > 0 ? ` ↑${gitAhead}` : ''}</span>
+              <span className="hidden lg:inline text-zinc-700">&middot;</span>
+              <span className="hidden lg:inline text-orange-400">{gitBranch}{gitAhead > 0 ? ` ↑${gitAhead}` : ''}</span>
             </>
           )}
           {previewPort && (
             <>
-              <span className="text-zinc-700">&middot;</span>
-              <span className="text-green-500">Preview :{previewPort}</span>
+              <span className="hidden lg:inline text-zinc-700">&middot;</span>
+              <span className="hidden lg:inline text-green-500">Preview :{previewPort}</span>
             </>
           )}
         </button>

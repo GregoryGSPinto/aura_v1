@@ -132,7 +132,7 @@ export function AppHeader({ onOpenSidebar }: AppHeaderProps) {
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-[0.9rem] text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 lg:hidden"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-[0.9rem] text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200 sm:hidden"
           aria-label="Abrir menu"
         >
           <Menu className="h-4.5 w-4.5" />

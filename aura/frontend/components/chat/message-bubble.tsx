@@ -74,7 +74,7 @@ export function MessageBubble({
       onTouchMove={handleTouchEnd}
       onContextMenu={(e) => { e.preventDefault(); haptic.medium(); setLongPressMenu(true); }}
     >
-      <div className="group relative max-w-[86%] md:max-w-[48rem] xl:max-w-[54rem]">
+      <div className="group relative max-w-[85%] sm:max-w-[75%] lg:max-w-[48rem] xl:max-w-[54rem]">
         {/* Avatar for assistant (desktop only) */}
         {isAssistant && (
           <div className="absolute -left-8 top-3 hidden h-6 w-6 items-center justify-center rounded-full bg-[var(--aura-dark)] text-xs text-[var(--aura-green)] lg:flex">
