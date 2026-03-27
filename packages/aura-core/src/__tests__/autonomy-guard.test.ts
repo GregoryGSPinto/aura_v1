@@ -179,7 +179,7 @@ describe('AutonomyGuard', () => {
         'update railway project status',
         'notify ferrovia operations team',
         'share railway maintenance report',
-        'post update about Estrada de Ferro',
+        'post update about railway operations',
       ];
 
       it.each(professionalTerms)('BLOCKS: "%s"', (description) => {
