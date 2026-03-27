@@ -682,3 +682,137 @@ export async function fetchMissionEvaluation(missionId: string): Promise<ApiResp
 export async function fetchMissionSummary(missionId: string): Promise<ApiResponse<Record<string, unknown>>> {
   return fetchApi(`/api/v1/missions/${missionId}/summary`);
 }
+
+// Agent Service (Mega Prompt)
+export type AgentToolCall = {
+  tool: string;
+  params: Record<string, unknown>;
+  result: {
+    success: boolean;
+    output: unknown;
+    error: string | null;
+    execution_time_ms: number;
+    tool_name: string;
+    autonomy_level: number;
+    needs_approval: boolean;
+    timestamp: string;
+  };
+};
+
+export type AgentChatResponse = {
+  response: string;
+  tool_calls: AgentToolCall[];
+  mode: string;
+  needs_approval: { approval_id: string; description: string; tool: string }[];
+  execution_time_ms: number;
+  iterations: number;
+};
+
+export type AgentToolSchema = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  autonomy_level: number;
+  category: string;
+};
+
+export async function agentChat(
+  message: string,
+  mode: string = 'auto',
+  conversationHistory?: { role: string; content: string }[],
+): Promise<AgentChatResponse> {
+  const url = normalizeUrl('/api/v1/agent/chat');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      message,
+      mode,
+      conversation_history: conversationHistory,
+    }),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
+    throw new ApiClientError(
+      payload.error?.message || `HTTP ${response.status}`,
+      response.status,
+      payload.error?.code || 'api_error',
+    );
+  }
+
+  return response.json();
+}
+
+export async function getApprovals(): Promise<{ pending: { id: string; tool_name: string; description: string; requested_at: string }[] }> {
+  const url = normalizeUrl('/api/v1/agent/approvals');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(url, { headers, cache: 'no-store' });
+  return response.json();
+}
+
+export async function handleApproval(approvalId: string, approved: boolean): Promise<{ status: string; result?: unknown }> {
+  const url = normalizeUrl('/api/v1/agent/approvals');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  };
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ approval_id: approvalId, approved }),
+    cache: 'no-store',
+  });
+  return response.json();
+}
+
+export async function getToolsList(): Promise<{ tools: AgentToolSchema[] }> {
+  const url = normalizeUrl('/api/v1/agent/tools');
+  const headers: Record<string, string> = {
+    'ngrok-skip-browser-warning': 'true',
+  };
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(url, { headers, cache: 'no-store' });
+  return response.json();
+}
+
+// Upload API
+export async function uploadFile(file: File): Promise<{ path: string; original_name: string; size_bytes: number; content_type: string }> {
+  const url = normalizeUrl('/api/v1/upload/');
+  const headers: Record<string, string> = {
+    'ngrok-skip-browser-warning': 'true',
+  };
+  const authToken = useAuthStore.getState().token;
+  const token = authToken || clientEnv.auraToken;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(url, { method: 'POST', headers, body: formData });
+  if (!response.ok) throw new Error(`Upload falhou: ${response.status}`);
+  return response.json();
+}

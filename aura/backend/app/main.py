@@ -75,8 +75,10 @@ from app.services.workflow_engine import WorkflowEngine
 from app.aura_os.connectors.github_connector import GitHubConnector
 from app.aura_os.connectors.calendar_connector import GoogleCalendarConnector
 from app.aura_os.connectors.gmail_connector import GmailConnector
-from app.tools import BrowserTool, ClaudeTool, DocTool, FilesystemTool, GitTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRegistryV2, ToolRouter, VSCodeTool
+from app.tools import BrowserTool, ClaudeTool, DocTool, FilesystemTool, GitTool, LLMTool, ProjectTool, SystemTool, TerminalTool, ToolRegistryV2, ToolRouter, VSCodeTool, create_tool_registry
 from app.tools.dev_tool import DevTool
+from app.services.agent_service import AgentService
+from app.services.ollama_lifecycle import OllamaLifecycle
 
 
 class NullVoicePipeline:
@@ -388,6 +390,23 @@ class Container:
         self.mission_evaluator = MissionEvaluator()
         self.mission_summarizer = MissionSummarizer(ollama_service=self.ollama_service)
 
+        # Ollama Lifecycle (auto start/stop)
+        self.ollama_lifecycle = OllamaLifecycle(
+            ollama_url=self.settings.ollama_url,
+            model_name=self.settings.model_name,
+        )
+
+        # Agent Tool Layer + Agent Service (Mega Prompt)
+        self.agent_tool_registry = create_tool_registry()
+        self.agent_service = AgentService(
+            tool_registry=self.agent_tool_registry,
+            brain_router=self.brain_router,
+            claude_client=self.claude_client,
+            ollama_service=self.ollama_service,
+            settings=self.settings,
+            ollama_lifecycle=self.ollama_lifecycle,
+        )
+
         # Sprint 4: Proactive Service
         self.proactive_service = ProactiveService(
             scheduler=None,
@@ -630,6 +649,9 @@ def create_app() -> FastAPI:
     app.state.github_connector = app_container.github_connector
     app.state.calendar_connector = app_container.calendar_connector
     app.state.gmail_connector = app_container.gmail_connector
+    app.state.ollama_lifecycle = app_container.ollama_lifecycle
+    app.state.agent_tool_registry = app_container.agent_tool_registry
+    app.state.agent_service = app_container.agent_service
 
     app.add_middleware(
         CORSMiddleware,

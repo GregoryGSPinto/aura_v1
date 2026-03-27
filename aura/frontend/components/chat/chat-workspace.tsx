@@ -9,10 +9,11 @@ import { ChatComposer } from '@/components/chat/composer';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
 import { MessageList } from '@/components/chat/message-list';
 import { VoiceTranscriptPanel } from '@/components/chat/voice-transcript-panel';
+import { ApprovalBanner } from '@/components/chat/ApprovalBanner';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useHealth } from '@/hooks/use-health';
 import { useWebSocket } from '@/hooks/use-websocket';
-import { ApiClientError, sendChat } from '@/lib/api';
+import { ApiClientError, sendChat, agentChat, uploadFile } from '@/lib/api';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
 import { useChatStore } from '@/lib/chat-store';
@@ -230,15 +231,26 @@ export function ChatWorkspace() {
 
   const handleAttachmentSelection = (files: FileList | null) => {
     if (!files?.length) return;
-    const next = Array.from(files).map<AttachmentPreview>((f) => ({
+    const fileArray = Array.from(files);
+    const next = fileArray.map<AttachmentPreview>((f) => ({
       id: createMessageId('attachment'), name: f.name, size: f.size, type: f.type,
       status: f.size > 25 * 1024 * 1024 ? 'error' : 'uploading',
       ...(f.size > 25 * 1024 * 1024 ? { error: 'Arquivo acima de 25 MB.' } : {}),
     }));
     setAttachments((c) => [...c, ...next]);
-    window.setTimeout(() => {
-      setAttachments((c) => c.map((a) => next.some((n) => n.id === a.id) && a.status === 'uploading' ? { ...a, status: 'ready' } : a));
-    }, 450);
+
+    // Upload real para o backend
+    fileArray.forEach((file, idx) => {
+      const preview = next[idx];
+      if (preview.status === 'error') return;
+      uploadFile(file)
+        .then((result) => {
+          setAttachments((c) => c.map((a) => a.id === preview.id ? { ...a, status: 'ready', serverPath: result.path } as AttachmentPreview : a));
+        })
+        .catch(() => {
+          setAttachments((c) => c.map((a) => a.id === preview.id ? { ...a, status: 'error', error: 'Falha no upload' } : a));
+        });
+    });
   };
 
   const submitPrompt = useCallback(
@@ -266,20 +278,59 @@ export function ChatWorkspace() {
       setAttachments([]);
 
       try {
-        const response = await sendChat(prompt, history, activeConversation.id, {
-          modeId: currentMode.id, modeLabel: currentMode.label, capability: currentMode.capability,
-          temperature: currentMode.request.temperature, think: currentMode.request.think, shouldReplyWithVoice: replyWithVoice,
-        });
-        const payload = response.data;
-        const meta = [payload.intent, currentMode.label, payload.model, payload.context_summary].filter(Boolean).join(' · ');
-        await runStreaming(assistantMsg.id, payload.response, meta, payload.model);
+        // Try agent endpoint first (supports tool calling), fall back to chat
+        let responseText = '';
+        let toolCalls: ConversationMessage['toolCalls'] = undefined;
+        let meta = '';
+        let model: string | undefined;
+        let provider: string | undefined;
+        let route: ConversationMessage['route'] = undefined;
+        let brain: 'local' | 'cloud' | undefined;
+
+        try {
+          const agentResult = await agentChat(prompt, 'interactive', history);
+          responseText = agentResult.response;
+          meta = [currentMode.label, `${Math.round(agentResult.execution_time_ms)}ms`, agentResult.mode].filter(Boolean).join(' · ');
+          if (agentResult.tool_calls?.length) {
+            toolCalls = agentResult.tool_calls.map((tc) => ({
+              tool: tc.tool,
+              params: tc.params,
+              result: {
+                tool: tc.result.tool_name || tc.tool,
+                status: tc.result.needs_approval ? 'needs_approval' : tc.result.success ? 'success' : 'failed',
+                duration_ms: tc.result.execution_time_ms ? Math.round(tc.result.execution_time_ms) : null,
+                output: tc.result.output,
+                error: tc.result.error,
+                risk_level: `L${tc.result.autonomy_level}`,
+              },
+            }));
+          }
+          route = 'agent';
+          brain = 'cloud';
+        } catch {
+          // Fallback to regular chat endpoint
+          const response = await sendChat(prompt, history, activeConversation.id, {
+            modeId: currentMode.id, modeLabel: currentMode.label, capability: currentMode.capability,
+            temperature: currentMode.request.temperature, think: currentMode.request.think, shouldReplyWithVoice: replyWithVoice,
+          });
+          const payload = response.data;
+          responseText = payload.response;
+          meta = [payload.intent, currentMode.label, payload.model, payload.context_summary].filter(Boolean).join(' · ');
+          model = payload.model;
+          provider = payload.provider;
+          route = payload.route as ConversationMessage['route'];
+          brain = payload.brain_used as 'local' | 'cloud' | undefined;
+          if (payload.tool_calls?.length) toolCalls = payload.tool_calls;
+        }
+
+        await runStreaming(assistantMsg.id, responseText, meta, model);
         const messageUpdate: Partial<ConversationMessage> = {};
-        if (payload.provider || payload.route) { messageUpdate.provider = payload.provider; messageUpdate.route = payload.route; }
-        if (payload.brain_used) messageUpdate.brain = payload.brain_used as 'local' | 'cloud';
-        if (payload.tool_calls?.length) messageUpdate.toolCalls = payload.tool_calls;
+        if (provider || route) { messageUpdate.provider = provider; messageUpdate.route = route; }
+        if (brain) messageUpdate.brain = brain;
+        if (toolCalls?.length) messageUpdate.toolCalls = toolCalls;
         if (Object.keys(messageUpdate).length) updateMessage(activeConversation.id, assistantMsg.id, messageUpdate);
         await refreshRuntime();
-        if (replyWithVoice) speakMessage({ ...assistantMsg, content: payload.response, status: 'complete', modeLabel: currentMode.label });
+        if (replyWithVoice) speakMessage({ ...assistantMsg, content: responseText, status: 'complete', modeLabel: currentMode.label });
         else setShouldReplyWithVoice(false);
       } catch (err) {
         const failure = classifyChatError(err);
@@ -415,6 +466,9 @@ export function ChatWorkspace() {
         multiple
         onChange={(e) => { handleAttachmentSelection(e.target.files); e.currentTarget.value = ''; }}
       />
+
+      {/* Approval banner for L2 pending actions */}
+      <ApprovalBanner />
 
       {/* Unhealthy banner */}
       {(health.overallStatus === 'unhealthy' || health.overallStatus === 'unreachable') && (

@@ -9,6 +9,8 @@ export interface AttachmentPreview {
   type: string;
   status: AttachmentStatus;
   error?: string;
+  /** Server-side file path after upload */
+  serverPath?: string;
 }
 
 export interface ConversationMessage {
