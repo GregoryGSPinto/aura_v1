@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#0A0E1A"/>
+<stop offset="100%" stop-color="#0F1628"/>
+</linearGradient>
+<linearGradient id="core" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#00EFBE"/>
+<stop offset="100%" stop-color="#00D4AA"/>
+</linearGradient>
+</defs>
+
+<!-- Background with iOS-style rounded corners -->
+<rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+
+<!-- Outer ring -->
+<circle cx="512" cy="482" r="346" fill="none" stroke="#00D4AA" stroke-width="2.2" opacity="0.25"/>
+
+<!-- Middle ring -->
+<circle cx="512" cy="482" r="278" fill="none" stroke="#00D4AA" stroke-width="1.2" opacity="0.18"/>
+
+<!-- Inner ring -->
+<circle cx="512" cy="482" r="210" fill="none" stroke="#00D4AA" stroke-width="0.9" opacity="0.13"/>
+
+<!-- Orbital dots -->
+<circle cx="790" cy="392" r="7.5" fill="#00D4AA" opacity="0.55"/>
+<circle cx="294" cy="632" r="6" fill="#00D4AA" opacity="0.35"/>
+<circle cx="602" cy="195" r="5.5" fill="#00D4AA" opacity="0.45"/>
+<circle cx="362" cy="260" r="4.5" fill="#00D4AA" opacity="0.28"/>
+<circle cx="708" cy="710" r="6.8" fill="#00D4AA" opacity="0.4"/>
+<circle cx="220" cy="390" r="4" fill="#00D4AA" opacity="0.22"/>
+
+<!-- Core glow layers -->
+<circle cx="512" cy="482" r="90" fill="#00D4AA" opacity="0.06"/>
+<circle cx="512" cy="482" r="52" fill="#00D4AA" opacity="0.1"/>
+
+<!-- Core star ✦ — the Aura mark -->
+<!-- Vertical axis -->
+<path d="M512 330 L535 465 L512 600 L489 465 Z" fill="url(#core)" opacity="0.95"/>
+<!-- Horizontal axis -->
+<path d="M377 482 L498 458 L647 482 L498 506 Z" fill="url(#core)" opacity="0.95"/>
+
+<!-- Inner diamond accent -->
+<path d="M512 420 L540 475 L512 530 L484 475 Z" fill="#00EFBE" opacity="0.45"/>
+
+<!-- Cardinal sparkle points -->
+<circle cx="512" cy="362" r="3.8" fill="#00EFBE" opacity="0.8"/>
+<circle cx="512" cy="598" r="3.8" fill="#00EFBE" opacity="0.8"/>
+<circle cx="396" cy="482" r="3.8" fill="#00EFBE" opacity="0.8"/>
+<circle cx="628" cy="482" r="3.8" fill="#00EFBE" opacity="0.8"/>
+
+<!-- Text: AURA -->
+<text x="512" y="820" text-anchor="middle" font-family="'SF Pro Display', 'Helvetica Neue', 'Inter', Arial, sans-serif" font-size="78" font-weight="300" letter-spacing="28" fill="#00D4AA" opacity="0.85">AURA</text>
+
+<!-- Tagline -->
+<text x="512" y="880" text-anchor="middle" font-family="'SF Pro Display', 'Helvetica Neue', 'Inter', Arial, sans-serif" font-size="20" font-weight="300" letter-spacing="8" fill="#00D4AA" opacity="0.3">AUTONOMOUS AI</text>
+</svg>
