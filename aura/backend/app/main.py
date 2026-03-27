@@ -79,6 +79,8 @@ from app.tools import BrowserTool, ClaudeTool, DocTool, FilesystemTool, GitTool,
 from app.tools.dev_tool import DevTool
 from app.services.agent_service import AgentService
 from app.services.ollama_lifecycle import OllamaLifecycle
+from app.services.memory_engine import MemoryEngine
+from app.services.proactive_agent import ProactiveAgent
 
 
 class NullVoicePipeline:
@@ -407,6 +409,19 @@ class Container:
             ollama_lifecycle=self.ollama_lifecycle,
         )
 
+        # AGI: Memory Engine (facade async over SQLiteMemoryService)
+        self.memory_engine = MemoryEngine(db_path=db_path)
+
+        # AGI: Proactive Agent (greeting + background monitoring)
+        self.proactive_agent = ProactiveAgent(
+            memory=self.memory_engine,
+            agent_service=self.agent_service,
+            ollama_lifecycle=self.ollama_lifecycle,
+        )
+
+        # Inject memory into AgentService
+        self.agent_service.memory = self.memory_engine
+
         # Sprint 4: Proactive Service
         self.proactive_service = ProactiveService(
             scheduler=None,
@@ -551,14 +566,29 @@ async def lifespan(app: FastAPI):
     await health_registry.start_background(interval=30)
     operation_log.add("info", "boot", "Boot check completed, background health polling started")
 
+    # Initialize MemoryEngine (async)
+    try:
+        await app.state.memory_engine.init_db()
+        operation_log.add("info", "boot", "MemoryEngine initialized")
+    except Exception as exc:
+        app.state.logger.warning("[Lifespan] MemoryEngine did not initialize: %s", exc)
+
     try:
         await app.state.proactive_service.start()
         operation_log.add("info", "boot", "ProactiveService started (morning_briefing + health_check loops)")
     except Exception as exc:
         app.state.logger.warning("[Lifespan] ProactiveService did not start: %s", exc)
 
+    # Start ProactiveAgent background monitor
+    try:
+        await app.state.proactive_agent.start()
+        operation_log.add("info", "boot", "ProactiveAgent started (greeting + monitor)")
+    except Exception as exc:
+        app.state.logger.warning("[Lifespan] ProactiveAgent did not start: %s", exc)
+
     yield
 
+    await app.state.proactive_agent.stop()
     await app.state.proactive_service.stop()
     await health_registry.stop_background()
     app.state.container.stop_runtime()
@@ -652,6 +682,8 @@ def create_app() -> FastAPI:
     app.state.ollama_lifecycle = app_container.ollama_lifecycle
     app.state.agent_tool_registry = app_container.agent_tool_registry
     app.state.agent_service = app_container.agent_service
+    app.state.memory_engine = app_container.memory_engine
+    app.state.proactive_agent = app_container.proactive_agent
 
     app.add_middleware(
         CORSMiddleware,

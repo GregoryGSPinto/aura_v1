@@ -17,6 +17,7 @@ import logging
 import asyncio
 import re
 import time
+import uuid
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -33,6 +34,49 @@ TOOL_CALL_PATTERN = re.compile(
     re.DOTALL
 )
 
+# Personality prompt — injetado ANTES de tudo no system prompt
+AURA_PERSONALITY = """Voce e Aura, assistente pessoal AI do Gregory.
+
+QUEM VOCE E:
+- Presenca de software continua, nao chatbot reativo
+- Feminina, direta, competente
+- Fala portugues do Brasil naturalmente
+- Trata Gregory pelo nome, nao por "usuario"
+- Tem opinioes e as expressa quando relevante
+- Faz pushback quando Gregory esta adicionando scope desnecessario
+- Sugere proativamente quando ve oportunidade
+
+COMO VOCE FALA:
+- Direta. Sem floreio. Sem "Como posso ajudar hoje?"
+- Respostas comecam com a resposta, nao com preambulo
+- Usa ferramentas ANTES de responder quando possivel
+- Se nao sabe, diz "nao sei" em vez de inventar
+- Se discorda, diz "discordo porque..."
+- Se acha que Gregory esta errado, fala
+- Se e tarde da noite, sugere descansar
+
+COMO VOCE AGE:
+- Quando recebe tarefa: executa, nao descreve o que faria
+- Quando detecta algo errado: alerta imediatamente
+- Quando ve oportunidade: sugere sem esperar ser perguntada
+- Quando tarefa e complexa: quebra em missao com steps
+- Quando nao tem certeza do projeto: pergunta uma vez, lembra pra sempre
+
+O QUE VOCE NUNCA FAZ:
+- "Ola! Como posso ajudar?" — nunca
+- "Claro! Fico feliz em ajudar!" — nunca
+- Listar suas capacidades — nunca
+- Pedir desculpas excessivas — nunca
+- Repetir a pergunta do Gregory na resposta — nunca
+
+CONTEXTO DO GREGORY:
+- Maquinista na EFVM (trabalha em turnos)
+- Engenheiro de software autodidata
+- Acessa do iPhone enquanto trabalha
+- Quer velocidade e resultado, nao explicacao
+- Filosofia: "Tecnologia existe pra devolver tempo a familia"
+"""
+
 
 class AgentService:
     def __init__(self, tool_registry: ToolRegistry, brain_router, claude_client, ollama_service, settings, ollama_lifecycle=None):
@@ -45,14 +89,32 @@ class AgentService:
         self.active_tasks: Dict[str, dict] = {}
         self.self_mod_planner = SelfModPlanner()
         self.self_mod_executor = SelfModExecutor()
+        # Injetados pelo Container apos init
+        self.memory = None  # MemoryEngine
+        self.mission_engine = None
 
-    def _build_system_prompt(self, base_prompt: str = "") -> str:
-        """Constroi system prompt com tools disponiveis."""
+    async def _build_system_prompt(self, base_prompt: str = "") -> str:
+        """Constroi system prompt com personalidade, memoria e tools."""
         tools_prompt = self.tools.get_tools_prompt()
-        return f"""{base_prompt}
 
-Voce e a Aura, assistente pessoal AI do Gregory. Voce tem acesso a ferramentas para executar acoes no Mac dele.
+        # Buscar contexto da memoria se disponivel
+        memory_context = ""
+        if self.memory:
+            try:
+                memory_context = await self.memory.get_context_for_prompt(project_id="aura")
+            except Exception as e:
+                logger.warning("[AgentService] Memory context fetch failed: %s", e)
 
+        memory_block = ""
+        if memory_context:
+            memory_block = f"""
+CONTEXTO DO GREGORY (da memoria):
+{memory_context}
+"""
+
+        return f"""{AURA_PERSONALITY}
+{base_prompt}
+{memory_block}
 {tools_prompt}
 
 COMO USAR FERRAMENTAS:
@@ -173,7 +235,7 @@ Regras:
                 },
             }
 
-        system_prompt = self._build_system_prompt()
+        system_prompt = await self._build_system_prompt()
         tool_calls_log = []
         needs_approval = []
         accumulated_context = ""
@@ -211,6 +273,10 @@ Regras:
                 # Sem mais tool calls — resposta final
                 # Limpar tags residuais
                 clean_response = re.sub(r'</?tool_call>', '', response_text).strip()
+
+                # Aprender da interacao e salvar conversa
+                await self._learn_from_interaction(message, clean_response, tool_calls_log)
+
                 return {
                     "response": clean_response,
                     "tool_calls": tool_calls_log,
@@ -284,3 +350,46 @@ Regras:
 
     def get_task_status(self, task_id: str) -> Optional[dict]:
         return self.active_tasks.get(task_id)
+
+    async def _learn_from_interaction(self, message: str, response: str, tool_calls: List[dict]) -> None:
+        """Extrai fatos da interacao e salva na memoria."""
+        if not self.memory:
+            return
+
+        try:
+            # Salvar resumo da conversa
+            conversation_id = str(uuid.uuid4())
+            summary = f"Gregory: {message[:100]}... | Aura: {response[:100]}..."
+            await self.memory.save_conversation(
+                conversation_id=conversation_id,
+                summary=summary,
+                project_id="aura",
+            )
+
+            # Se houve tool calls bem-sucedidas, registrar como fatos
+            for tc in tool_calls:
+                result = tc.get("result", {})
+                if result.get("success"):
+                    await self.memory.add_fact(
+                        project_id="aura",
+                        fact_type="command",
+                        content=f"{tc['tool']}: {json.dumps(tc.get('params', {}), ensure_ascii=False)[:200]}",
+                    )
+
+            # Detectar decisoes explicitas
+            import re as _re
+            decision_patterns = [
+                r"(vamos usar|decidi|escolhi|optei por|vou com)\s+(.+)",
+                r"(let's use|decided|chose|going with)\s+(.+)",
+            ]
+            for pattern in decision_patterns:
+                match = _re.search(pattern, message, _re.IGNORECASE)
+                if match:
+                    await self.memory.add_fact(
+                        project_id="aura",
+                        fact_type="decision",
+                        content=match.group(0)[:200],
+                    )
+                    break
+        except Exception as e:
+            logger.warning("[AgentService] Learning failed: %s", e)

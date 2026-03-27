@@ -42,3 +42,13 @@ async def dismiss_alert(alert_id: str, request: Request):
     engine = getattr(request.app.state, "proactive_engine", None)
     dismissed = engine.dismiss_alert(alert_id) if engine else False
     return ApiResponse(data={"alert_id": alert_id, "dismissed": dismissed})
+
+
+@router.get("/greeting", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def get_greeting(request: Request):
+    """Saudacao contextual quando Gregory abre o chat."""
+    agent = getattr(request.app.state, "proactive_agent", None)
+    if not agent:
+        return ApiResponse(data={"greeting": None})
+    greeting = await agent.get_greeting()
+    return ApiResponse(data={"greeting": greeting})

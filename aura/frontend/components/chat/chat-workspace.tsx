@@ -13,7 +13,7 @@ import { ApprovalBanner } from '@/components/chat/ApprovalBanner';
 import { useAuraPreferences } from '@/components/providers/app-provider';
 import { useHealth } from '@/hooks/use-health';
 import { useWebSocket } from '@/hooks/use-websocket';
-import { ApiClientError, sendChat, agentChat, uploadFile } from '@/lib/api';
+import { ApiClientError, sendChat, agentChat, uploadFile, fetchGreeting } from '@/lib/api';
 import { getAuraChatMode } from '@/lib/chat-modes';
 import { clientEnv } from '@/lib/env';
 import { useChatStore } from '@/lib/chat-store';
@@ -160,6 +160,29 @@ export function ChatWorkspace() {
     if (!prompt || draftText || messages.length) return;
     setDraftText(prompt);
   }, [draftText, messages.length]);
+
+  // Proactive greeting — quando chat abre vazio
+  useEffect(() => {
+    if (messages.length > 0 || !activeConversation) return;
+    let cancelled = false;
+    const loadGreeting = async () => {
+      try {
+        const data = await fetchGreeting();
+        if (cancelled || !data?.greeting) return;
+        appendMessage(activeConversation.id, {
+          id: createMessageId('greeting'),
+          role: 'assistant',
+          content: data.greeting,
+          createdAt: new Date().toISOString(),
+          status: 'complete',
+          modeLabel: 'Proativa',
+        });
+      } catch { /* silent */ }
+    };
+    loadGreeting();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation?.id]);
 
   // Auto-scroll
   useEffect(() => {

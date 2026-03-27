@@ -151,3 +151,70 @@ async def delete_long_memory(memory_id: int, request: Request):
     mem = _get_mem(request)
     deleted = mem.delete_long_memory(memory_id)
     return ApiResponse(data={"id": memory_id, "deleted": deleted})
+
+
+# ── Facts (via MemoryEngine) ─────────────────────────────────
+
+
+class AddFactRequest(BaseModel):
+    project_id: Optional[str] = None
+    fact_type: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+
+
+def _get_memory_engine(request: Request):
+    engine = getattr(request.app.state, "memory_engine", None)
+    if not engine:
+        raise AuraError("memory_engine_unavailable", "Memory engine not initialized.", status_code=503)
+    return engine
+
+
+@router.post("/facts", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def add_fact(body: AddFactRequest, request: Request):
+    engine = _get_memory_engine(request)
+    result = await engine.add_fact(body.project_id, body.fact_type, body.content)
+    return ApiResponse(data=result)
+
+
+@router.get("/facts", response_model=ApiResponse[list], dependencies=[Depends(require_bearer_token)])
+async def list_facts(request: Request, project_id: Optional[str] = None, limit: int = 20):
+    engine = _get_memory_engine(request)
+    return ApiResponse(data=await engine.get_facts(project_id=project_id, limit=min(limit, 100)))
+
+
+# ── Conversations ────────────────────────────────────────────
+
+
+@router.get("/conversations", response_model=ApiResponse[list], dependencies=[Depends(require_bearer_token)])
+async def list_conversations(request: Request, limit: int = 10):
+    engine = _get_memory_engine(request)
+    return ApiResponse(data=await engine.get_recent_conversations(limit=min(limit, 50)))
+
+
+# ── Context Formatted ────────────────────────────────────────
+
+
+@router.get("/context/formatted", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def get_formatted_context(request: Request, project_id: Optional[str] = None):
+    engine = _get_memory_engine(request)
+    ctx = await engine.get_context_for_prompt(project_id=project_id)
+    return ApiResponse(data={"context": ctx})
+
+
+# ── Learn (force fact extraction) ────────────────────────────
+
+
+class LearnRequest(BaseModel):
+    text: str = Field(min_length=1)
+    project_id: Optional[str] = None
+
+
+@router.post("/learn", response_model=ApiResponse[dict], dependencies=[Depends(require_bearer_token)])
+async def force_learn(body: LearnRequest, request: Request):
+    engine = _get_memory_engine(request)
+    result = await engine.add_fact(
+        project_id=body.project_id,
+        fact_type="learned",
+        content=body.text[:500],
+    )
+    return ApiResponse(data=result)

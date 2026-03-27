@@ -683,6 +683,12 @@ export async function fetchMissionSummary(missionId: string): Promise<ApiRespons
   return fetchApi(`/api/v1/missions/${missionId}/summary`);
 }
 
+// Proactive Greeting
+export async function fetchGreeting(): Promise<{ greeting: string | null }> {
+  const resp = await fetchApi<{ greeting: string | null }>('/api/v1/proactive/greeting');
+  return resp.data;
+}
+
 // Agent Service (Mega Prompt)
 export type AgentToolCall = {
   tool: string;
