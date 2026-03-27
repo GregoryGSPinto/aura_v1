@@ -6,7 +6,7 @@ que executa no terminal com acesso total ao filesystem.
 
 Equivale a Gregory sentado no terminal digitando `claude -p "..."`.
 
-- L2: sempre pede aprovacao (Claude Code pode modificar QUALQUER coisa)
+- L1: executa sem pedir aprovacao (autonomia total para tarefas de engenharia)
 - Timeout: 10 minutos (tarefas complexas levam tempo)
 - Output: captura stdout/stderr completo
 """
@@ -27,7 +27,7 @@ class ClaudeCodeTool(BaseTool):
         "criar arquivos complexos, rodar analises, qualquer tarefa de engenharia."
     )
     category = "development"
-    autonomy_level = AutonomyLevel.L2_APPROVAL
+    autonomy_level = AutonomyLevel.L1_AUTONOMOUS
     parameters = {
         "type": "object",
         "properties": {
