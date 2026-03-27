@@ -38,3 +38,7 @@ aura_*prompts*.md
 
 # Runtime JSON data
 aura/backend/data/json/
+
+.DS_Store
+*.!*
+
