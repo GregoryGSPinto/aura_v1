@@ -10,6 +10,7 @@ from app.models.chat_models import ChatRequest, ChatResponseData, SuggestedActio
 from app.models.command_models import CommandExecutionResult
 from app.models.common_models import ApiResponse
 from app.models.persistence_models import ChatMessageRecord, ChatSessionRecord
+from app.services.brain_router import BrainTarget
 from app.services.events import AuraEvent
 from app.services.websocket_manager import ws_manager
 from app.tools.tool_router import ToolAnalysis
@@ -117,6 +118,7 @@ async def chat(request_body: ChatRequest, request: Request):
     complexity: Optional[int] = None
     classification_reason: Optional[str] = None
     tool_calls: Optional[list] = None
+    mission: Optional[dict] = None
 
     # Brain override from @local / @cloud prefix
     brain_override_header = request.headers.get("x-aura-brain-override")
@@ -135,59 +137,106 @@ async def chat(request_body: ChatRequest, request: Request):
     if tool_analysis.status == "allowed" and tool_route:
         preview = request.app.state.action_governance_service.preview(tool_route.command, tool_route.params)
         action_preview = preview.model_dump()
+        mission_control = getattr(request.app.state, "mission_control", None)
         if tool_route.command == "auradev_execute":
-            # AuraDev: route dev tasks to the dual-brain engine
-            dev_tool = getattr(request.app.state, "dev_tool", None)
-            if dev_tool:
-                intent_type = tool_route.params.get("intent_type", "task")
-                dev_response = await dev_tool.execute_from_intent(intent_type, tool_route.params)
-                action_taken = {
-                    "command": "auradev_execute",
-                    "params": sanitize_mapping(tool_route.params),
-                    "status": "success",
-                    "result": {
-                        "message": dev_response,
-                        "stdout": None,
-                        "stderr": None,
-                        "metadata": {"intent_type": intent_type},
-                    },
-                }
-                response = dev_response
+            if mission_control:
+                mission = await mission_control.create_adapter_mission(
+                    objective=request_body.message,
+                    project_slug=request_body.context.project_id,
+                    requested_autonomy="L4",
+                    source="chat_auradev",
+                    session_id=session_id,
+                    steps=[{
+                        "title": "AuraDev",
+                        "description": request_body.message,
+                        "tool": "auradev",
+                        "params": tool_route.params,
+                    }],
+                )
+                mission = await mission_control.execute_mission(mission["id"])
+                action_taken = {"command": "auradev_execute", "params": sanitize_mapping(tool_route.params), "status": mission["status"], "result": {"message": mission["mission_report"]["summary"]}}
+                response = mission["mission_report"]["summary"]
             else:
-                response = "AuraDev não está disponível."
-                action_taken = {
-                    "command": "auradev_execute",
-                    "params": sanitize_mapping(tool_route.params),
-                    "status": "error",
-                    "result": {"message": response, "stdout": None, "stderr": None, "metadata": {}},
-                }
+                dev_tool = getattr(request.app.state, "dev_tool", None)
+                if dev_tool:
+                    intent_type = tool_route.params.get("intent_type", "task")
+                    dev_response = await dev_tool.execute_from_intent(intent_type, tool_route.params)
+                    action_taken = {
+                        "command": "auradev_execute",
+                        "params": sanitize_mapping(tool_route.params),
+                        "status": "success",
+                        "result": {
+                            "message": dev_response,
+                            "stdout": None,
+                            "stderr": None,
+                            "metadata": {"intent_type": intent_type},
+                        },
+                    }
+                    response = dev_response
+                else:
+                    response = "AuraDev não está disponível."
+                    action_taken = {
+                        "command": "auradev_execute",
+                        "params": sanitize_mapping(tool_route.params),
+                        "status": "error",
+                        "result": {"message": response, "stdout": None, "stderr": None, "metadata": {}},
+                    }
+            if mission_control and mission:
+                route = "agent"
+                plan = {"status": mission["status"], "steps": mission["total_steps"], "mission_id": mission["id"]}
             elapsed_ms = int((time.perf_counter() - started) * 1000)
         elif tool_route.command == "claude_execute":
-            # Claude Code: async execution via ClaudeTool
-            claude_prompt = tool_route.params.get("prompt", request_body.message)
-            claude_result = await request.app.state.claude_tool.execute(
-                prompt=claude_prompt,
-                working_dir=tool_route.params.get("working_dir"),
-            )
-            exit_code = claude_result.get("exit_code", -1)
-            output = claude_result.get("output", "")
-            error = claude_result.get("error", "")
-            action_taken = {
-                "command": "claude_execute",
-                "params": sanitize_mapping(tool_route.params),
-                "status": "success" if exit_code == 0 else "error",
-                "result": {
-                    "message": output or error or "Claude Code executou sem saída.",
-                    "stdout": sanitize_string(output),
-                    "stderr": sanitize_string(error),
-                    "metadata": {"exit_code": exit_code},
-                },
-            }
-            response = output if exit_code == 0 else f"Erro do Claude Code:\n{error or output}"
-            if not response:
-                response = "Claude Code executou o comando sem saída."
+            if mission_control:
+                mission = await mission_control.create_claude_adapter_mission(
+                    objective=tool_route.params.get("prompt", request_body.message),
+                    project_slug=request_body.context.project_id,
+                    working_dir=tool_route.params.get("working_dir"),
+                    session_id=session_id,
+                )
+                mission = await mission_control.execute_mission(mission["id"])
+                action_taken = {
+                    "command": "claude_execute",
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": mission["status"],
+                    "result": {"message": mission["mission_report"]["summary"]},
+                }
+                response = mission["mission_report"]["summary"]
+                route = "agent"
+                plan = {"status": mission["status"], "steps": mission["total_steps"], "mission_id": mission["id"]}
+            else:
+                claude_prompt = tool_route.params.get("prompt", request_body.message)
+                claude_result = await request.app.state.claude_tool.execute(
+                    prompt=claude_prompt,
+                    working_dir=tool_route.params.get("working_dir"),
+                )
+                exit_code = claude_result.get("exit_code", -1)
+                output = claude_result.get("output", "")
+                error = claude_result.get("error", "")
+                action_taken = {
+                    "command": "claude_execute",
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": "success" if exit_code == 0 else "error",
+                    "result": {
+                        "message": output or error or "Claude Code executou sem saída.",
+                        "stdout": sanitize_string(output),
+                        "stderr": sanitize_string(error),
+                        "metadata": {"exit_code": exit_code},
+                    },
+                }
+                response = output if exit_code == 0 else f"Erro do Claude Code:\n{error or output}"
+                if not response:
+                    response = "Claude Code executou o comando sem saída."
             elapsed_ms = int((time.perf_counter() - started) * 1000)
         elif preview.requires_confirmation:
+            if mission_control:
+                mission = await mission_control.create_legacy_command_mission(
+                    objective=request_body.message,
+                    command=tool_route.command,
+                    params=tool_route.params,
+                    project_slug=request_body.context.project_id,
+                    requested_autonomy="L3",
+                    session_id=session_id,
+                )
             action_taken = {
                 "command": tool_route.command,
                 "params": sanitize_mapping(tool_route.params),
@@ -200,29 +249,56 @@ async def chat(request_body: ChatRequest, request: Request):
                 },
             }
             response = request.app.state.behavior_service.action_confirmation_copy(action_preview)
+            route = "agent"
+            plan = {"status": mission["status"], "steps": mission["total_steps"], "mission_id": mission["id"]} if mission else None
             elapsed_ms = int((time.perf_counter() - started) * 1000)
         else:
-            command_result: CommandExecutionResult = request.app.state.command_service.execute(
-                tool_route.command,
-                tool_route.params,
-                actor={
-                    "user_id": auth_context.get("user_id") or "chat-router",
-                    "provider": "chat",
-                    "request_id": getattr(request.state, "request_id", None),
-                },
-            )
-            action_taken = {
-                "command": command_result.command,
-                "params": sanitize_mapping(tool_route.params),
-                "status": command_result.status,
-                "result": {
-                    "message": command_result.message,
-                    "stdout": sanitize_string(command_result.stdout),
-                    "stderr": sanitize_string(command_result.stderr),
-                    "metadata": sanitize_mapping(command_result.metadata),
-                },
-            }
-            response = build_operational_response(tool_analysis, command_result)
+            if mission_control:
+                mission = await mission_control.create_legacy_command_mission(
+                    objective=request_body.message,
+                    command=tool_route.command,
+                    params=tool_route.params,
+                    project_slug=request_body.context.project_id,
+                    requested_autonomy="L2",
+                    session_id=session_id,
+                )
+                mission = await mission_control.execute_mission(mission["id"])
+                action_taken = {
+                    "command": tool_route.command,
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": mission["status"],
+                    "result": {
+                        "message": mission["mission_report"]["summary"],
+                        "stdout": None,
+                        "stderr": None,
+                        "metadata": {"mission_id": mission["id"]},
+                    },
+                }
+                response = mission["mission_report"]["summary"]
+                route = "agent"
+                plan = {"status": mission["status"], "steps": mission["total_steps"], "mission_id": mission["id"]}
+            else:
+                command_result: CommandExecutionResult = request.app.state.command_service.execute(
+                    tool_route.command,
+                    tool_route.params,
+                    actor={
+                        "user_id": auth_context.get("user_id") or "chat-router",
+                        "provider": "chat",
+                        "request_id": getattr(request.state, "request_id", None),
+                    },
+                )
+                action_taken = {
+                    "command": command_result.command,
+                    "params": sanitize_mapping(tool_route.params),
+                    "status": command_result.status,
+                    "result": {
+                        "message": command_result.message,
+                        "stdout": sanitize_string(command_result.stdout),
+                        "stderr": sanitize_string(command_result.stderr),
+                        "metadata": sanitize_mapping(command_result.metadata),
+                    },
+                }
+                response = build_operational_response(tool_analysis, command_result)
             elapsed_ms = int((time.perf_counter() - started) * 1000)
     elif tool_analysis.status in {"blocked", "unimplemented"}:
         if tool_route:
@@ -253,11 +329,9 @@ async def chat(request_body: ChatRequest, request: Request):
 
             # Apply brain override
             if brain_override_header == "cloud" and cc and cc.available:
-                from app.services.brain_router import BrainTarget
                 target = BrainTarget.CLOUD
                 classification_reason = "Override manual: @cloud"
             elif brain_override_header == "local":
-                from app.services.brain_router import BrainTarget
                 target = BrainTarget.LOCAL
                 classification_reason = "Override manual: @local"
 
@@ -270,11 +344,20 @@ async def chat(request_body: ChatRequest, request: Request):
                 AuraEvent.chat_brain_routing(session_id, target.value, complexity, classification_reason),
             )
         else:
-            from app.services.brain_router import BrainTarget
             target = BrainTarget.LOCAL
             brain_used = "local"
             complexity = 2
             classification_reason = "Brain router nao disponivel"
+
+        # GTM Command Center: inject sales-focused system prompt
+        is_gtm_session = session_id == "gtm-command-center"
+        if is_gtm_session:
+            from app.config.gtm_system_prompt import SYSTEM_PROMPT_GTM  # noqa: E402
+            # Force cloud for tool calling capability
+            if cc and cc.available:
+                target = BrainTarget.CLOUD
+                brain_used = "cloud"
+                classification_reason = "GTM Command Center — forced cloud for tool calling"
 
         # Sprint 3: Inject SQLite memory context
         sqlite_mem = getattr(request.app.state, "sqlite_memory", None)
@@ -327,6 +410,9 @@ async def chat(request_body: ChatRequest, request: Request):
                 runtime_context["memory_prompt_points"],
                 runtime_context["behavior_mode"],
             )
+            # GTM Command Center: prepend sales system prompt
+            if is_gtm_session:
+                chat_system_prompt = SYSTEM_PROMPT_GTM + "\n\n" + chat_system_prompt
 
             if target == BrainTarget.CLOUD and cc and cc.available:
                 # Route to Claude API
@@ -463,6 +549,7 @@ async def chat(request_body: ChatRequest, request: Request):
         complexity=complexity,
         classification_reason=classification_reason,
         tool_calls=tool_calls,
+        mission=mission,
     )
 
     # Emit chat.done via WebSocket

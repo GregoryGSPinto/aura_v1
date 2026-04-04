@@ -292,6 +292,11 @@ class Container:
         from app.services.gtm_service import GTMService
         gtm_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "gtm.db")
         self.gtm_service = GTMService(db_path=gtm_db_path)
+        self.tool_registry_v2.register(
+            "gtm", self.gtm_service,
+            "Gerenciar dados de vendas do GTM Command Center (leads, pipeline, métricas, conteúdo)",
+            parameters={"collection": "string", "data": "object (opcional)", "item_id": "string (opcional)", "days": "integer (opcional)"},
+        )
 
         # Sprint 5: Claude Bridge (with SQLite memory for project context)
         self.claude_bridge = ClaudeBridge(sqlite_memory=self.sqlite_memory)
