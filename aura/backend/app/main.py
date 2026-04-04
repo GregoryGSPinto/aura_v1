@@ -40,7 +40,10 @@ from app.services.action_governance_service import ActionGovernanceService
 from app.services.auth_service import AuthService
 from app.services.behavior_service import BehaviorService
 from app.services.command_service import CommandService
+from app.services.connector_validation_service import ConnectorValidationService
 from app.services.context_service import ContextService
+from app.services.credential_store import SecureCredentialStore
+from app.services.google_oauth_service import GoogleOAuthService
 from app.services.job_service import JobService
 from app.services.memory_service import MemoryService
 from app.services.ollama_engine_service import OllamaEngineService
@@ -50,6 +53,7 @@ from app.services.project_service import ProjectService
 from app.services.routine_service import RoutineService
 from app.services.supabase_service import SupabaseService
 from app.services.token_budget_service import TokenBudgetService
+from app.services.voice_session_manager import VoiceSessionManager
 from app.services.brain_router import BrainRouter
 from app.services.chat_router_service import ChatRouterService
 from app.services.claude_client import ClaudeClient
@@ -61,14 +65,17 @@ from app.services.claude_bridge import ClaudeBridge
 from app.services.daily_briefing import DailyBriefingService
 from app.services.deploy_orchestrator import DeployOrchestrator
 from app.services.github_service import GitHubService
-from app.services.integrations_service import CalendarService, DocService, EmailService
+from app.services.integrations_service import DocService
 from app.services.mission_engine import MissionExecutor, MissionPlanner, MissionStore
 from app.services.mission_engine_v2 import BlockerDetector, MissionEvaluator, MissionReplanner, MissionSummarizer, SmartRetry
+from app.services.mission_control import MissionControlService
 from app.services.proactive_engine import ProactiveEngine
 from app.services.safety_service import ApprovalQueue, AuditService, RollbackRegistry, SafetyService
 from app.services.sqlite_memory import SQLiteMemoryService
 from app.services.vercel_service import VercelService
 from app.services.voice_service import STTService, TTSService
+from app.services.whatsapp_service import OfficialWhatsAppConnector, PersonalWhatsAppBridgeConnector
+from app.services.whatsapp_router import WhatsAppRouter
 from app.services.proactive_service import ProactiveService
 from app.services.push_service import PushService
 from app.services.workflow_engine import WorkflowEngine
@@ -163,6 +170,15 @@ class Container:
             job_logs_file=self.settings.job_logs_file,
             routines_file=self.settings.routines_file,
             routine_executions_file=self.settings.routine_executions_file,
+        )
+        self.credential_store = SecureCredentialStore(
+            base_dir=str(os.path.join(os.path.dirname(self.settings.settings_file), "secure")),
+            master_key=self.settings.credential_store_master_key,
+        )
+        self.google_oauth_service = GoogleOAuthService(
+            settings=self.settings,
+            credential_store=self.credential_store,
+            data_dir=str(os.path.join(os.path.dirname(self.settings.settings_file), "oauth")),
         )
         self.supabase_service = SupabaseService(self.settings)
         self.persistence_service = PersistenceService(self.memory_service, self.supabase_service, self.logger)
@@ -272,6 +288,11 @@ class Container:
         db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "memory.db")
         self.sqlite_memory = SQLiteMemoryService(db_path=db_path)
 
+        # GTM Strategy bridge
+        from app.services.gtm_service import GTMService
+        gtm_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "gtm.db")
+        self.gtm_service = GTMService(db_path=gtm_db_path)
+
         # Sprint 5: Claude Bridge (with SQLite memory for project context)
         self.claude_bridge = ClaudeBridge(sqlite_memory=self.sqlite_memory)
         self.tool_registry_v2.register("claude", self.claude_bridge, "Executar missões via Claude Code CLI", parameters={"objective": "string", "project_slug": "string", "working_dir": "string (opcional)"})
@@ -292,6 +313,14 @@ class Container:
         )
         self.tool_registry_v2.register("github", self.github_service, "Operacoes GitHub API")
         self.tool_registry_v2.register("vercel", self.vercel_service, "Operacoes Vercel API")
+        self.tool_registry_v2.register("supabase", self.supabase_service, "Operacoes Supabase e health checks")
+        self.tool_registry_v2.register("deploy_orchestrator", self.deploy_orchestrator, "Fluxo canonico de GitHub + Vercel")
+
+        # Sprint 11: Safety Layer
+        self.safety_service = SafetyService()
+        self.audit_service = AuditService(db_path=db_path)
+        self.approval_queue = ApprovalQueue()
+        self.rollback_registry = RollbackRegistry()
 
         # Sprint 7: Mission Engine V1
         self.mission_store = MissionStore(db_path=db_path)
@@ -300,6 +329,10 @@ class Container:
             tool_registry=self.tool_registry_v2,
             claude_bridge=self.claude_bridge,
             sqlite_memory=self.sqlite_memory,
+            approval_queue=self.approval_queue,
+            audit_service=self.audit_service,
+            rollback_registry=self.rollback_registry,
+            command_service=self.command_service,
         )
 
         self.chat_router_service = ChatRouterService(
@@ -307,6 +340,7 @@ class Container:
             aura_os=self.aura_os,
             behavior_service=self.behavior_service,
             action_governance=self.action_governance_service,
+            mission_control=None,
             tool_schema=self.tool_schema_service,
             tool_parser=self.tool_call_parser,
             tool_executor=self.tool_executor_service,
@@ -327,13 +361,22 @@ class Container:
             username=self.settings.github_username,
         )
         self.calendar_connector = GoogleCalendarConnector(
-            api_key=self.settings.google_calendar_api_key,
-            calendar_id=self.settings.google_calendar_id,
+            settings=self.settings,
+            credential_store=self.credential_store,
         )
         self.gmail_connector = GmailConnector(
-            address=self.settings.gmail_address,
-            app_password=self.settings.gmail_app_password,
+            settings=self.settings,
+            credential_store=self.credential_store,
         )
+        self.whatsapp_official_connector = OfficialWhatsAppConnector(self.settings)
+        self.whatsapp_personal_connector = PersonalWhatsAppBridgeConnector(self.settings)
+        self.whatsapp_router = WhatsAppRouter(
+            official_channel=self.whatsapp_official_connector,
+            personal_bridge=self.whatsapp_personal_connector,
+        )
+        self.tool_registry_v2.register("gmail", self.gmail_connector, "Operacoes oficiais do Gmail via Google OAuth")
+        self.tool_registry_v2.register("calendar", self.calendar_connector, "Operacoes oficiais do Google Calendar via OAuth")
+        self.tool_registry_v2.register("whatsapp", self.whatsapp_router, "Router canônico do WhatsApp com governança e decisão official/bridge")
 
         # Push Service
         self.push_service = PushService(
@@ -345,29 +388,18 @@ class Container:
         # Workflow Engine
         self.workflow_engine = WorkflowEngine(push_service=self.push_service)
 
-        # Sprint 9: Integrations (Calendar, Email, Docs)
-        self.calendar_service = CalendarService(
-            calendar_connector=self.calendar_connector,
-            ollama_service=self.ollama_service,
-        )
-        self.email_service = EmailService(
-            gmail_connector=self.gmail_connector,
-            ollama_service=self.ollama_service,
-        )
+        # Sprint 9+: Docs remain as standalone helper; Gmail/Calendar usam conectores canônicos.
         self.doc_service = DocService(
             ollama_service=self.ollama_service,
             allowed_roots=self.settings.allowed_roots,
         )
 
-        # Sprint 11: Safety Layer
-        self.safety_service = SafetyService()
-        self.audit_service = AuditService(db_path=db_path)
-        self.approval_queue = ApprovalQueue()
-        self.rollback_registry = RollbackRegistry()
-
         # Sprint 12: Voice Premium
         self.stt_service = STTService()
         self.tts_service = TTSService()
+        self.voice_session_manager = VoiceSessionManager(
+            data_dir=str(os.path.join(os.path.dirname(self.settings.settings_file), "runtime"))
+        )
 
         # Sprint 13.5: Proactive Engine
         self.proactive_engine = ProactiveEngine(
@@ -377,8 +409,8 @@ class Container:
 
         # Sprint 14: Daily Briefing
         self.briefing_service = DailyBriefingService(
-            calendar_service=self.calendar_service,
-            email_service=self.email_service,
+            calendar_service=self.calendar_connector,
+            email_service=self.gmail_connector,
             sqlite_memory=self.sqlite_memory,
             mission_store=self.mission_store,
             ollama_service=self.ollama_service,
@@ -391,6 +423,48 @@ class Container:
         self.blocker_detector = BlockerDetector()
         self.mission_evaluator = MissionEvaluator()
         self.mission_summarizer = MissionSummarizer(ollama_service=self.ollama_service)
+        self.mission_control = MissionControlService(
+            store=self.mission_store,
+            planner=self.mission_planner,
+            executor=self.mission_executor,
+            evaluator=self.mission_evaluator,
+            summarizer=self.mission_summarizer,
+            blocker_detector=self.blocker_detector,
+            smart_retry=self.smart_retry,
+            replanner=self.mission_replanner,
+            settings=self.settings,
+            voice_pipeline=self.voice_pipeline,
+            connectors={
+                "github": self.github_connector,
+                "gmail": self.gmail_connector,
+                "calendar": self.calendar_connector,
+                "vercel": self.vercel_service,
+                "supabase": self.supabase_service,
+                "whatsapp": self.whatsapp_router,
+            },
+            model_router=getattr(self.aura_os, "model_router", None),
+            startup_warnings=self.startup_warnings,
+            token_budget_service=self.token_budget_service,
+            approval_queue=self.approval_queue,
+            audit_service=self.audit_service,
+            rollback_registry=self.rollback_registry,
+            voice_session_manager=self.voice_session_manager,
+            validation_service=None,
+        )
+        self.connector_validation_service = ConnectorValidationService(
+            data_dir=str(os.path.join(os.path.dirname(self.settings.settings_file), "runtime")),
+            connectors={
+                "gmail": self.gmail_connector,
+                "calendar": self.calendar_connector,
+                "supabase": self.supabase_service,
+                "whatsapp_official": self.whatsapp_official_connector,
+                "whatsapp_personal": self.whatsapp_personal_connector,
+                "whatsapp": self.whatsapp_router,
+            },
+            mission_control=self.mission_control,
+        )
+        self.mission_control.validation_service = self.connector_validation_service
+        self.chat_router_service.mission_control = self.mission_control
 
         # Ollama Lifecycle (auto start/stop)
         self.ollama_lifecycle = OllamaLifecycle(
@@ -603,6 +677,7 @@ def create_app() -> FastAPI:
     app.state.logger = app_container.logger
     app.state.memory_service = app_container.memory_service
     app.state.supabase_service = app_container.supabase_service
+    app.state.credential_store = app_container.credential_store
     app.state.persistence_service = app_container.persistence_service
     app.state.project_service = app_container.project_service
     app.state.auth_service = app_container.auth_service
@@ -624,6 +699,9 @@ def create_app() -> FastAPI:
     app.state.agent_job_manager = app_container.agent_job_manager
     app.state.aura_os = app_container.aura_os
     app.state.voice_pipeline = app_container.voice_pipeline
+    app.state.voice_session_manager = app_container.voice_session_manager
+    app.state.whatsapp_official_connector = app_container.whatsapp_official_connector
+    app.state.whatsapp_personal_connector = app_container.whatsapp_personal_connector
     app.state.research_tool = app_container.research_tool
     app.state.claude_tool = app_container.claude_tool
     app.state.routine_service = app_container.routine_service
@@ -652,6 +730,7 @@ def create_app() -> FastAPI:
     app.state.push_service = app_container.push_service
     app.state.workflow_engine = app_container.workflow_engine
     app.state.sqlite_memory = app_container.sqlite_memory
+    app.state.gtm_service = app_container.gtm_service
     app.state.claude_bridge = app_container.claude_bridge
     app.state.github_service = app_container.github_service
     app.state.vercel_service = app_container.vercel_service
@@ -659,9 +738,10 @@ def create_app() -> FastAPI:
     app.state.mission_store = app_container.mission_store
     app.state.mission_planner = app_container.mission_planner
     app.state.mission_executor = app_container.mission_executor
-    app.state.calendar_service = app_container.calendar_service
-    app.state.email_service = app_container.email_service
+    app.state.mission_control = app_container.mission_control
     app.state.doc_service = app_container.doc_service
+    app.state.google_oauth_service = app_container.google_oauth_service
+    app.state.connector_validation_service = app_container.connector_validation_service
     app.state.safety_service = app_container.safety_service
     app.state.audit_service = app_container.audit_service
     app.state.approval_queue = app_container.approval_queue
@@ -679,6 +759,7 @@ def create_app() -> FastAPI:
     app.state.github_connector = app_container.github_connector
     app.state.calendar_connector = app_container.calendar_connector
     app.state.gmail_connector = app_container.gmail_connector
+    app.state.whatsapp_router = app_container.whatsapp_router
     app.state.ollama_lifecycle = app_container.ollama_lifecycle
     app.state.agent_tool_registry = app_container.agent_tool_registry
     app.state.agent_service = app_container.agent_service

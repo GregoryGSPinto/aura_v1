@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import agent, agent_api, auth, brain, chat, chat_stream, claude_missions, command, companion, completion_api, connectors, dashboard_api, dataset, deploy_api, dev_api, engine_api, filesystem_api, git_api, health, integrations_api, jobs, memory_api, missions_api, os_runtime, preview_proxy, proactive_api, projects, push_api, routines, safety_api, status, system, terminal_ws, tools, upload_api, voice_api, webauthn_api, websocket_events, workflow_api, workspace_api
+from app.api.v1.endpoints import agent, agent_api, auth, brain, chat, chat_stream, claude_missions, command, companion, completion_api, connectors, dashboard_api, dataset, deploy_api, dev_api, engine_api, filesystem_api, git_api, gtm_api, health, integrations_api, jobs, memory_api, missions_api, os_runtime, preview_proxy, proactive_api, projects, push_api, routines, safety_api, status, system, terminal_ws, tools, upload_api, voice_api, webauthn_api, websocket_events, workflow_api, workspace_api
 
 
 api_router = APIRouter()
@@ -45,3 +45,4 @@ api_router.include_router(dev_api.router)
 api_router.include_router(agent_api.router, tags=["agent-service"])
 api_router.include_router(upload_api.router, tags=["upload"])
 api_router.include_router(engine_api.router, tags=["engine"])
+api_router.include_router(gtm_api.router)
